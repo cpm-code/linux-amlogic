@@ -559,19 +559,12 @@ static bool module_installed;
 
 static int is_graphics_output_off(void)
 {
-	/* CPM */
-
 	u32 osd1 = READ_VPP_REG(OSD1_BLEND_SRC_CTRL);
 	u32 osd2 = READ_VPP_REG(OSD2_BLEND_SRC_CTRL);
 
 	pr_info("is graphics output off : osd1 [%x] osd2 [%x]\n", osd1, osd2);
 
-	if (dolby_vision_force_video_priority)
-		return 1;
-
 	return !(osd1 & (0xf << 8)) && !(osd2 & (0xf << 8));
-
-	/* CPM */
 }
 
 static u32 CORE1_BASE;
@@ -4951,7 +4944,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	if (dolby_vision_flags & FLAG_CERTIFICAION) {
 		dolby_vision_graphics_priority = 0;
 	} else {		
-		if (get_video_enabled() && is_graphics_output_off() )
+		if (get_video_enabled())
 			dolby_vision_graphics_priority = 0;
 		else
 			dolby_vision_graphics_priority = 1;
@@ -5074,7 +5067,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 							 src_format, dst_format,
 							 dolby_vision_target_min,
 							 dolby_vision_target_max[src_format][dst_format],
-							 !is_graphics_output_off(),
+							 pri_mode == V_PRIORITY,
 							 osd_graphic_width,
 							 osd_graphic_height,
 							 graphic_min,
@@ -5094,13 +5087,12 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 							 src_format, dst_format,
 							 dolby_vision_target_min,
 							 dolby_vision_target_max[src_format][dst_format],
-							 !is_graphics_output_off(),
+							 pri_mode == V_PRIORITY,
 							 osd_graphic_width,
 							 osd_graphic_height,
 							 graphic_min,
 							 graphic_max * 10000,
-							 pri_mode == V_PRIORITY ?
-							 "vpr" : "gpr",
+							 pri_mode == V_PRIORITY ? "vpr" : "gpr",
 							 flag,
 							 total_md_size, frame_count);
 
