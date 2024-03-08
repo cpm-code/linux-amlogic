@@ -408,12 +408,6 @@ static unsigned int dolby_vision_graphics_priority;
 module_param(dolby_vision_graphics_priority, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_graphics_priority, "\n dolby_vision_graphics_priority\n");
 
-/* CPM: Force video priority */
-static unsigned int dolby_vision_force_video_priority = 1;
-module_param(dolby_vision_force_video_priority, uint, 0664);
-MODULE_PARM_DESC(dolby_vision_force_video_priority, "\n dolby_vision_force_video_priority\n");
-/* CPM */
-
 static unsigned int atsc_sei = 1;
 module_param(atsc_sei, uint, 0664);
 MODULE_PARM_DESC(atsc_sei, "\n atsc_sei\n");
@@ -4956,7 +4950,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	/* cert: some graphic test also need video pri 5223,5243,5253,5263 */
 	if (dolby_vision_flags & FLAG_CERTIFICAION) {
 		dolby_vision_graphics_priority = 0;
-	} else {
+	} else {		
 		if (get_video_enabled() && is_graphics_output_off() )
 			dolby_vision_graphics_priority = 0;
 		else
