@@ -1212,17 +1212,13 @@ static int dolby_core3_set
 	u32 diag_enable = 0;
 	bool reset_post_table = false;
 
-	if (new_dovi_setting.diagnostic_enable ||
-		new_dovi_setting.dovi_ll_enable)
+	if (new_dovi_setting.diagnostic_enable || new_dovi_setting.dovi_ll_enable)
 		diag_enable = 1;
 
-	if (dolby_vision_on &&
-		(dolby_vision_flags &
-		 FLAG_DISABE_CORE_SETTING))
+	if (dolby_vision_on && (dolby_vision_flags & FLAG_DISABE_CORE_SETTING))
 		return 0;
 
-	if (!dolby_vision_on ||
-		(dolby_vision_flags & FLAG_CERTIFICAION))
+	if (!dolby_vision_on || (dolby_vision_flags & FLAG_CERTIFICAION))
 		reset = true;
 
 	if (force_update_reg & 4)
@@ -1255,15 +1251,11 @@ static int dolby_core3_set
 
 		if (new_dovi_setting.dovi_ll_enable &&
 			new_dovi_setting.diagnostic_enable == 0) {
-			VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL,
-								 3, 6, 2); /* post matrix */
-			VSYNC_WR_DV_REG_BITS(VPP_MATRIX_CTRL,
-								 1, 0, 1); /* post matrix */
+			VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 3, 6, 2); /* post matrix */
+			VSYNC_WR_DV_REG_BITS(VPP_MATRIX_CTRL, 1, 0, 1); /* post matrix */
 		} else {
-			VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL,
-								 0, 6, 2); /* post matrix */
-			VSYNC_WR_DV_REG_BITS(VPP_MATRIX_CTRL,
-								 0, 0, 1); /* post matrix */
+			VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 6, 2); /* post matrix */
+			VSYNC_WR_DV_REG_BITS(VPP_MATRIX_CTRL, 0, 0, 1); /* post matrix */
 		}
 
 		reset_post_table = true;
@@ -1273,10 +1265,8 @@ static int dolby_core3_set
 	if (new_dovi_setting.dovi_ll_enable &&
 		new_dovi_setting.diagnostic_enable == 0 &&
 		dolby_vision_on &&
-		(reset_post_table || reset ||
-		 memcmp(&p_core3_dm_regs[18], &last_dm[18], 32)))
+		(reset_post_table || reset || memcmp(&p_core3_dm_regs[18], &last_dm[18], 32)))
 		enable_rgb_to_yuv_matrix_for_dvll(1, &p_core3_dm_regs[18], 12);
-
 
 	if (get_vpu_mem_pd_vmod(VPU_DOLBY_CORE3) == VPU_MEM_POWER_DOWN ||
 		get_dv_mem_power_flag(VPU_DOLBY_CORE3) == VPU_MEM_POWER_DOWN)
@@ -1289,8 +1279,7 @@ static int dolby_core3_set
 	VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL3, (0x80 << 16) | vsize_hold);
 	VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL4, (0x04 << 16) | vsize_hold);
 	VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL5, 0x0000);
-	if (cur_dv_mode !=
-		DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
+	if (cur_dv_mode != DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
 		VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL6, 0);
 	else
 		VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL6, 0x10000000);  /* swap UV */
@@ -1330,8 +1319,7 @@ static int dolby_core3_set
 
 	if (scramble_en) {
 		if (md_count > 204) {
-			pr_dolby_error("core3 metadata size %d > 204 !\n",
-						   md_count);
+			pr_dolby_error("core3 metadata size %d > 204 !\n", md_count);
 		} else {
 			count = md_count;
 			for (i = 0; i < count; i++) {
