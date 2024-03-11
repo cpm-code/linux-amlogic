@@ -347,9 +347,9 @@ static unsigned int g_vtiming;
 module_param(g_vtiming, uint, 0664);
 MODULE_PARM_DESC(g_vtiming, "\n vpotch\n");
 
-static unsigned int dolby_vision_target_min = 50; /* 0.0001 */
+static unsigned int dolby_vision_target_min = 50; /* min is expreseed in ten-thousandths of a nit, i.e. * 0.0001 to get nits - default: 0.005 nits*/
 static unsigned int dolby_vision_target_max[3][3] = {
-		{ 4000, 1000, 100 }, /* DOVI => DOVI/HDR/SDR */
+		{ 4000, 1000, 100 }, /* DOVI => DOVI/HDR/SDR */ /* all expresssed in nits */
 		{ 1000, 1000, 100 }, /* HDR =>  DOVI/HDR/SDR */
 		{ 600, 1000, 100 },  /* SDR =>  DOVI/HDR/SDR */
 };
