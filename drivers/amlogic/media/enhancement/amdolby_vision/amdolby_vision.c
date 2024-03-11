@@ -562,7 +562,7 @@ static int is_graphics_output_off(void)
 	u32 osd1 = READ_VPP_REG(OSD1_BLEND_SRC_CTRL);
 	u32 osd2 = READ_VPP_REG(OSD2_BLEND_SRC_CTRL);
 
-	pr_info("is graphics output off : osd1 [%x] osd2 [%x]\n", osd1, osd2);
+	pr_dolby_dbg("is graphics output off : osd1 [%x] osd2 [%x]\n", osd1, osd2);
 
 	return !(osd1 & (0xf << 8)) && !(osd2 & (0xf << 8));
 }
