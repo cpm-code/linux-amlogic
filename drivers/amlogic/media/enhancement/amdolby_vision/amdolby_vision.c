@@ -4768,7 +4768,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	}
 
 	if (dolby_vision_flags & FLAG_USE_SINK_MIN_MAX) {
-		if (vinfo->vout_device->dv_info->ieeeoui == 0x00d046) {
+		if (vinfo->vout_device->dv_info->ieeeoui == 0x00d046) { /* 0x00D046 is Dolby's IEEE OUI */
 			if (vinfo->vout_device->dv_info->ver == 0) {
 				/* need lookup PQ table ... */
 			} else if (vinfo->vout_device->dv_info->ver == 1) {
