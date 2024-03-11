@@ -5066,7 +5066,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 							 h == 0xffff ? 0 : h,
 							 src_format, dst_format,
 							 dolby_vision_target_min,
-							 dolby_vision_target_max[src_format][dst_format], /* BUG Should convert to Express in 10-thousanths of nits */
+							 dolby_vision_target_max[src_format][dst_format] * 10000, /* Value in nits, processing input is in 10-thousanths of nits */
 							 pri_mode == V_PRIORITY,
 							 osd_graphic_width,
 							 osd_graphic_height,
@@ -5086,7 +5086,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 							 h == 0xffff ? 0 : h,
 							 src_format, dst_format,
 							 dolby_vision_target_min,
-							 dolby_vision_target_max[src_format][dst_format], /* BUG: Should convert to Express in 10-thousanths of nits */
+							 dolby_vision_target_max[src_format][dst_format] * 10000, /* Value in nits, processing input is in 10-thousanths of nits */
 							 pri_mode == V_PRIORITY,
 							 osd_graphic_width,
 							 osd_graphic_height,
