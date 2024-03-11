@@ -5007,9 +5007,9 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			 pri_mode,
 			 src_bdp, 0, SIGNAL_RANGE_SMPTE, /* bit/chroma/range */
 			 graphic_min,
-			 graphic_max * 10000,
+			 graphic_max * 10000,	/* Value in nits, processing input is in 10-thousanths of nits */
 			 dolby_vision_target_min,
-			 dolby_vision_target_max[src_format][dst_format] * 10000,
+			 dolby_vision_target_max[src_format][dst_format] * 10000,  /* Value in nits, processing input is in 10-thousanths of nits */
 			 (!el_flag && !mel_flag) || (dolby_vision_flags & FLAG_DISABLE_COMPOSER),
 			 &hdr10_param,
 			 &new_dovi_setting);
@@ -5066,12 +5066,12 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 							 h == 0xffff ? 0 : h,
 							 src_format, dst_format,
 							 dolby_vision_target_min,
-							 dolby_vision_target_max[src_format][dst_format],
+							 dolby_vision_target_max[src_format][dst_format], /* BUG Should convert to Express in 10-thousanths of nits */
 							 pri_mode == V_PRIORITY,
 							 osd_graphic_width,
 							 osd_graphic_height,
 							 graphic_min,
-							 graphic_max * 10000,
+							 graphic_max * 10000, /* Value in nits, processing input is in 10-thousanths of nits */
 							 pri_mode == V_PRIORITY ? "vpr" : "gpr");
 
 				pr_dolby_dbg("flag=%x, md=%d, comp=%d, frame:%d\n",
@@ -5086,12 +5086,12 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 							 h == 0xffff ? 0 : h,
 							 src_format, dst_format,
 							 dolby_vision_target_min,
-							 dolby_vision_target_max[src_format][dst_format],
+							 dolby_vision_target_max[src_format][dst_format], /* BUG: Should convert to Express in 10-thousanths of nits */
 							 pri_mode == V_PRIORITY,
 							 osd_graphic_width,
 							 osd_graphic_height,
 							 graphic_min,
-							 graphic_max * 10000,
+							 graphic_max * 10000, /* Value in nits, processing input is in 10-thousanths of nits */
 							 pri_mode == V_PRIORITY ? "vpr" : "gpr",
 							 flag,
 							 total_md_size, frame_count);
