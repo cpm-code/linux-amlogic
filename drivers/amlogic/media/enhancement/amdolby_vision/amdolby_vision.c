@@ -164,7 +164,6 @@ MODULE_PARM_DESC(dolby_vision_mask, "\n dolby_vision_mask\n");
 #define SDR_PROCESS 1
 #define HDR_PROCESS 2
 #define DV_PROCESS 3
-#define HLG_PROCESS 4
 
 static uint dolby_vision_status;
 module_param(dolby_vision_status, uint, 0664);
@@ -190,7 +189,6 @@ MODULE_PARM_DESC(dolby_vision_run_mode, "\n dolby_vision_run_mode\n");
 
 /* number of fake frame (run mode = 1) */
 #define RUN_MODE_DELAY 2
-#define RUN_MODE_DELAY_GXM 3
 
 static uint dolby_vision_run_mode_delay = RUN_MODE_DELAY;
 module_param(dolby_vision_run_mode_delay, uint, 0664);
@@ -201,10 +199,6 @@ static uint dolby_vision_reset_delay =
 		(RUN_MODE_DELAY << 8) | RUN_MODE_DELAY;
 module_param(dolby_vision_reset_delay, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_reset_delay, "\n dolby_vision_reset_delay\n");
-
-static unsigned int dolby_vision_tuning_mode;
-module_param(dolby_vision_tuning_mode, uint, 0664);
-MODULE_PARM_DESC(dolby_vision_tuning_mode, "\n dolby_vision_tuning_mode\n");
 
 static unsigned int dv_ll_output_mode = DOLBY_VISION_OUTPUT_MODE_HDR10;
 module_param(dv_ll_output_mode, uint, 0664);
@@ -225,19 +219,6 @@ MODULE_PARM_DESC(dolby_vision_src_format, "\n dolby_vision_src_format\n");
 static unsigned int force_mel;
 module_param(force_mel, uint, 0664);
 MODULE_PARM_DESC(force_mel, "\n force_mel\n");
-
-static unsigned int force_best_pq;
-module_param(force_best_pq, uint, 0664);
-MODULE_PARM_DESC(force_best_pq, "\n force_best_pq\n");
-
-/* by default, both std and ll use same cfg: cfg_id=1 */
-static unsigned int cfg_id = 1;/*dv cert need cfg_id=0*/
-module_param(cfg_id, uint, 0664);
-MODULE_PARM_DESC(cfg_id, "\n cfg_id\n");
-
-static unsigned int cfg_ll_id = 2;
-module_param(cfg_ll_id, uint, 0664);
-MODULE_PARM_DESC(cfg_ll_id, "\n cfg_ll_id\n");
 
 /*bit0: 0-> efuse, 1->no efuse; */
 /*bit1: 1-> ko loaded */
@@ -337,6 +318,7 @@ static char *ko_info;
 
 module_param(vtotal_add, uint, 0664);
 MODULE_PARM_DESC(vtotal_add, "\n vtotal_add\n");
+
 module_param(vpotch, uint, 0664);
 MODULE_PARM_DESC(vpotch, "\n vpotch\n");
 
@@ -360,8 +342,8 @@ static unsigned int dolby_vision_default_max[3][3] = {
 		{ 600, 1000, 100 },  /* SDR =>  DOVI/HDR/SDR */
 };
 
-static unsigned int dolby_vision_graphic_min = 50; /* 0.0001 */
-static unsigned int dolby_vision_graphic_max; /* 100 */
+static unsigned int dolby_vision_graphic_min = 50; /* min is expreseed in ten-thousandths of a nit, i.e. * 0.0001 to get nits - default: 0.005 nits*/
+static unsigned int dolby_vision_graphic_max; /* 100 - Why? */
 static unsigned int old_dolby_vision_graphic_max;
 
 module_param(dolby_vision_graphic_min, uint, 0664);
@@ -994,6 +976,7 @@ static int dolby_core1_set
 		count = 256 * 5;
 	else
 		count = lut_count;
+
 	if (count && (set_lut || reset)) {
 
 		VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_CTRL, 0x1401);
@@ -1019,10 +1002,11 @@ static int dolby_core1_set
 		VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 1, 0, 1);
 
 	} else {
-		if (dolby_vision_on_count >
-			dolby_vision_run_mode_delay) {
+		if (dolby_vision_on_count > dolby_vision_run_mode_delay) {
+
 			VSYNC_WR_DV_REG(VPP_VD1_CLIP_MISC0, (0x3ff << 20) | (0x3ff << 10) | 0x3ff);
 			VSYNC_WR_DV_REG(VPP_VD1_CLIP_MISC1, 0);
+
 		}
 		if (dolby_vision_core1_on && !bypass_core1) {
 
@@ -1066,6 +1050,7 @@ static int dolby_core2_set
 		force_reset_core2 = false;
 		reset = true;
 	}
+
 	if (dolby_vision_on && dolby_vision_core2_on_cnt < DV_CORE2_RECONFIG_CNT) {
 		reset = true;
 		dolby_vision_core2_on_cnt++;
@@ -1130,12 +1115,8 @@ static int dolby_core2_set
 		count = dm_count;
 
 	for (i = 0; i < count; i++) {
-		if (reset ||
-			p_core2_dm_regs[i] !=
-			last_dm[i]) {
-			VSYNC_WR_DV_REG
-					(DOLBY_CORE2A_REG_START + 6 + i,
-					 p_core2_dm_regs[i]);
+		if (reset || p_core2_dm_regs[i] != last_dm[i]) {
+			VSYNC_WR_DV_REG(DOLBY_CORE2A_REG_START + 6 + i, p_core2_dm_regs[i]);
 			set_lut = true;
 		}
 	}
@@ -1239,8 +1220,7 @@ static int dolby_core3_set
 	}
 
 	if (dolby_vision_on &&
-		(last_dolby_vision_ll_policy !=
-		 dolby_vision_ll_policy ||
+		(last_dolby_vision_ll_policy != dolby_vision_ll_policy ||
 		 new_dovi_setting.mode_changed ||
 		 new_dovi_setting.vsvdb_changed ||
 		 pps_state)) {
@@ -1296,11 +1276,13 @@ static int dolby_core3_set
 	/*   04- SDR, RGB 8 bit 444 Gamma*/
 	VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 1, cur_dv_mode);
 	VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 1, cur_dv_mode);
+	
 	/* for delay */
 	if (dm_count == 0)
 		count = 26;
 	else
 		count = dm_count;
+
 	for (i = 0; i < count; i++) {
 		if (reset || p_core3_dm_regs[i] != last_dm[i] ||
 			is_core3_mute_reg(i)) {
@@ -1326,20 +1308,14 @@ static int dolby_core3_set
 #ifdef FORCE_HDMI_META
 				if (i == 20 &&
 				    p_core3_md_regs[i] == 0x5140a3e)
-					VSYNC_WR_DV_REG
-						(DOLBY_CORE3_REG_START +
-						 0x24 + i,
-						 (p_core3_md_regs[i] &
-						 0xffffff00) | 0x80);
+					VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 0x24 + i,
+						 (p_core3_md_regs[i] & 0xffffff00) | 0x80);
 				else
 #endif
-				VSYNC_WR_DV_REG
-						(DOLBY_CORE3_REG_START +
-						 0x24 + i, p_core3_md_regs[i]);
+				VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 0x24 + i, p_core3_md_regs[i]);
 			}
 			for (; i < (MAX_CORE3_MD_SIZE + 1); i++)
-				VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START +
-								0x24 + i, 0);
+				VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 0x24 + i, 0);
 		}
 	}
 
@@ -1352,11 +1328,13 @@ static int dolby_core3_set
 	if ((dolby_vision_flags & FLAG_CERTIFICAION) &&
 		!(dolby_vision_flags & FLAG_DISABLE_CRC))
 		VSYNC_WR_DV_REG(DOLBY_CORE3_CRC_CTRL, 1);
+
 	/* enable core3 */
 	VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL0, (dolby_enable << 0));
 	return 0;
 }
 
+/* note: This is used externally */
 void update_graphic_width_height(unsigned int width,
 								 unsigned int height)
 {
@@ -1364,6 +1342,7 @@ void update_graphic_width_height(unsigned int width,
 	new_osd_graphic_height = height;
 }
 
+/* note: This is used externally */
 void update_graphic_status(void)
 {
 	osd_update = true;
@@ -1561,14 +1540,15 @@ static void apply_stb_core_settings
 			cur_mute_type = MUTE_TYPE_NONE;
 			dolby_vision_flags &= ~FLAG_MUTE;
 		}
-		dolby_core3_set
-				(26, new_dovi_setting.md_reg3.size,
-				 (u32 *)&new_dovi_setting.dm_reg3,
-				 new_dovi_setting.md_reg3.raw_metadata,
-				 vinfo->width, v_size,
-				 1,
-				 dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
-				 pps_state);
+
+		dolby_core3_set(26, 
+						new_dovi_setting.md_reg3.size,
+						(u32 *)&new_dovi_setting.dm_reg3,
+				 		new_dovi_setting.md_reg3.raw_metadata,
+				 		vinfo->width, v_size,
+				 		1,
+				 		dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
+				 		pps_state);
 	}
 	stb_core_setting_update_flag = 0;
 	update_flag_more = update_bk;
@@ -1594,12 +1574,12 @@ static void video_effect_bypass(int bypass)
 	}
 
 	if (bypass) {
+		
 		if (!is_video_effect_bypass) {
 			is_video_effect_bypass = true;
 		}
 
-		if ((dolby_vision_flags & FLAG_CERTIFICAION) ||
-			bypass_all_vpp_pq)
+		if ((dolby_vision_flags & FLAG_CERTIFICAION) || bypass_all_vpp_pq)
 			dv_pq_ctl(DV_PQ_CERT);
 		else
 			dv_pq_ctl(DV_PQ_BYPASS);
@@ -1683,28 +1663,26 @@ void enable_dolby_vision(int enable)
 			VSYNC_WR_DV_REG(VPP_MATRIX_CTRL, 0);
 			VSYNC_WR_DV_REG(VPP_DUMMY_DATA1, 0x80200);
 
-			if ((dolby_vision_mode ==
-				 DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
-				 dolby_vision_mode ==
-				 DOLBY_VISION_OUTPUT_MODE_IPT) &&
+			if ((dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
+				 dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT) &&
 				dovi_setting.diagnostic_enable == 0 &&
 				dovi_setting.dovi_ll_enable) {
 
 				u32 *reg = (u32 *)&dovi_setting.dm_reg3;
 
 				/* input u12 -0x800 to s12 */
-				VSYNC_WR_DV_REG
-						(VPP_DAT_CONV_PARA1, 0x8000800);
+				VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x8000800);
+
 				/* bypass vadj */
-				VSYNC_WR_DV_REG
-						(VPP_VADJ_CTRL, 0);
+				VSYNC_WR_DV_REG(VPP_VADJ_CTRL, 0);
+
 				/* bypass gainoff */
-				VSYNC_WR_DV_REG
-						(VPP_GAINOFF_CTRL0, 0);
+				VSYNC_WR_DV_REG(VPP_GAINOFF_CTRL0, 0);
+
 				/* enable wm tp vks*/
 				/* bypass gainoff to vks */
-				VSYNC_WR_DV_REG_BITS
-						(VPP_DOLBY_CTRL, 1, 1, 2);
+				VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 1, 1, 2);
+
 				enable_rgb_to_yuv_matrix_for_dvll
 						(1, &reg[18],
 						 (dv_ll_output_mode >> 8)
@@ -2394,8 +2372,7 @@ static int dolby_vision_policy_process
 
 	vinfo = get_current_vinfo();
 	if (src_format == FORMAT_MVC) {
-		if (dolby_vision_mode !=
-			DOLBY_VISION_OUTPUT_MODE_BYPASS) {
+		if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
 			if (debug_dolby & 2)
 				pr_dolby_dbg
 				("mvc, dovi output -> BYPASS\n");
@@ -3246,7 +3223,8 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 		}
 		p += size;
 	}
-	/*continue to check atsc/dvb dv*/
+
+	/*continue to check atsc/dvb dv - US Terestial Broadcast Standard? */
 	if (atsc_sei && *src_format != FORMAT_DOVI) {
 		struct dv_vui_parameters vui_param;
 		static u32 len_2086_sei;
@@ -7314,36 +7292,35 @@ static u32 pq_config_level;
 static ssize_t amdolby_vision_write
 		(struct file *file,
 		 const char __user *buf,
-size_t len,
+		 size_t len,
 		loff_t *off)
 {
-int max_len, w_len;
+	int max_len, w_len;
 
-if (!pq_config_buf) {
-pq_config_buf = vmalloc(108 * 1024);
-pq_config_level = 0;
-if (!pq_config_buf)
-return -ENOSPC;
-}
-max_len = sizeof(struct pq_config) - pq_config_level;
-w_len = len < max_len ? len : max_len;
+	if (!pq_config_buf) {
+		pq_config_buf = vmalloc(108 * 1024);
+		pq_config_level = 0;
+		if (!pq_config_buf)
+			return -ENOSPC;
+	}
+	max_len = sizeof(struct pq_config) - pq_config_level;
+	w_len = len < max_len ? len : max_len;
 
-pr_info("write len %d, w_len %d, level %d\n",
-(int)len, w_len, pq_config_level);
-if (copy_from_user(pq_config_buf + pq_config_level, buf, w_len))
-return -EFAULT;
+	pr_info("write len %d, w_len %d, level %d\n", (int)len, w_len, pq_config_level);
+	if (copy_from_user(pq_config_buf + pq_config_level, buf, w_len))
+		return -EFAULT;
 
-pq_config_level += w_len;
-if (pq_config_level == sizeof(struct pq_config)) {
-dolby_vision_update_pq_config(pq_config_buf);
-pq_config_level = 0;
-}
+	pq_config_level += w_len;
+	if (pq_config_level == sizeof(struct pq_config)) {
+		dolby_vision_update_pq_config(pq_config_buf);
+		pq_config_level = 0;
+	}
 
-if (len <= 0x1f) {
-dolby_vision_update_vsvdb_config(pq_config_buf, len);
-pq_config_level = 0;
-}
-return len;
+	if (len <= 0x1f) {
+		dolby_vision_update_vsvdb_config(pq_config_buf, len);
+		pq_config_level = 0;
+	}
+	return len;
 }
 
 static ssize_t amdolby_vision_read
@@ -7529,8 +7506,7 @@ static long amdolby_vision_ioctl(struct file *file,
 			}
 			break;
 		case DV_IOC_CONFIG_DV_BL:
-			if (copy_from_user(&force_disable_dv_backlight,
-							   argp, sizeof(s32)) == 0) {
+			if (copy_from_user(&force_disable_dv_backlight, argp, sizeof(s32)) == 0) {
 				if (debug_dolby & 0x200)
 					pr_info("[DV]: disable dv bl %d\n", force_disable_dv_backlight);
 
@@ -7833,8 +7809,7 @@ static ssize_t	amdolby_vision_force_disable_bl_show
 		(struct class *cla,
 		 struct class_attribute *attr, char *buf)
 {
-	return sprintf(buf, "force disable dv bl: %d\n",
-				   force_disable_dv_backlight);
+	return sprintf(buf, "force disable dv bl: %d\n", force_disable_dv_backlight);
 }
 
 static ssize_t amdolby_vision_force_disable_bl_store
@@ -7940,25 +7915,31 @@ unsigned int dolby_vision_check_enable(void)
 	int uboot_dv_sink_led = 0;
 	const struct vinfo_s *vinfo = get_current_vinfo();
 
-	if ((READ_VPP_DV_REG(DOLBY_CORE3_DIAG_CTRL)
-		 & 0xff) == 0x20) {
+	if ((READ_VPP_DV_REG(DOLBY_CORE3_DIAG_CTRL) & 0xff) == 0x20) {
+		
 		/*LL YUV422 mode*/
 		uboot_dv_mode = dv_mode_table[2];
 		uboot_dv_source_led_yuv = 1;
-	} else if ((READ_VPP_DV_REG
-						(DOLBY_CORE3_DIAG_CTRL)
-				& 0xff) == 0x3) {
+	
+	} else if ((READ_VPP_DV_REG(DOLBY_CORE3_DIAG_CTRL) & 0xff) == 0x3) {
+	
 		/*LL RGB444 mode*/
 		uboot_dv_mode = dv_mode_table[2];
 		uboot_dv_source_led_rgb = 1;
+	
 	} else {
 		if (READ_VPP_DV_REG(DOLBY_CORE3_REG_START + 1) == 2) {
+			
 			/*HDR10 mode*/
 			uboot_dv_mode = dv_mode_table[3];
+
 		} else if (READ_VPP_DV_REG(DOLBY_CORE3_REG_START + 1) == 4) {
+
 			/*SDR mode*/
 			uboot_dv_mode = dv_mode_table[5];
+
 		} else {
+
 			/*STANDARD RGB444 mode*/
 			uboot_dv_mode = dv_mode_table[2];
 			uboot_dv_sink_led = 1;
@@ -7972,15 +7953,17 @@ unsigned int dolby_vision_check_enable(void)
 		if (is_recovery_mode()) {/*recovery mode*/
 
 			dolby_vision_on = true;
-			if (uboot_dv_source_led_yuv ||
-				uboot_dv_sink_led) {
+			if (uboot_dv_source_led_yuv || uboot_dv_sink_led) {
+
 #ifdef CONFIG_AMLOGIC_HDMITX
 				if (uboot_dv_source_led_yuv)
 					setup_attr("422,12bit");
 				else
 					setup_attr("444,8bit");
 #endif
+
 			}
+
 			if (vinfo && vinfo->vout_device &&
 				vinfo->vout_device->fresh_tx_vsif_pkt) {
 				vinfo->vout_device->fresh_tx_vsif_pkt
@@ -7989,9 +7972,12 @@ unsigned int dolby_vision_check_enable(void)
 			enable_dolby_vision(0);
 			dolby_vision_on_in_uboot = 0;
 		} else {
+
 			dolby_vision_enable = 1;
+
 			if (uboot_dv_mode == dv_mode_table[2] &&
 				uboot_dv_source_led_yuv == 1) {
+
 				/*LL YUV422 mode*/
 				/*set_dolby_vision_mode(dv_mode);*/
 				dolby_vision_mode = uboot_dv_mode;
@@ -8000,12 +7986,12 @@ unsigned int dolby_vision_check_enable(void)
 						DOLBY_VISION_LL_YUV422;
 				last_dst_format = FORMAT_DOVI;
 				pr_info("dovi enable in uboot and mode is LL 422\n");
-			} else if ((uboot_dv_mode ==
-						dv_mode_table[2]) &&
-					   (uboot_dv_source_led_rgb ==
-						1)) {
+
+			} else if ((uboot_dv_mode == dv_mode_table[2]) &&
+					   (uboot_dv_source_led_rgb == 1)) {
+
 				/*LL RGB444 mode*/
-				/*set_dolby_vision_mode(dv_mode);*/
+				/*set_dolby_vision_mode(dv_mode);*/				
 				dolby_vision_mode = uboot_dv_mode;
 				dolby_vision_status = DV_PROCESS;
 				dolby_vision_ll_policy =
@@ -8236,54 +8222,25 @@ static ssize_t dv_video_on_show
 }
 
 static struct class_attribute amdolby_vision_class_attrs[] = {
-		__ATTR(ko_info, 0444,
-			   amdolby_vision_ko_info_show, NULL),
-		__ATTR(debug, 0644,
-			   amdolby_vision_debug_show, amdolby_vision_debug_store),
-		__ATTR(dv_mode, 0644,
-			   amdolby_vision_dv_mode_show, amdolby_vision_dv_mode_store),
-		__ATTR(dv_reg, 0220,
-			   NULL, amdolby_vision_reg_store),
-		__ATTR(core1_switch, 0644,
-			   amdolby_vision_core1_switch_show, amdolby_vision_core1_switch_store),
-		__ATTR(core3_switch, 0644,
-			   amdolby_vision_core3_switch_show, amdolby_vision_core3_switch_store),
-		__ATTR(dv_bin_config, 0644,
-			   amdolby_vision_bin_config_show, NULL),
-		__ATTR(dv_pq_info, 0644,
-			   amdolby_vision_pq_info_show,
-			   amdolby_vision_pq_info_store),
-		__ATTR(dv_set_inter_pq, 0644,
-			   amdolby_vision_set_inter_pq_show,
-			   amdolby_vision_set_inter_pq_store),
-		__ATTR(dv_load_cfg_status, 0644,
-			   amdolby_vision_load_cfg_status_show,
-			   amdolby_vision_load_cfg_status_store),
-		__ATTR(support_info, 0444,
-			   amdolby_vision_dv_support_info_show, NULL),
-		__ATTR(tprimary, 0644,
-			   amdolby_vision_primary_show,
-			   amdolby_vision_primary_store),
-		__ATTR(config_file, 0644,
-			   amdolby_vision_config_file_show,
-			   amdolby_vision_config_file_store),
-		__ATTR(content_fps, 0644,
-			   amdolby_vision_content_fps_show,
-			   amdolby_vision_content_fps_store),
-		__ATTR(gd_rf_adjust, 0644,
-			   amdolby_vision_gd_rf_adjust_show,
-			   amdolby_vision_gd_rf_adjust_store),
-		__ATTR(cur_crc, 0644,
-			   amdolby_vision_crc_show,
-			   NULL),
-		__ATTR(force_disable_dv_backlight, 0644,
-			   amdolby_vision_force_disable_bl_show,
-			   amdolby_vision_force_disable_bl_store),
-		__ATTR(use_target_lum_from_cfg, 0644,
-			   amdolby_vision_use_cfg_target_lum_show,
-			   amdolby_vision_use_cfg_target_lum_store),
-		__ATTR(dv_video_on, 0444,
-			   dv_video_on_show, NULL),
+		__ATTR(ko_info, 0444, amdolby_vision_ko_info_show, NULL),
+		__ATTR(debug, 0644, amdolby_vision_debug_show, amdolby_vision_debug_store),
+		__ATTR(dv_mode, 0644, amdolby_vision_dv_mode_show, amdolby_vision_dv_mode_store),
+		__ATTR(dv_reg, 0220, NULL, amdolby_vision_reg_store),
+		__ATTR(core1_switch, 0644, amdolby_vision_core1_switch_show, amdolby_vision_core1_switch_store),
+		__ATTR(core3_switch, 0644, amdolby_vision_core3_switch_show, amdolby_vision_core3_switch_store),
+		__ATTR(dv_bin_config, 0644, amdolby_vision_bin_config_show, NULL),
+		__ATTR(dv_pq_info, 0644, amdolby_vision_pq_info_show, amdolby_vision_pq_info_store),
+		__ATTR(dv_set_inter_pq, 0644, amdolby_vision_set_inter_pq_show, amdolby_vision_set_inter_pq_store),
+		__ATTR(dv_load_cfg_status, 0644, amdolby_vision_load_cfg_status_show, amdolby_vision_load_cfg_status_store),
+		__ATTR(support_info, 0444, amdolby_vision_dv_support_info_show, NULL),
+		__ATTR(tprimary, 0644, amdolby_vision_primary_show, amdolby_vision_primary_store),
+		__ATTR(config_file, 0644, amdolby_vision_config_file_show, amdolby_vision_config_file_store),
+		__ATTR(content_fps, 0644, amdolby_vision_content_fps_show, amdolby_vision_content_fps_store),
+		__ATTR(gd_rf_adjust, 0644, amdolby_vision_gd_rf_adjust_show, amdolby_vision_gd_rf_adjust_store),
+		__ATTR(cur_crc, 0644, amdolby_vision_crc_show, NULL),
+		__ATTR(force_disable_dv_backlight, 0644, amdolby_vision_force_disable_bl_show, amdolby_vision_force_disable_bl_store),
+		__ATTR(use_target_lum_from_cfg, 0644, amdolby_vision_use_cfg_target_lum_show, amdolby_vision_use_cfg_target_lum_store),
+		__ATTR(dv_video_on, 0444, dv_video_on_show, NULL),
 		__ATTR_NULL
 };
 
@@ -8356,15 +8313,17 @@ static int amdolby_vision_probe(struct platform_device *pdev)
 	}
 	cdev_init(&devp->cdev, &amdolby_vision_fops);
 	devp->cdev.owner = THIS_MODULE;
+	
 	ret = cdev_add(&devp->cdev, devp->devno, 1);
 	if (ret)
 		goto fail_add_cdev;
 
-	devp->dev = device_create(devp->clsp, NULL, devp->devno,
-							  NULL, AMDOLBY_VISION_NAME);
+	devp->dev = device_create(devp->clsp, NULL, devp->devno, NULL, AMDOLBY_VISION_NAME);
+
 	if (IS_ERR(devp->dev)) {
 		ret = PTR_ERR(devp->dev);
 		goto fail_create_device;
+
 	}
 	dolby_vision_addr();
 	dolby_vision_init_receiver(pdev);
