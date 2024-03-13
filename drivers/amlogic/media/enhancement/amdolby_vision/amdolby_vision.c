@@ -172,9 +172,9 @@ static bool efuse_mode;
 
 /* DOLBY_CORE2A -- LLDV Handler ? */
 
-/* Core 1 (DV Core1A)  	-> BL 	2160p HEVC  ? */				/* 001 */	
-/* Core 2 (DV Core1B) 	-> EL 	1080p HEVC ? */					/* 010 */
-/* Core 3		-> RPU 	Composed 2160p - apply RPU for LLDV ? */	/* 100 */
+/* Core 1 (DV Core1A)  	-> EL 	1080p HEVC - If on then switch on Composer */				
+/* Core 2 (DV Core1B) 	-> EL 	2160p HEVC */
+/* Core 3				-> RPU 	*/
 
 /* int composer_enable = bl_enable && el_enable && (dolby_vision_mask & 1) */
 /* bool bypass_core1 = (!(dolby_vision_mask & 1)) */
@@ -182,13 +182,13 @@ static bool efuse_mode;
 /* if (dolby_vision_mask & 2) core2 enable --- on by default  111 * 010 > 010 */
 /* if (dolby_vision_mask & 4) core3 enable --- on by default  111 * 100 > 100 */
 
-/* things to test -> 1 (001) Composer + Core 1			- No Image */
-/* things to test -> 2 (010) No Composer + No Core 1         	- BL - Purple and Green */
-/* things to test -> 3 (011) 					- BL EL - Brighter */
-/* things to test -> 4 (100) No Composer + No Core 1 		- BL RPU - Purple and Green */
-/* things to test -> 5 (101) No Image 				- */
-/* things to test -> 6 (110) No Core 1				- BL RPU - Purple and Green  */
-/* things to test -> 7 (111) BL EL RPU 				- */
+/* things to test -> 1 (001) - No Image */
+/* things to test -> 2 (010) - BL - Purple and Green */
+/* things to test -> 3 (011) - BL EL - Brighter */
+/* things to test -> 4 (100) - BL RPU - Purple and Green */
+/* things to test -> 5 (101) - No Image */
+/* things to test -> 6 (110) - BL RPU - Purple and Green  */
+/* things to test -> 7 (111) - BL EL RPU */
 
 static uint dolby_vision_mask = 7;
 module_param(dolby_vision_mask, uint, 0664);
@@ -296,12 +296,11 @@ module_param(dolby_vision_flags, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_flags, "\n dolby_vision_flags\n");
 
 /*
-	
-1	00001 	Core 1 Reset
-2	00010	Core 2 Reset
-4	00100	Core 3 Reset
-8	01000	Core 1 Lut
-16	10000	Core 2 Lut	
+1	00001 	Core 1 (EL)  Reset
+2	00010	Core 2 (BL)  Reset
+4	00100	Core 3 (RPU) Reset
+8	01000	Core 1 (EL)  Lut
+16	10000	Core 2 (BL)  Lut	
 31	11111	All Reset
 */	
 	
@@ -1380,6 +1379,7 @@ void update_graphic_width_height(unsigned int width,
 {
 	new_osd_graphic_width = width;
 	new_osd_graphic_height = height;
+	pr_dolby_dbg("osd update, height and width [%d] [%d]\n", new_osd_graphic_width, new_osd_graphic_height);
 }
 
 /* note: This is used externally */
@@ -1495,7 +1495,7 @@ static void apply_stb_core_settings
 	}
 
 	adjust_vpotch();
-	if (mask & 1) {
+	if (mask & 1) { /* Core 1 (EL) */
 
 		dolby_core1_set
 				(core1_dm_count, 173, 256 * 5,
@@ -1504,10 +1504,8 @@ static void apply_stb_core_settings
 				 (u32 *)&new_dovi_setting.dm_lut1,
 				 h_size,
 				 v_size,
-						/* BL enable */
-				 enable,
-						/* EL enable */
-				 enable && new_dovi_setting.el_flag,
+				 enable, 								/* BL enable */
+				 enable && new_dovi_setting.el_flag,	/* EL enable */
 				 new_dovi_setting.el_halfsize_flag,
 				 dolby_vision_mode ==
 				 DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
@@ -1517,7 +1515,7 @@ static void apply_stb_core_settings
 
 	}
 
-	if (mask & 2) {
+	if (mask & 2) { /* Core 2 (BL) */
 
 		if (stb_core_setting_update_flag != CP_FLAG_CHANGE_ALL) {
 			
@@ -1534,18 +1532,18 @@ static void apply_stb_core_settings
 
 		/* revert the core2 lut as last corret one when const case */
 		if (stb_core2_const_flag)
-			memcpy(&new_dovi_setting.dm_lut2,
-				   &dovi_setting.dm_lut2,
-				   sizeof(struct dm_lut_ipcore));
+			memcpy(&new_dovi_setting.dm_lut2, &dovi_setting.dm_lut2, sizeof(struct dm_lut_ipcore));
 
 		dolby_core2_set(
 				24, 256 * 5,
 				(u32 *)&new_dovi_setting.dm_reg2,
 				(u32 *)&new_dovi_setting.dm_lut2,
-				graphics_w, graphics_h, 1, 1);
+				graphics_w, 
+				graphics_h, 
+				1, 1);
 	}
 
-	if (mask & 4) {
+	if (mask & 4) { 
 		v_size = vinfo->height;
 		if ((vinfo->width == 720 &&
 			 vinfo->height == 480 &&
@@ -1657,12 +1655,12 @@ void enable_dolby_vision(int enable)
 
 			set_hdr_module_status(VD1_PATH, HDR_MODULE_BYPASS);
 
-			if (dolby_vision_mask & 4)
+			if (dolby_vision_mask & 4) /* Core 3 (RPU) */
 				VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 1, 3, 1);   /* core3 enable */
 			else
 				VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 3, 1);   /* bypass core3 */
 			
-			if (dolby_vision_mask & 2)
+			if (dolby_vision_mask & 2) /* Core 2 (BL) */
 				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 2, 1);	 /* core2 enable */
 			else
 				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 1, 2, 1);  /* core2 bypass */
@@ -1781,7 +1779,8 @@ void enable_dolby_vision(int enable)
 		dolby_vision_wait_count = 0;
 		vsync_count = 0;
 	} else {
-		
+
+		/* Disabling DoVi if it is on - then switch everything off */
 		if (dolby_vision_on) {
 
 			VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL,
@@ -1832,7 +1831,7 @@ void enable_dolby_vision(int enable)
 			VSYNC_WR_DV_REG(VPP_VD1_CLIP_MISC1, 0);
 			video_effect_bypass(0);
 
-			/* always vd2 to vpp and bypass core 1 */
+			/* always vd2 to vpp and bypass core 1 (EL) */
 			viu_misc_ctrl_backup |= (VSYNC_RD_DV_REG(VIU_MISC_CTRL1) & 2);
 
 			VSYNC_WR_DV_REG(VIU_MISC_CTRL1, viu_misc_ctrl_backup | (3 << 16));
@@ -5726,7 +5725,7 @@ int dolby_vision_process(struct vframe_s *vf,
 					if ((get_video_mute() == VIDEO_MUTE_ON_DV && !(dolby_vision_flags & FLAG_MUTE)) || 
 						(get_video_mute() == VIDEO_MUTE_OFF && dolby_vision_flags & FLAG_MUTE))
 						
-						/* core 3 only */
+						/* core 3 (RPU) only */
 						apply_stb_core_settings
 								(dovi_setting_video_flag,
 								 dolby_vision_mask & 0x4,
@@ -5870,7 +5869,7 @@ int dolby_vision_process(struct vframe_s *vf,
 				(get_video_mute() == VIDEO_MUTE_OFF && dolby_vision_flags & FLAG_MUTE) ||
 				last_dolby_vision_ll_policy != dolby_vision_ll_policy)
 				
-				/* core 3 only */
+				/* core 3 (RPU) only */
 				apply_stb_core_settings
 						(dovi_setting_video_flag,
 						 dolby_vision_mask & 0x4,
@@ -5900,7 +5899,7 @@ int dolby_vision_process(struct vframe_s *vf,
 			
 			apply_stb_core_settings
 					(true, 						/* always enable */							
-					 dolby_vision_mask & 0x1,	/* core 1 only */
+					 dolby_vision_mask & 0x1,	/* core 1 (EL) only */
 					 reset_flag,
 					 (core1_disp_hsize << 16) | core1_disp_vsize, pps_state);
 			
@@ -7239,15 +7238,13 @@ void tv_dolby_vision_insert_crc(bool print)
 		crc_bypass_count = crc_count;
 
 	memset(str, 0, sizeof(str));
-	snprintf(str, 64, "crc(%d) = 0x%08x",
-			 crc_count - crc_bypass_count, crc);
+	snprintf(str, 64, "crc(%d) = 0x%08x", crc_count - crc_bypass_count, crc);
 	len = strlen(str);
 	str[len] = 0xa;
 	len++;
-	memcpy(&crc_output_buf[crc_output_buff_off],
-		   &str[0], len);
+	memcpy(&crc_output_buf[crc_output_buff_off], &str[0], len);
 	crc_output_buff_off += len;
-	//if (print || (debug_dolby & 2))
+
 	pr_info("%s\n", str);
 	crc_count++;
 }
