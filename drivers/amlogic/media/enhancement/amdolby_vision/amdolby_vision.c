@@ -156,9 +156,9 @@ module_param(dolby_vision_efuse_bypass, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_efuse_bypass, "\n dolby_vision_efuse_bypass\n");
 static bool efuse_mode;
 
-/* Core 1  	-> BL 	2160p ? */	/* 001 */
-/* Core 2A 	-> EL 	1080p ? */	/* 010 */
-/* Core 3	-> RPU 	1080p ? */	/* 100 */
+/* Core 1  	-> BL 	2160p HEVC  ? */				/* 001 */
+/* Core 2A 	-> EL 	1080p HEVC ? */					/* 010 */
+/* Core 3	-> RPU 	Composed 2160p - apply RPU for LLDV ? */	/* 100 */
 
 /* if (dolby_vision_mask & 4) core3 enable --- on by default  111 * 100 > 100 */
 /* if (dolby_vision_mask & 2) core2 enable --- on by default  111 * 010 > 010 */
