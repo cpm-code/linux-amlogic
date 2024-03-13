@@ -229,8 +229,7 @@ module_param(dolby_vision_run_mode_delay, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_run_mode_delay, "\n dolby_vision_run_mode_delay\n");
 
 /* reset control -- end << 8 | start */
-static uint dolby_vision_reset_delay =
-		(RUN_MODE_DELAY << 8) | RUN_MODE_DELAY;
+static uint dolby_vision_reset_delay = (RUN_MODE_DELAY << 8) | RUN_MODE_DELAY;
 module_param(dolby_vision_reset_delay, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_reset_delay, "\n dolby_vision_reset_delay\n");
 
@@ -5036,12 +5035,12 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			 &new_dovi_setting);
 
 	if (debug_dolby & 0x400) {
+		
 		do_gettimeofday(&end);
-		time_use = (end.tv_sec - start.tv_sec) * 1000000 +
-				   (end.tv_usec - start.tv_usec);
-
+		time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
 		pr_info("controlpath time: %5ld us\n", time_use);
 	}
+	
 	if (flag >= 0) {
 		stb_core_setting_update_flag |= flag;
 		if ((dolby_vision_flags & FLAG_FORCE_DOVI_LL) &&
