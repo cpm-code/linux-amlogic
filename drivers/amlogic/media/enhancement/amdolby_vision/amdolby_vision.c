@@ -1316,17 +1316,14 @@ static int dolby_core3_set
 		count = dm_count;
 
 	for (i = 0; i < count; i++) {
-		if (reset || p_core3_dm_regs[i] != last_dm[i] ||
-			is_core3_mute_reg(i)) {
-			if ((dolby_vision_flags & FLAG_MUTE) &&
-				is_core3_mute_reg(i))
-				VSYNC_WR_DV_REG
-						(DOLBY_CORE3_REG_START + 0x6 + i,
-						 0);
+			
+		if (reset || p_core3_dm_regs[i] != last_dm[i] || is_core3_mute_reg(i)) {
+			
+			if ((dolby_vision_flags & FLAG_MUTE) && is_core3_mute_reg(i))
+				VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 0x6 + i, 0);
 			else
-				VSYNC_WR_DV_REG
-						(DOLBY_CORE3_REG_START + 0x6 + i,
-						 p_core3_dm_regs[i]);
+				VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 0x6 + i, p_core3_dm_regs[i]);
+			
 		}
 	}
 	/* from addr 0x18 */
@@ -2094,32 +2091,20 @@ static void dump_struct(void *structure,
 
 void dolby_vision_dump_struct(void)
 {
-	dump_struct(&dovi_setting.dm_reg1,
-				sizeof(dovi_setting.dm_reg1),
-				dm_reg_core1_file, frame_count);
+	dump_struct(&dovi_setting.dm_reg1, sizeof(dovi_setting.dm_reg1), dm_reg_core1_file, frame_count);
 
 	if (dovi_setting.el_flag)
-		dump_struct(&dovi_setting.comp_reg,
-					sizeof(dovi_setting.comp_reg),
-					comp_file, frame_count);
+		dump_struct(&dovi_setting.comp_reg, sizeof(dovi_setting.comp_reg), comp_file, frame_count);
 
 	if (!is_graphics_output_off())
-		dump_struct(&dovi_setting.dm_reg2,
-					sizeof(dovi_setting.dm_reg2),
-					dm_reg_core2_file, frame_count);
+		dump_struct(&dovi_setting.dm_reg2, sizeof(dovi_setting.dm_reg2), dm_reg_core2_file, frame_count);
 
-	dump_struct(&dovi_setting.dm_reg3,
-				sizeof(dovi_setting.dm_reg3),
-				dm_reg_core3_file, frame_count);
+	dump_struct(&dovi_setting.dm_reg3, sizeof(dovi_setting.dm_reg3), dm_reg_core3_file, frame_count);
 
-	dump_struct(&dovi_setting.dm_lut1,
-				sizeof(dovi_setting.dm_lut1),
-				dm_lut_core1_file, frame_count);
+	dump_struct(&dovi_setting.dm_lut1, sizeof(dovi_setting.dm_lut1), dm_lut_core1_file, frame_count);
 
 	if (!is_graphics_output_off())
-		dump_struct(&dovi_setting.dm_lut2,
-					sizeof(dovi_setting.dm_lut2),
-					dm_lut_core2_file, frame_count);
+		dump_struct(&dovi_setting.dm_lut2, sizeof(dovi_setting.dm_lut2),dm_lut_core2_file, frame_count);
 
 	pr_dolby_dbg("setting for frame %d dumped\n", frame_count);
 }
@@ -5740,10 +5725,7 @@ int dolby_vision_process(struct vframe_s *vf,
 								(dovi_setting_video_flag,
 								 dolby_vision_mask & 0x4,
 								 0,
-								 (dovi_setting.video_width
-										 << 16)
-								 | dovi_setting.video_height,
-								 pps_state);
+								 (dovi_setting.video_width << 16) | dovi_setting.video_height, pps_state);
 					
 					send_hdmi_pkt(dolby_vision_src_format,
 								  FORMAT_SDR, vinfo, vf);
@@ -5890,17 +5872,12 @@ int dolby_vision_process(struct vframe_s *vf,
 						(dovi_setting_video_flag,
 						 dolby_vision_mask & 0x4,
 						 reset_flag,
-						 (dovi_setting.video_width << 16)
-						 | dovi_setting.video_height,
-						 pps_state);
+						 (dovi_setting.video_width << 16) | dovi_setting.video_height, pps_state);
 
 			/* force send hdmi pkt */
 			if (dolby_vision_flags & FLAG_FORCE_HDMI_PKT) {
 				if (vinfo)
-					send_hdmi_pkt
-							(dovi_setting.src_format,
-							 dovi_setting.dst_format,
-							 vinfo, vf);
+					send_hdmi_pkt(dovi_setting.src_format, dovi_setting.dst_format, vinfo, vf);
 			}
 		}
 
@@ -5911,10 +5888,8 @@ int dolby_vision_process(struct vframe_s *vf,
 
 		bool reset_flag =
 				(dolby_vision_reset & 2) &&
-				(dolby_vision_on_count <=
-				 (dolby_vision_reset_delay >> 8)) &&
-				(dolby_vision_on_count >=
-				 (dolby_vision_reset_delay & 0xff));
+				(dolby_vision_on_count <= (dolby_vision_reset_delay >> 8)) &&
+				(dolby_vision_on_count >= (dolby_vision_reset_delay & 0xff));
 
 		if ((dolby_vision_on_count <= dolby_vision_run_mode_delay) || force_set) {
 			
@@ -5922,13 +5897,10 @@ int dolby_vision_process(struct vframe_s *vf,
 				reset_flag = true;
 			
 			apply_stb_core_settings
-					(true, /* always enable */
-							/* core 1 only */
-					 dolby_vision_mask & 0x1,
+					(true, 						/* always enable */							
+					 dolby_vision_mask & 0x1,	/* core 1 only */
 					 reset_flag,
-					 (core1_disp_hsize << 16)
-					 | core1_disp_vsize,
-					 pps_state);
+					 (core1_disp_hsize << 16) | core1_disp_vsize, pps_state);
 			
 			if (dolby_vision_on_count < dolby_vision_run_mode_delay)
 				pr_dolby_dbg("fake frame (%d %d) %d reset %d\n",
