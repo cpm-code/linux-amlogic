@@ -156,9 +156,15 @@ module_param(dolby_vision_efuse_bypass, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_efuse_bypass, "\n dolby_vision_efuse_bypass\n");
 static bool efuse_mode;
 
+/* core1: video 	-- linked to 1 		*/
+/* core2: graphic  	-- linked to 2A?	*/
+
+/* vpp unmuted when dv mute -- either dv mode of the amlogic video post processor mode ?*/
+
 /* DOLBY_CORE1A -- BL Handler ? */
-/* DOLBY_CORE1B -- EL Handler ? */
-/* DOLBY_CORE2A -- Composer / LLDV RPU Handler ? */
+/* DOLBY_CORE1B -- EL Handler ? */			
+
+/* DOLBY_CORE2A -- LLDV Handler ? */
 
 /* Core 1  	-> BL 	2160p HEVC  ? */				/* 001 */
 /* Core 2A 	-> EL 	1080p HEVC ? */					/* 010 */
@@ -242,7 +248,7 @@ static unsigned int force_mel;
 module_param(force_mel, uint, 0664);
 MODULE_PARM_DESC(force_mel, "\n force_mel\n");
 
-/*bit0: 0-> efuse, 1->no efuse; */
+/*bit0: 0-> efuse, 1-> no efuse; */
 /*bit1: 1-> ko loaded */
 /*bit2: 1-> value updated */
 static int support_info;
@@ -252,7 +258,7 @@ int get_dv_support_info(void)
 }
 EXPORT_SYMBOL(get_dv_support_info);
 
-char cur_crc[32] = "invalid";ore
+char cur_crc[32] = "invalid";
 
 static uint dolby_vision_on_count;
 static bool dolby_vision_el_disable;
@@ -284,8 +290,8 @@ static unsigned int dolby_vision_flags = FLAG_BYPASS_VPP | FLAG_FORCE_CVM | FLAG
 module_param(dolby_vision_flags, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_flags, "\n dolby_vision_flags\n");
 
-/*bit0: reset core1 reg; bit1: reset core2 reg;bit2: reset core3 reg*/
-/*bit3: reset core1 lut; bit4: reset core2 lut*/
+/*bit0: reset core1 reg; bit1: reset core2 reg; bit2: reset core3 reg */
+/*bit3: reset core1 lut; bit4: reset core2 lut */
 static unsigned int force_update_reg;
 module_param(force_update_reg, uint, 0664);
 MODULE_PARM_DESC(force_update_reg, "\n force_update_reg\n");
