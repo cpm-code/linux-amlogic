@@ -182,13 +182,13 @@ static bool efuse_mode;
 /* if (dolby_vision_mask & 2) core2 enable --- on by default  111 * 010 > 010 */
 /* if (dolby_vision_mask & 4) core3 enable --- on by default  111 * 100 > 100 */
 
-/* things to test -> 1 (001) BL only ? */
-/* things to test -> 2 (010) RPU only ? */
-/* things to test -> 3 (011) BL and RPU ? */
-/* things to test -> 4 (100) EL only ? */
-/* things to test -> 5 (101) BL and EL ? */
-/* things to test -> 6 (110) EL and RPU ? */
-/* things to test -> 7 (110) BL and EL and RPU ? */
+/* things to test -> 1 (001) Composer + Core 1			- No Image */
+/* things to test -> 2 (010) No Composer + No Core 1         	- BL - Purple and Green */
+/* things to test -> 3 (011) 					- BL EL - Brighter */
+/* things to test -> 4 (100) No Composer + No Core 1 		- BL RPU - Purple and Green */
+/* things to test -> 5 (101) No Image 				- */
+/* things to test -> 6 (110) No Core 1				- BL RPU - Purple and Green  */
+/* things to test -> 7 (111) BL EL RPU 				- */
 
 static uint dolby_vision_mask = 7;
 module_param(dolby_vision_mask, uint, 0664);
@@ -295,6 +295,16 @@ static unsigned int dolby_vision_flags = FLAG_BYPASS_VPP | FLAG_FORCE_CVM | FLAG
 module_param(dolby_vision_flags, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_flags, "\n dolby_vision_flags\n");
 
+/*
+	
+1	00001 	Core 1 Reset
+2	00010	Core 2 Reset
+4	00100	Core 3 Reset
+8	01000	Core 1 Lut
+16	10000	Core 2 Lut	
+31	11111	All Reset
+*/	
+	
 /*bit0: reset core1 reg; bit1: reset core2 reg; bit2: reset core3 reg */
 /*bit3: reset core1 lut; bit4: reset core2 lut */
 static unsigned int force_update_reg;
@@ -1740,9 +1750,7 @@ void enable_dolby_vision(int enable)
 			dolby_vision_core1_on_cnt = 0;
 		} else {
 
-			if (!dolby_vision_core1_on &&
-				(dolby_vision_mask & 1) &&
-				dovi_setting_video_flag) {
+			if (!dolby_vision_core1_on && (dolby_vision_mask & 1) && dovi_setting_video_flag) {
 
 				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 0, 2); /* enable core1 */
 
@@ -1751,20 +1759,14 @@ void enable_dolby_vision(int enable)
 				dolby_vision_core1_on = true;
 				dolby_vision_core1_on_cnt = 0;
 				pr_dolby_dbg("Dolby Vision core1 turn on\n");
-			} else if (dolby_vision_core1_on &&
-					   (!(dolby_vision_mask & 1) ||
-						!dovi_setting_video_flag)) {
+			
+			} else if (dolby_vision_core1_on && (!(dolby_vision_mask & 1) || !dovi_setting_video_flag)) {
 
 				/* core1a */
-				VSYNC_WR_DV_REG_BITS
-						(DOLBY_PATH_CTRL,
-						 3, 0, 2);
+				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 3, 0, 2);
 				dv_mem_power_off(VPU_DOLBY1A);
 				dv_mem_power_off(VPU_PRIME_DOLBY_RAM);
-				VSYNC_WR_DV_REG
-						(DOLBY_CORE1_CLKGATE_CTRL,
-						 0x55555455);
-
+				VSYNC_WR_DV_REG(DOLBY_CORE1_CLKGATE_CTRL, 0x55555455);
 
 				dolby_vision_core1_on = false;
 				dolby_vision_core1_on_cnt = 0;
