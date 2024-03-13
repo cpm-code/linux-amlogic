@@ -235,28 +235,28 @@ char cur_crc[32] = "invalid";
 static uint dolby_vision_on_count;
 static bool dolby_vision_el_disable;
 
-#define FLAG_FORCE_CVM				0x01
-#define FLAG_BYPASS_CVM				0x02
-#define FLAG_BYPASS_VPP				0x04
-#define FLAG_USE_SINK_MIN_MAX		0x08
-#define FLAG_SINGLE_STEP			0x20
-#define FLAG_CERTIFICAION			0x40
-#define FLAG_CHANGE_SEQ_HEAD		0x80
-#define FLAG_DISABLE_COMPOSER		0x100
-#define FLAG_BYPASS_CSC				0x200
-#define FLAG_CHECK_ES_PTS			0x400
-#define FLAG_DISABE_CORE_SETTING	0x800
-#define FLAG_DISABLE_DMA_UPDATE		0x1000
-#define FLAG_DISABLE_DOVI_OUT		0x2000
-#define FLAG_FORCE_DOVI_LL			0x4000
-#define FLAG_FORCE_RGB_OUTPUT		0x8000
-#define FLAG_DOVI2HDR10_NOMAPPING	0x100000
-#define FLAG_PRIORITY_GRAPHIC		0x200000
-#define FLAG_DISABLE_LOAD_VSVDB		0x400000
-#define FLAG_DISABLE_CRC			0x800000
-#define FLAG_MUTE					0x4000000
-#define FLAG_FORCE_HDMI_PKT			0x8000000
-#define FLAG_TOGGLE_FRAME			0x80000000
+#define FLAG_FORCE_CVM				0x01		/* ?  - on by default */
+#define FLAG_BYPASS_CVM				0x02		/* ? */		
+#define FLAG_BYPASS_VPP				0x04		/* Bypass Video Post Processor - on by default */
+#define FLAG_USE_SINK_MIN_MAX		0x08		/* Follow the lum of the HDMI for DV - content for HDR10 - probably should be on all the time */
+#define FLAG_SINGLE_STEP			0x20		/* ? */
+#define FLAG_CERTIFICAION			0x40		/* (IDK) Industrial Tool Kit Cerfitication - what are they cerfifying with this */
+#define FLAG_CHANGE_SEQ_HEAD		0x80			/* ? */
+#define FLAG_DISABLE_COMPOSER		0x100			/* For FEL disable the EL layer - just output BL ? */
+#define FLAG_BYPASS_CSC				0x200		/* Bypass the Colour Space Converter in the Vidoe Processing Unit ? */
+#define FLAG_CHECK_ES_PTS			0x400		/* ? */
+#define FLAG_DISABE_CORE_SETTING	0x800			/* ? */
+#define FLAG_DISABLE_DMA_UPDATE		0x1000			/* ? */
+#define FLAG_DISABLE_DOVI_OUT		0x2000			/* ? */
+#define FLAG_FORCE_DOVI_LL			0x4000		/* Force into LLDV */
+#define FLAG_FORCE_RGB_OUTPUT		0x8000			/* Force RGB Output LLDV Specific ? */
+#define FLAG_DOVI2HDR10_NOMAPPING	0x100000		/* ? */
+#define FLAG_PRIORITY_GRAPHIC		0x200000		/* Force Graphic Priority */
+#define FLAG_DISABLE_LOAD_VSVDB		0x400000		/* ? */
+#define FLAG_DISABLE_CRC			0x800000	/* ? */
+#define FLAG_MUTE					0x4000000	/* ? */
+#define FLAG_FORCE_HDMI_PKT			0x8000000	/* ? */
+#define FLAG_TOGGLE_FRAME			0x80000000	/* Swithcing between modes ? */
 
 static unsigned int dolby_vision_flags = FLAG_BYPASS_VPP | FLAG_FORCE_CVM | FLAG_USE_SINK_MIN_MAX;
 module_param(dolby_vision_flags, uint, 0664);
