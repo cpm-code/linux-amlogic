@@ -156,6 +156,10 @@ module_param(dolby_vision_efuse_bypass, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_efuse_bypass, "\n dolby_vision_efuse_bypass\n");
 static bool efuse_mode;
 
+/* DOLBY_CORE1A -- BL Handler?  */
+/* DOLBY_CORE1B */
+/* DOLBY_CORE2A */
+
 /* Core 1  	-> BL 	2160p HEVC  ? */				/* 001 */
 /* Core 2A 	-> EL 	1080p HEVC ? */					/* 010 */
 /* Core 3	-> RPU 	Composed 2160p - apply RPU for LLDV ? */	/* 100 */
@@ -248,7 +252,7 @@ int get_dv_support_info(void)
 }
 EXPORT_SYMBOL(get_dv_support_info);
 
-char cur_crc[32] = "invalid";
+char cur_crc[32] = "invalid";ore
 
 static uint dolby_vision_on_count;
 static bool dolby_vision_el_disable;
@@ -1064,7 +1068,6 @@ static int dolby_core2_set
 		return 0;
 
 	if (!dolby_vision_on || force_reset_core2) {
-		dolby_core_reset(DOLBY_CORE2A);
 		force_reset_core2 = false;
 		reset = true;
 	}
