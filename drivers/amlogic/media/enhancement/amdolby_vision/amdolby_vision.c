@@ -403,7 +403,8 @@ static unsigned int dv_target_graphics_LL_max[3][3] = {
 		{ 300, 316, 100 }, /* DOVI => DOVI/HDR/SDR */
 		{ 210, 316, 100 }, /* HDR =>  DOVI/HDR/SDR */
 		{ 300, 316, 100 }, /* SDR =>  DOVI/HDR/SDR */
-};
+};			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 2);
+			VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
 
 static unsigned int dolby_vision_force_hdmi_lum = 0;
 module_param(dolby_vision_force_hdmi_lum, uint, 0664);
@@ -419,10 +420,10 @@ module_param(dolby_vision_hdmi_lum_max, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_hdmi_lum_max, "\n dolby_vision_hdmi_lum_max\n");
 
 /*these two parameters form OSD*/
-static unsigned int osd_graphic_width = 1920;
-static unsigned int osd_graphic_height = 1080;
-static unsigned int new_osd_graphic_width = 1920;
-static unsigned int new_osd_graphic_height = 1080;
+static unsigned int osd_graphic_width = 2160;
+static unsigned int osd_graphic_height = 3840;
+static unsigned int new_osd_graphic_width = 2160;
+static unsigned int new_osd_graphic_height = 3840;
 
 static unsigned int dv_cert_graphic_width = 1920;
 static unsigned int dv_cert_graphic_height = 1080;
