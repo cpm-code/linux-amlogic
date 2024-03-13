@@ -126,14 +126,18 @@ static unsigned int last_dolby_vision_policy;
 /* === HDR10 === */
 /* bit0: follow sink 0: bypass hdr10 to vpp 1: process hdr10 by dolby core */
 /* bit1: follow source 0: bypass hdr10 to vpp 1: process hdr10 by dolby core */
+
 /* === HDR10+ === */
 /* bit2: 0: bypass hdr10+ to vpp, 1: process hdr10+ as hdr10 by dolby core */
+
 /* === HLG -- TV core 1.6 only === */
 /* bit3: follow sink 0: bypass hlg to vpp, 1: process hlg by dolby core */
 /* bit4: follow source 0: bypass hlg to vpp, 1: process hlg by dolby core */
+
 /* === SDR === */
 /* bit5: follow sink 0: bypass SDR to vpp, 1: process SDR by dolby core */
 /* bit6: follow source 0: bypass SDR to vpp, 1: process SDR by dolby core */
+
 #define HDR_BY_DV_F_SINK 0x1
 #define HDR_BY_DV_F_SRC 0x2
 #define HDRP_BY_DV 0x4
@@ -156,8 +160,8 @@ module_param(dolby_vision_efuse_bypass, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_efuse_bypass, "\n dolby_vision_efuse_bypass\n");
 static bool efuse_mode;
 
-/* core1: video priority 	-- linked to 1 	    has a lut	*/	
-/* core2: graphic priority 	-- linked to 2A?    has a lut	*/
+/* core1: video priority 	-- linked to 1 	    has a lut	DOLBY 4K (AND 1080P EL added) */	
+/* core2: graphic priority 	-- linked to 2A?    has a lut	OSD 1080P */
 
 /* core3: no lut	-- looks to be dealing with metadata */
 
@@ -168,15 +172,15 @@ static bool efuse_mode;
 
 /* DOLBY_CORE2A -- LLDV Handler ? */
 
-/* Core 1  	-> BL 	2160p HEVC  ? */				/* 001 */	
-/* Core 2A 	-> EL 	1080p HEVC ? */					/* 010 */
-/* Core 3	-> RPU 	Composed 2160p - apply RPU for LLDV ? */	/* 100 */
+/* Core 1 (DV Core1A)  	-> BL 	2160p HEVC  ? */				/* 001 */	
+/* Core 2 (DV Core1B) 	-> EL 	1080p HEVC ? */					/* 010 */
+/* Core 3		-> RPU 	Composed 2160p - apply RPU for LLDV ? */	/* 100 */
 
-/* if (dolby_vision_mask & 4) core3 enable --- on by default  111 * 100 > 100 */
-/* if (dolby_vision_mask & 2) core2 enable --- on by default  111 * 010 > 010 */
-/* if ((bl_enable && el_enable && (dolby_vision_mask & 1)))  then vd2 to core1 else vd2 to vpp */
-/* bool bypass_core1 = (!(dolby_vision_mask & 1)) */
 /* int composer_enable = bl_enable && el_enable && (dolby_vision_mask & 1) */
+/* bool bypass_core1 = (!(dolby_vision_mask & 1)) */
+/* if ((bl_enable && el_enable && (dolby_vision_mask & 1)))  then vd2 to core1 else vd2 to vpp */
+/* if (dolby_vision_mask & 2) core2 enable --- on by default  111 * 010 > 010 */
+/* if (dolby_vision_mask & 4) core3 enable --- on by default  111 * 100 > 100 */
 
 /* things to test -> 1 (001) BL only ? */
 /* things to test -> 2 (010) RPU only ? */
@@ -1773,6 +1777,7 @@ void enable_dolby_vision(int enable)
 		dolby_vision_wait_count = 0;
 		vsync_count = 0;
 	} else {
+		
 		if (dolby_vision_on) {
 
 			VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL,
@@ -1780,15 +1785,18 @@ void enable_dolby_vision(int enable)
 								 (1 << 1) |	/* vd2 connect to vpp */
 								 (1 << 0),	/* core1 bl bypass */
 								 0, 3);
-			VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL,
-								 0, 3, 1);   /* core3 disable */
+			
+			VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 3, 1);   /* core3 disable */
+			
 			/* core1a */
 			VSYNC_WR_DV_REG(DOLBY_CORE1_CLKGATE_CTRL, 0x55555455);
 			dv_mem_power_off(VPU_DOLBY1A);
 			dv_mem_power_off(VPU_PRIME_DOLBY_RAM);
+			
 			/* core2 */
 			VSYNC_WR_DV_REG(DOLBY_CORE2A_CLKGATE_CTRL, 0x55555555);
 			dv_mem_power_off(VPU_DOLBY2);
+			
 			/* core3 */
 			VSYNC_WR_DV_REG(DOLBY_CORE3_CLKGATE_CTRL, 0x55555555);
 			dv_mem_power_off(VPU_DOLBY_CORE3);
@@ -5883,8 +5891,7 @@ int dolby_vision_process(struct vframe_s *vf,
 
 		dolby_vision_flags &= ~FLAG_TOGGLE_FRAME;
 
-	} else if (dolby_vision_core1_on &&
-			   !(dolby_vision_flags & FLAG_CERTIFICAION)) {
+	} else if (dolby_vision_core1_on && !(dolby_vision_flags & FLAG_CERTIFICAION)) {
 
 		bool reset_flag =
 				(dolby_vision_reset & 2) &&
