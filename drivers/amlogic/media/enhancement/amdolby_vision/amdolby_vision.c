@@ -403,8 +403,7 @@ static unsigned int dv_target_graphics_LL_max[3][3] = {
 		{ 300, 316, 100 }, /* DOVI => DOVI/HDR/SDR */
 		{ 210, 316, 100 }, /* HDR =>  DOVI/HDR/SDR */
 		{ 300, 316, 100 }, /* SDR =>  DOVI/HDR/SDR */
-};			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 2);
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
+};
 
 static unsigned int dolby_vision_force_hdmi_lum = 0;
 module_param(dolby_vision_force_hdmi_lum, uint, 0664);
