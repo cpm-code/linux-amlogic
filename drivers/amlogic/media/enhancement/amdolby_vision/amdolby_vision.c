@@ -156,9 +156,9 @@ module_param(dolby_vision_efuse_bypass, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_efuse_bypass, "\n dolby_vision_efuse_bypass\n");
 static bool efuse_mode;
 
-/* DOLBY_CORE1A -- BL Handler?  */
-/* DOLBY_CORE1B */
-/* DOLBY_CORE2A */
+/* DOLBY_CORE1A -- BL Handler ? */
+/* DOLBY_CORE1B -- EL Handler ? */
+/* DOLBY_CORE2A -- Composer / LLDV RPU Handler ? */
 
 /* Core 1  	-> BL 	2160p HEVC  ? */				/* 001 */
 /* Core 2A 	-> EL 	1080p HEVC ? */					/* 010 */
@@ -538,7 +538,6 @@ static bool dovi_setting_video_flag;
 static struct platform_device *dovi_pdev;
 static bool vsvdb_config_set_flag;
 static bool vfm_path_on;
-
 
 #define CP_FLAG_CHANGE_TC       0x000010
 #define CP_FLAG_CHANGE_TC2      0x000020
