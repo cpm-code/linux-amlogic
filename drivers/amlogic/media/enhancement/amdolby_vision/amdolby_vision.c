@@ -156,6 +156,24 @@ module_param(dolby_vision_efuse_bypass, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_efuse_bypass, "\n dolby_vision_efuse_bypass\n");
 static bool efuse_mode;
 
+/* Core 1  	-> BL 	2160p ? */	/* 001 */
+/* Core 2A 	-> OSD 	1080p ? */	/* 010 */
+/* Core 3	-> EL 	1080p ? */	/* 100 */
+
+/* if (dolby_vision_mask & 4) core3 enable --- on by default  111 * 100 > 100 */
+/* if (dolby_vision_mask & 2) core2 enable --- on by default  111 * 010 > 010 */
+/* if ((bl_enable && el_enable && (dolby_vision_mask & 1)))  then vd2 to core1 else vd2 to vpp */
+/* bool bypass_core1 = (!(dolby_vision_mask & 1)) */
+/* int composer_enable = bl_enable && el_enable && (dolby_vision_mask & 1) */
+
+/* things to test -> 1 (001) BL only ? */
+/* things to test -> 2 (010) OSD only ? */
+/* things to test -> 3 (011) BL and OSD ? */
+/* things to test -> 4 (100) EL only ? */
+/* things to test -> 5 (101) BL and EL ? */
+/* things to test -> 6 (110) EL and OSD ? */
+/* things to test -> 7 (110) BL and EL and OSD ? */
+
 static uint dolby_vision_mask = 7;
 module_param(dolby_vision_mask, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_mask, "\n dolby_vision_mask\n");
@@ -1707,10 +1725,7 @@ void enable_dolby_vision(int enable)
 				(dolby_vision_mask & 1) &&
 				dovi_setting_video_flag) {
 
-				VSYNC_WR_DV_REG_BITS
-						(DOLBY_PATH_CTRL,
-								/* enable core1 */
-						 0, 0, 2);
+				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 0, 2); /* enable core1 */
 
 				hdr_vd1_off();
 
