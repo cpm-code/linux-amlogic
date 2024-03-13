@@ -167,11 +167,6 @@ static bool efuse_mode;
 
 /* vpp unmuted when dv mute -- either dv mode of the amlogic video post processor mode ?*/
 
-/* DOLBY_CORE1A -- BL Handler ? */
-/* DOLBY_CORE1B -- EL Handler ? */			
-
-/* DOLBY_CORE2A -- LLDV Handler ? */
-
 /* Core 1 (DV Core1A)  	-> EL 	1080p HEVC - If on then switch on Composer */				
 /* Core 2 (DV Core1B) 	-> EL 	2160p HEVC */
 /* Core 3				-> RPU 	*/
@@ -766,9 +761,10 @@ static void adjust_vpotch(void)
 	int sync_duration_num = 60;
 
 	if (vinfo) {
+		
 		if (vinfo->sync_duration_den)
-			sync_duration_num = vinfo->sync_duration_num /
-								vinfo->sync_duration_den;
+			sync_duration_num = vinfo->sync_duration_num / vinfo->sync_duration_den;
+		
 		if (debug_dolby & 2)
 			pr_dolby_dbg("vinfo %d %d %d %d %d %d\n",
 						 vinfo->width,
@@ -777,50 +773,27 @@ static void adjust_vpotch(void)
 						 vinfo->sync_duration_num,
 						 vinfo->sync_duration_den,
 						 sync_duration_num);
-		if (vinfo->width < 1280 &&
-			vinfo->height < 720 &&
-			vinfo->field_height < 720)
+		
+		if (vinfo->width < 1280 && vinfo->height < 720 && vinfo->field_height < 720)
 			g_vpotch = 0x60;
-		else if (vinfo->width == 1280 &&
-				 vinfo->height == 720)
+		else if (vinfo->width == 1280 && vinfo->height == 720)
 			g_vpotch = 0x38;
-		else if (vinfo->width == 1280 &&
-				 vinfo->height == 720 &&
-				 vinfo->field_height < 720)
+		else if (vinfo->width == 1280 && vinfo->height == 720 && vinfo->field_height < 720)
 			g_vpotch = 0x60;
-		else if (vinfo->width == 1920 &&
-				 vinfo->height == 1080 &&
-				 sync_duration_num < 30)
+		else if (vinfo->width == 1920 && vinfo->height == 1080 && sync_duration_num < 30)
 			g_vpotch = 0x60;
-		else if (vinfo->width == 1920 &&
-				 vinfo->height == 1080 &&
-				 vinfo->field_height < 1080)
+		else if (vinfo->width == 1920 && vinfo->height == 1080 && vinfo->field_height < 1080)
 			g_vpotch = 0x60;
 		else
 			g_vpotch = 0x20;
+			
 		if (vinfo->width > 1920)
 			htotal_add = 0xc0;
 		else
 			htotal_add = 0x140;
+			
 	} else {
 		g_vpotch = 0x20;
-	}
-}
-
-static void dolby_core_reset(enum core_type type)
-{
-	switch (type) {
-		case DOLBY_CORE1A:
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 2);
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
-			break;
-		case DOLBY_CORE1B:
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 3);
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
-			break;
-		default:
-			break;
-			return;
 	}
 }
 
@@ -849,6 +822,7 @@ int dolby_vision_update_setting(void)
 	if (size && (debug_dolby & 0x800)) {
 		p = (u64 *)dma_vaddr;
 		pr_info("dma size = %d\n", STB_DMA_TBL_SIZE);
+			
 		for (i = 0; i < size / 8; i += 2)
 			pr_info("%016llx, %016llx\n", p[i], p[i+1]);
 	}
@@ -926,7 +900,9 @@ static int dolby_core1_set
 		reset = true;
 
 	if ((!dolby_vision_on || reset) && bl_enable) {
-		dolby_core_reset(DOLBY_CORE1A);
+		/* Reset Dolby Core 1A */
+		VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 2);
+		VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
 		reset = true;
 	}
 
