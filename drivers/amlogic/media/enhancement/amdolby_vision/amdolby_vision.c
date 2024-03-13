@@ -1260,8 +1260,7 @@ static int dolby_core3_set
 		new_dovi_setting.vsvdb_changed = 0;
 		new_dovi_setting.mode_changed = 0;
 
-		if (new_dovi_setting.dovi_ll_enable &&
-			new_dovi_setting.diagnostic_enable == 0) {
+		if (new_dovi_setting.dovi_ll_enable && new_dovi_setting.diagnostic_enable == 0) {
 			VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 3, 6, 2); /* post matrix */
 			VSYNC_WR_DV_REG_BITS(VPP_MATRIX_CTRL, 1, 0, 1); /* post matrix */
 		} else {
@@ -1510,15 +1509,20 @@ static void apply_stb_core_settings
 	}
 
 	if (mask & 2) {
+
 		if (stb_core_setting_update_flag != CP_FLAG_CHANGE_ALL) {
+			
 			/* when CP_FLAG_CONST_TC2 is set, */
 			/* set the stb_core_setting_update_flag */
 			/* until only meeting the CP_FLAG_CONST_TC2 */
+		
 			if (stb_core_setting_update_flag & CP_FLAG_CONST_TC2)
 				stb_core2_const_flag = true;
+			
 			else if (stb_core_setting_update_flag & CP_FLAG_CHANGE_TC2)
 				stb_core2_const_flag = false;
 		}
+
 		/* revert the core2 lut as last corret one when const case */
 		if (stb_core2_const_flag)
 			memcpy(&new_dovi_setting.dm_lut2,
@@ -4968,8 +4972,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			dolby_vision_graphics_priority = 1;
 	}
 
-	if (dolby_vision_graphics_priority ||
-		(dolby_vision_flags & FLAG_PRIORITY_GRAPHIC))
+	if (dolby_vision_graphics_priority || (dolby_vision_flags & FLAG_PRIORITY_GRAPHIC))
 		pri_mode = G_PRIORITY;
 	else
 		pri_mode = V_PRIORITY;
