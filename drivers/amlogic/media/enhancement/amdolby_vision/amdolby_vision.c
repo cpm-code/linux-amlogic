@@ -419,10 +419,17 @@ module_param(dolby_vision_hdmi_lum_max, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_hdmi_lum_max, "\n dolby_vision_hdmi_lum_max\n");
 
 /*these two parameters form OSD*/
-static unsigned int osd_graphic_width = 2160;
-static unsigned int osd_graphic_height = 3840;
-static unsigned int new_osd_graphic_width = 2160;
-static unsigned int new_osd_graphic_height = 3840;
+static unsigned int osd_graphic_width = 3840;
+static unsigned int osd_graphic_height = 2160;
+
+module_param(osd_graphic_width, uint, 0664);
+MODULE_PARM_DESC(osd_graphic_width, "\n osd_graphic_width\n");
+
+module_param(osd_graphic_height, uint, 0664);
+MODULE_PARM_DESC(osd_graphic_height, "\n osd_graphic_height\n");
+
+static unsigned int new_osd_graphic_width = 3840;
+static unsigned int new_osd_graphic_height = 2160;
 
 static unsigned int dv_cert_graphic_width = 1920;
 static unsigned int dv_cert_graphic_height = 1080;
@@ -1383,6 +1390,7 @@ static int is_graphic_changed(void)
 		ret |= 2;
 	}
 
+	/*
 	if (osd_graphic_width != new_osd_graphic_width ||
 		osd_graphic_height != new_osd_graphic_height) {
 		if (debug_dolby & 0x2)
@@ -1392,14 +1400,16 @@ static int is_graphic_changed(void)
 						 new_osd_graphic_width,
 						 new_osd_graphic_height);
 
-		/* TODO: g12/tm2/sc2/t7 osd pps is after dolby core2, but */
-		/* sometimes osd do crop,should monitor osd size change*/
+		 TODO: g12/tm2/sc2/t7 osd pps is after dolby core2, but 
+		 sometimes osd do crop,should monitor osd size change
 		if (!is_osd_off) {
 			osd_graphic_width = new_osd_graphic_width;
 			osd_graphic_height = new_osd_graphic_height;
 			ret |= 2;
 		}
 	}
+	*/
+
 	if (old_dolby_vision_graphic_max !=
 		dolby_vision_graphic_max) {
 		if (debug_dolby & 0x2)
@@ -1410,6 +1420,7 @@ static int is_graphic_changed(void)
 			force_set_lut = true;
 		}
 	}
+
 	return ret;
 }
 
@@ -5064,7 +5075,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 							 src_format, dst_format,
 							 dolby_vision_target_min,
 							 dolby_vision_target_max[src_format][dst_format] * 10000, /* Value in nits, processing input is in 10-thousanths of nits */
-							 pri_mode == V_PRIORITY,
+							 pri_mode == G_PRIORITY,
 							 osd_graphic_width,
 							 osd_graphic_height,
 							 graphic_min,
@@ -5084,7 +5095,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 							 src_format, dst_format,
 							 dolby_vision_target_min,
 							 dolby_vision_target_max[src_format][dst_format] * 10000, /* Value in nits, processing input is in 10-thousanths of nits */
-							 pri_mode == V_PRIORITY,
+							 pri_mode == G_PRIORITY,
 							 osd_graphic_width,
 							 osd_graphic_height,
 							 graphic_min,
