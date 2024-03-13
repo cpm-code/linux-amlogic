@@ -1075,7 +1075,7 @@ static int dolby_core2_set
 	u32 *last_dm = (u32 *)&dovi_setting.dm_reg2;
 	u32 bypass_flag = 0;
 
-	if (dolby_vision_on	&& (dolby_vision_flags & FLAG_DISABE_CORE_SETTING))
+	if (dolby_vision_on && (dolby_vision_flags & FLAG_DISABE_CORE_SETTING))
 		return 0;
 
 	if (!dolby_vision_on || force_reset_core2) {
@@ -1100,8 +1100,7 @@ static int dolby_core2_set
 	if (force_update_reg & 2)
 		reset = true;
 
-	if (get_vpu_mem_pd_vmod(VPU_DOLBY2) == VPU_MEM_POWER_DOWN ||
-		get_dv_mem_power_flag(VPU_DOLBY2) == VPU_MEM_POWER_DOWN)
+	if (get_vpu_mem_pd_vmod(VPU_DOLBY2) == VPU_MEM_POWER_DOWN || get_dv_mem_power_flag(VPU_DOLBY2) == VPU_MEM_POWER_DOWN)
 		dv_mem_power_on(VPU_DOLBY2);
 
 	VSYNC_WR_DV_REG(DOLBY_CORE2A_CLKGATE_CTRL, 0);
@@ -5501,30 +5500,27 @@ int dolby_vision_process(struct vframe_s *vf,
 
 	if (dolby_vision_flags & FLAG_CERTIFICAION) {
 		if (vf) {
-			h_size = (vf->type & VIDTYPE_COMPRESS) ?
-					 vf->compWidth : vf->width;
-			v_size = (vf->type & VIDTYPE_COMPRESS) ?
-					 vf->compHeight : vf->height;
+			h_size = (vf->type & VIDTYPE_COMPRESS) ? vf->compWidth : vf->width;
+			v_size = (vf->type & VIDTYPE_COMPRESS) ? vf->compHeight : vf->height;
 		} else {
 			h_size = 0;
 			v_size = 0;
 		}
-		dolby_vision_on_count = 1 +
-								dolby_vision_run_mode_delay;
+		dolby_vision_on_count = 1 + dolby_vision_run_mode_delay;
 	}
+
 	if (dolby_vision_flags & FLAG_TOGGLE_FRAME)	{
 
 		h_size = (display_size >> 16) & 0xffff;
 		v_size = display_size & 0xffff;
 
 		/* stb control path case */
-		if (new_dovi_setting.video_width & 0xffff &&
-			new_dovi_setting.video_height & 0xffff) {
-			if (new_dovi_setting.video_width != h_size ||
-				new_dovi_setting.video_height != v_size) {
+		if (new_dovi_setting.video_width & 0xffff && new_dovi_setting.video_height & 0xffff) {
+			
+			if (new_dovi_setting.video_width != h_size || new_dovi_setting.video_height != v_size) {
+				
 				if (debug_dolby & 8)
-					pr_dolby_dbg
-					("stb update disp size %d %d->%d %d\n",
+					pr_dolby_dbg("stb update disp size %d %d->%d %d\n",
 					 new_dovi_setting.video_width,
 					 new_dovi_setting.video_height,
 					 h_size, v_size);
@@ -5537,11 +5533,9 @@ int dolby_vision_process(struct vframe_s *vf,
 				new_dovi_setting.video_height = 0xffff;
 			}
 
-		} else if (core1_disp_hsize != h_size ||
-				   core1_disp_vsize != v_size) {
+		} else if (core1_disp_hsize != h_size || core1_disp_vsize != v_size) {
 			if (debug_dolby & 8)
-				pr_dolby_dbg(
-						"stb update display size %d %d->%d %d\n",
+				pr_dolby_dbg("stb update display size %d %d->%d %d\n",
 						core1_disp_hsize,
 						core1_disp_vsize,
 						h_size, v_size);
@@ -5802,36 +5796,33 @@ int dolby_vision_process(struct vframe_s *vf,
 					(!dolby_vision_core1_on) &&
 					(dolby_vision_on_count == 0);
 
-		if (((new_dovi_setting.video_width & 0xffff) &&
-			 (new_dovi_setting.video_height & 0xffff)) ||
-			force_set_lut) {
+		if (((new_dovi_setting.video_width & 0xffff) && (new_dovi_setting.video_height & 0xffff)) || force_set_lut) {
 
 			if (new_dovi_setting.video_width == 0xffff)
 				new_dovi_setting.video_width = 0;
+			
 			if (new_dovi_setting.video_height == 0xffff)
 				new_dovi_setting.video_height = 0;
+			
 			if (vf && (vf->type & VIDTYPE_VIU_422))
 				src_chroma_format = 2;
 			else if (vf)
 				src_chroma_format = 1;
 
-			if (force_set &&
-				!(dolby_vision_flags
-				  & FLAG_CERTIFICAION))
+			if (force_set && !(dolby_vision_flags & FLAG_CERTIFICAION))
 				reset_flag = true;
+			
 			apply_stb_core_settings
 					(dovi_setting_video_flag,
 					 dolby_vision_mask & core_mask,
 					 reset_flag,
-					 (new_dovi_setting.video_width << 16)
-					 | new_dovi_setting.video_height,
-					 pps_state);
-			memcpy(&dovi_setting, &new_dovi_setting,
-				   sizeof(dovi_setting));
-			if (core1_disp_hsize !=
-				dovi_setting.video_width ||
-				core1_disp_vsize !=
-				dovi_setting.video_height)
+					 (new_dovi_setting.video_width << 16) | new_dovi_setting.video_height, pps_state);
+			
+			memcpy(&dovi_setting, &new_dovi_setting, sizeof(dovi_setting));
+			
+			if (core1_disp_hsize != dovi_setting.video_width ||
+				core1_disp_vsize != dovi_setting.video_height)
+				
 				if (core1_disp_hsize &&
 					core1_disp_vsize)
 					pr_dolby_dbg
