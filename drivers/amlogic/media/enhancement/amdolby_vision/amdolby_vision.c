@@ -156,8 +156,10 @@ module_param(dolby_vision_efuse_bypass, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_efuse_bypass, "\n dolby_vision_efuse_bypass\n");
 static bool efuse_mode;
 
-/* core1: video 	-- linked to 1 		*/
-/* core2: graphic  	-- linked to 2A?	*/
+/* core1: video priority 	-- linked to 1 	    has a lut	*/	
+/* core2: graphic priority 	-- linked to 2A?    has a lut	*/
+
+/* core3: no lut	-- looks to be dealing with metadata */
 
 /* vpp unmuted when dv mute -- either dv mode of the amlogic video post processor mode ?*/
 
@@ -166,7 +168,7 @@ static bool efuse_mode;
 
 /* DOLBY_CORE2A -- LLDV Handler ? */
 
-/* Core 1  	-> BL 	2160p HEVC  ? */				/* 001 */
+/* Core 1  	-> BL 	2160p HEVC  ? */				/* 001 */	
 /* Core 2A 	-> EL 	1080p HEVC ? */					/* 010 */
 /* Core 3	-> RPU 	Composed 2160p - apply RPU for LLDV ? */	/* 100 */
 
@@ -1285,21 +1287,25 @@ static int dolby_core3_set
 	VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL3, (0x80 << 16) | vsize_hold);
 	VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL4, (0x04 << 16) | vsize_hold);
 	VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL5, 0x0000);
+			
 	if (cur_dv_mode != DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
 		VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL6, 0);
 	else
 		VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL6, 0x10000000);  /* swap UV */
+
 	VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 5, 7);
 	VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 4, 4);
 	VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 4, 2);
 	VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 2, 1);
+
 	/* Control Register, address 0x04 2:0 RW */
-	/* Output_operating mode*/
-	/*   00- IPT 12 bit 444 bypass Dolby Vision output*/
-	/*   01- IPT 12 bit tunnelled over RGB 8 bit 444, dolby vision output*/
-	/*   02- HDR10 output, RGB 10 bit 444 PQ*/
-	/*   03- Deep color SDR, RGB 10 bit 444 Gamma*/
-	/*   04- SDR, RGB 8 bit 444 Gamma*/
+	/* Output_operating mode */
+	/*   00- IPT 12 bit 444 bypass Dolby Vision output */
+	/*   01- IPT 12 bit tunnelled over RGB 8 bit 444, dolby vision output */
+	/*   02- HDR10 output, RGB 10 bit 444 PQ */
+	/*   03- Deep color SDR, RGB 10 bit 444 Gamma */
+	/*   04- SDR, RGB 8 bit 444 Gamma */
+
 	VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 1, cur_dv_mode);
 	VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 1, cur_dv_mode);
 	
@@ -1642,12 +1648,14 @@ void enable_dolby_vision(int enable)
 				VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 1, 3, 1);   /* core3 enable */
 			else
 				VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 3, 1);   /* bypass core3 */
+			
 			if (dolby_vision_mask & 2)
 				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 2, 1);	 /* core2 enable */
 			else
 				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 1, 2, 1);  /* core2 bypass */
 
 			hdr_vd1_off();
+			
 			if ((dolby_vision_mask & 1) && dovi_setting_video_flag) {
 				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 0, 1); /* core1 on */
 				dolby_vision_core1_on = true;
