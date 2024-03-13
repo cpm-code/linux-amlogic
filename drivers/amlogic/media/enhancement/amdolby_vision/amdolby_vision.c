@@ -157,8 +157,8 @@ MODULE_PARM_DESC(dolby_vision_efuse_bypass, "\n dolby_vision_efuse_bypass\n");
 static bool efuse_mode;
 
 /* Core 1  	-> BL 	2160p ? */	/* 001 */
-/* Core 2A 	-> OSD 	1080p ? */	/* 010 */
-/* Core 3	-> EL 	1080p ? */	/* 100 */
+/* Core 2A 	-> EL 	1080p ? */	/* 010 */
+/* Core 3	-> RPU 	1080p ? */	/* 100 */
 
 /* if (dolby_vision_mask & 4) core3 enable --- on by default  111 * 100 > 100 */
 /* if (dolby_vision_mask & 2) core2 enable --- on by default  111 * 010 > 010 */
@@ -167,12 +167,12 @@ static bool efuse_mode;
 /* int composer_enable = bl_enable && el_enable && (dolby_vision_mask & 1) */
 
 /* things to test -> 1 (001) BL only ? */
-/* things to test -> 2 (010) OSD only ? */
-/* things to test -> 3 (011) BL and OSD ? */
+/* things to test -> 2 (010) RPU only ? */
+/* things to test -> 3 (011) BL and RPU ? */
 /* things to test -> 4 (100) EL only ? */
 /* things to test -> 5 (101) BL and EL ? */
-/* things to test -> 6 (110) EL and OSD ? */
-/* things to test -> 7 (110) BL and EL and OSD ? */
+/* things to test -> 6 (110) EL and RPU ? */
+/* things to test -> 7 (110) BL and EL and RPU ? */
 
 static uint dolby_vision_mask = 7;
 module_param(dolby_vision_mask, uint, 0664);
