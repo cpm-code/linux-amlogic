@@ -1647,7 +1647,7 @@ void enable_dolby_vision(int enable)
 			else
 				VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 3, 1);   /* bypass core3 */
 			
-			if (dolby_vision_mask & 2) /* Core 2 (BL) */
+			if (dolby_vision_mask & 2) /* Core 2 (VPU) */
 				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 2, 1);	 /* core2 enable */
 			else
 				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 1, 2, 1);  /* core2 bypass */
@@ -1723,12 +1723,10 @@ void enable_dolby_vision(int enable)
 				enable_rgb_to_yuv_matrix_for_dvll
 						(0, NULL, 12);
 			}
-			last_dolby_vision_ll_policy =
-					dolby_vision_ll_policy;
-			pr_dolby_dbg
-			("Dolby Vision G12a turn on%s\n",
-			 dolby_vision_core1_on ?
-			 ", core1 on" : "");
+			last_dolby_vision_ll_policy = dolby_vision_ll_policy;
+			
+			pr_dolby_dbg("Dolby Vision G12a turn on%s\n", dolby_vision_core1_on ? ", core1 on" : "");
+			
 			if (!dolby_vision_core1_on)
 				frame_count = 0;
 
