@@ -204,6 +204,9 @@ static uint dolby_vision_reset = (1 << 1) | (1 << 0);
 module_param(dolby_vision_reset, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_reset, "\n dolby_vision_reset\n");
 
+/* number of fake frame (run mode = 1) */
+#define RUN_MODE_DELAY 2
+
 /* reset control -- end << 8 | start */
 static uint dolby_vision_reset_delay = (RUN_MODE_DELAY << 8) | RUN_MODE_DELAY;
 module_param(dolby_vision_reset_delay, uint, 0664);
