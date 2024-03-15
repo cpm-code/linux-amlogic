@@ -102,16 +102,13 @@ static unsigned int primary_debug;
 module_param(primary_debug, uint, 0664);
 MODULE_PARM_DESC(primary_debug, "\n primary_debug\n");
 
-/* STB: if sink support DV, always output DV*/
-/*		else always output SDR/HDR */
+/* if sink support DV, always output DV else always output SDR/HDR */
 /* #define DOLBY_VISION_FOLLOW_SINK			0 */
 
-/* STB: output DV only if source is DV*/
-/*		and sink support DV*/
-/*		else always output SDR/HDR */
+/* output DV only if source is DV and sink support DV else always output SDR/HDR */
 /* #define DOLBY_VISION_FOLLOW_SOURCE		1 */
 
-/* STB: always follow dolby_vision_mode */
+/* always follow dolby_vision_mode */
 /* #define DOLBY_VISION_FORCE_OUTPUT_MODE	2 */
 
 static unsigned int dolby_vision_policy = DOLBY_VISION_FOLLOW_SOURCE;
@@ -2311,7 +2308,7 @@ static void update_src_format
 				dolby_vision_src_format = 2;
 			else if (vf_is_hdr10(vf))
 				dolby_vision_src_format = 1;
-			else if (vf_is_hlg(vf))
+			else if (vf_is_(vf))
 				dolby_vision_src_format = 5;
 			else if (is_mvc_frame(vf))
 				dolby_vision_src_format = 7;
