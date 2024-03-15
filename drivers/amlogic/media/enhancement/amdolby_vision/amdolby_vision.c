@@ -2308,7 +2308,7 @@ static void update_src_format
 				dolby_vision_src_format = 2;
 			else if (vf_is_hdr10(vf))
 				dolby_vision_src_format = 1;
-			else if (vf_is_(vf))
+			else if (vf_is_hlg(vf))
 				dolby_vision_src_format = 5;
 			else if (is_mvc_frame(vf))
 				dolby_vision_src_format = 7;
