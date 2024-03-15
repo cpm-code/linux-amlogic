@@ -2968,42 +2968,48 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 
 	/* release metadata_parser when new playing */
 	if (vf && vf->src_fmt.play_id != last_play_id) {
+		
 		if (metadata_parser) {
 
 			if (p_funcs_stb)
 				p_funcs_stb->metadata_parser_release();
 
 			metadata_parser = NULL;
-
 			pr_dolby_dbg("new play, release parser\n");
-
 			dolby_vision_clear_buf();
 		}
+		
 		last_play_id = vf->src_fmt.play_id;
+		
 		if (debug_dolby & 2)
 			pr_dolby_dbg("update play id=%d:\n", last_play_id);
 	}
 
 	p = aux_buf;
 	while (p < aux_buf + aux_size - 8) {
+		
 		size = *p++;
 		size = (size << 8) | *p++;
 		size = (size << 8) | *p++;
 		size = (size << 8) | *p++;
+		
 		type = *p++;
 		type = (type << 8) | *p++;
 		type = (type << 8) | *p++;
 		type = (type << 8) | *p++;
+		
 		if (debug_dolby & 4)
-			pr_dolby_dbg("metadata type=%08x, size=%d:\n",
-						 type, size);
+			pr_dolby_dbg("metadata type=%08x, size=%d:\n", type, size);
+		
 		if (size == 0 || size > aux_size) {
 			pr_dolby_dbg("invalid aux size %d\n", size);
 			ret = 1;
 			goto parse_err;
 		}
+		
 		if (type == DV_SEI || /* hevc t35 sei */
 			(type & 0xffff0000) == DV_AV1_SEI) { /* av1 t35 obu */
+			
 			*total_comp_size = 0;
 			*total_md_size = 0;
 
@@ -3018,6 +3024,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 				p[7] == 0x37 &&
 				p[8] == 0xcd &&
 				p[9] == 0x08) {
+				
 				/* AV1 dv meta in obu */
 				*src_format = FORMAT_DOVI;
 				meta_buf[0] = 0;
@@ -3025,44 +3032,45 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 				meta_buf[2] = 0;
 				meta_buf[3] = 0x01;
 				meta_buf[4] = 0x19;
+				
 				if (p[11] & 0x10) {
 					rpu_size = 0x100;
 					rpu_size |= (p[11] & 0x0f) << 4;
 					rpu_size |= (p[12] >> 4) & 0x0f;
 					if (p[12] & 0x08) {
-						pr_dolby_error
-						("rpu exceed 512 bytes\n");
+						pr_dolby_error("rpu exceed 512 bytes\n");
 						break;
 					}
 					for (i = 0; i < rpu_size; i++) {
-						meta_buf[5 + i] =
-								(p[12 + i] & 0x07) << 5;
-						meta_buf[5 + i] |=
-								(p[13 + i] >> 3) & 0x1f;
+						meta_buf[5 + i] = (p[12 + i] & 0x07) << 5;
+						meta_buf[5 + i] |= (p[13 + i] >> 3) & 0x1f;
 					}
 					rpu_size += 5;
 				} else {
 					rpu_size = (p[10] & 0x1f) << 3;
 					rpu_size |= (p[11] >> 5) & 0x07;
 					for (i = 0; i < rpu_size; i++) {
-						meta_buf[5 + i] =
-								(p[11 + i] & 0x0f) << 4;
-						meta_buf[5 + i] |=
-								(p[12 + i] >> 4) & 0x0f;
+						meta_buf[5 + i] = (p[11 + i] & 0x0f) << 4;
+						meta_buf[5 + i] |= (p[12 + i] >> 4) & 0x0f;
 					}
 					rpu_size += 5;
 				}
 			} else {
+
 				/* HEVC dv meta in sei */
 				*src_format = FORMAT_DOVI;
+				
 				if (size > (sizeof(meta_buf) - 3))
 					size = (sizeof(meta_buf) - 3);
+				
 				meta_buf[0] = 0;
 				meta_buf[1] = 0;
 				meta_buf[2] = 0;
 				memcpy(&meta_buf[3], p + 1, size - 1);
 				rpu_size = size + 2;
+
 			}
+			
 			if ((debug_dolby & 4) && dump_enable) {
 				pr_dolby_dbg("metadata(%d):\n", rpu_size);
 				for (i = 0; i < size; i += 16)
@@ -3087,24 +3095,19 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 
 			if (!p_funcs_stb) {
 				ret = 1;
+				pr_dolby_dbg("p_funcs_stb is null\n");
 				goto parse_err;
 			}
 
 			/* prepare metadata parser */
 			spin_lock_irqsave(&dovi_lock, flags);
+			
 			parser_ready = 0;
 			if (!metadata_parser) {
-
-				if (p_funcs_stb) {
-					metadata_parser =
-							p_funcs_stb->metadata_parser_init
-									(dolby_vision_flags
-									 & FLAG_CHANGE_SEQ_HEAD
-									 ? 1 : 0);
-					p_funcs_stb->metadata_parser_reset(1);
-				} else {
-					pr_dolby_dbg("p_funcs_stb is null\n");
-				}
+	
+				metadata_parser = p_funcs_stb->metadata_parser_init(dolby_vision_flags & FLAG_CHANGE_SEQ_HEAD ? 1 : 0);
+					
+				p_funcs_stb->metadata_parser_reset(1);
 
 				if (metadata_parser) {
 					parser_ready = 1;
@@ -3113,28 +3116,28 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 				}
 			} else {
 
-				if (p_funcs_stb->metadata_parser_reset
-						(metadata_parser_reset_flag) == 0)
+				if (p_funcs_stb->metadata_parser_reset(metadata_parser_reset_flag) == 0)
 					metadata_parser_reset_flag = 0;
 
 				parser_ready = 1;
 			}
+			
 			if (!parser_ready) {
 				spin_unlock_irqrestore(&dovi_lock, flags);
-				pr_dolby_error
-				("meta(%d), pts(%lld) -> parser init fail\n",
-				 size, vf->pts_us64);
+				
+				pr_dolby_error("meta(%d), pts(%lld) -> parser init fail\n", size, vf->pts_us64);
+				
 				*total_comp_size = backup_comp_size;
 				*total_md_size = backup_md_size;
 				ret = 2;
+				
 				goto parse_err;
 			}
 
 			md_size = 0;
 			comp_size = 0;
 
-			rpu_ret =
-					p_funcs_stb->metadata_parser_process
+			rpu_ret = p_funcs_stb->metadata_parser_process
 							(meta_buf, rpu_size,
 							 comp_buf + *total_comp_size,
 							 &comp_size,
@@ -3143,46 +3146,48 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 							 true);
 
 			if (rpu_ret < 0) {
-				pr_dolby_error
-				("meta(%d), pts(%lld) -> parser process fail\n",
-				 rpu_size, vf->pts_us64);
+				
+				pr_dolby_error("meta(%d), pts(%lld) -> parser process fail\n", rpu_size, vf->pts_us64);
+				
 				if (vf)
-					pr_dolby_error
-					("meta(%d), pts(%lld) -> metadata parser process fail\n",
-					 rpu_size, vf->pts_us64);
+					pr_dolby_error("meta(%d), pts(%lld) -> metadata parser process fail\n", rpu_size, vf->pts_us64);
+				
 				ret = 3;
+				
 			} else {
-				if (*total_comp_size + comp_size
-					< COMP_BUF_SIZE)
+				
+				if (*total_comp_size + comp_size < COMP_BUF_SIZE)
 					*total_comp_size += comp_size;
 				else
 					parser_overflow = true;
 
-				if (*total_md_size + md_size
-					< MD_BUF_SIZE)
+				if (*total_md_size + md_size < MD_BUF_SIZE)
 					*total_md_size += md_size;
 				else
 					parser_overflow = true;
+				
 				if (rpu_ret == 1)
 					*ret_flags = 1;
+				
 				ret = 0;
 			}
 			spin_unlock_irqrestore(&dovi_lock, flags);
+			
 			if (parser_overflow) {
 				ret = 2;
 				break;
 			}
-			/*dolby type just appears once in metadata
-			 *after parsing dolby type,breaking the
-			 *circulation directly
-			 */
+			
+			/* dolby type just appears once in metadata
+			 * after parsing dolby type, breaking the circulation directly */
 			break;
 		}
 		p += size;
 	}
 
-	/*continue to check atsc/dvb dv - US Terestial Broadcast Standard? */
+	/* continue to check atsc/dvb dv - US Terestial Broadcast Standard? */
 	if (atsc_sei && *src_format != FORMAT_DOVI) {
+		
 		struct dv_vui_parameters vui_param;
 		static u32 len_2086_sei;
 		u32 len_2094_sei = 0;
@@ -3193,13 +3198,14 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 		unsigned char sei_payload_size = 0;
 
 		if (vf) {
+			
 			vui_param.video_fmt_i = (vf->signal_type >> 26) & 7;
 			vui_param.video_fullrange_b = (vf->signal_type >> 25) & 1;
 			vui_param.color_description_b = (vf->signal_type >> 24) & 1;
 			vui_param.color_primaries_i = (vf->signal_type >> 16) & 0xff;
-			vui_param.trans_characteristic_i =
-					(vf->signal_type >> 8) & 0xff;
+			vui_param.trans_characteristic_i = (vf->signal_type >> 8) & 0xff;
 			vui_param.matrix_coeff_i = (vf->signal_type) & 0xff;
+			
 			if (debug_dolby & 2)
 				pr_dolby_dbg("vui_param %d, %d, %d, %d, %d, %d\n",
 							 vui_param.video_fmt_i,
@@ -3214,6 +3220,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 
 		if ((debug_dolby & 0x200) && dump_enable) {
 			pr_dolby_dbg("aux_buf(%d):\n", aux_size);
+			
 			for (i = 0; i < aux_size; i += 8)
 				pr_info("\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
 						p[i],
@@ -3225,6 +3232,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 						p[i + 6],
 						p[i + 7]);
 		}
+		
 		while (p < aux_buf + aux_size - 8) {
 			size = *p++;
 			size = (size << 8) | *p++;
@@ -3234,6 +3242,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 			type = (type << 8) | *p++;
 			type = (type << 8) | *p++;
 			type = (type << 8) | *p++;
+			
 			if (debug_dolby & 2)
 				pr_dolby_dbg("type: 0x%x\n", type);
 
@@ -3241,56 +3250,56 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 			/*1 byte nal_type + 1 byte (layer_id+temporal_id)*/
 			/*1 byte payload type + 1 byte size + payload data*/
 			if (type == 0x02000000) {
+				
 				nal_type = ((*p) & 0x7E) >> 1; /*nal unit type*/
+				
 				if (debug_dolby & 2)
-					pr_dolby_dbg("nal_type: %d\n",
-								 nal_type);
+					pr_dolby_dbg("nal_type: %d\n", nal_type);
 
-				if (nal_type == PREFIX_SEI_NUT_NAL ||
-					nal_type == SUFFIX_SEI_NUT_NAL) {
+				if (nal_type == PREFIX_SEI_NUT_NAL || nal_type == SUFFIX_SEI_NUT_NAL) {
 					sei_payload_type = *(p + 2);
 					sei_payload_size = *(p + 3);
+					
 					if (debug_dolby & 2)
-						pr_dolby_dbg("type %d, size %d\n",
-									 sei_payload_type,
-									 sei_payload_size);
-					if (sei_payload_type ==
-						SEI_TYPE_MASTERING_DISP_COLOUR_VOLUME) {
-						len_2086_sei =
-								sei_payload_size;
-						memcpy(payload_2086_sei, p + 4,
-							   len_2086_sei);
-					} else if (sei_payload_type ==
-							   SEI_TYPE_USERDATA_REGISTERED_ITUT_T35) {
-						len_2094_sei =
-								sei_payload_size;
-						memcpy(payload_2094_sei, p + 4,
-							   len_2094_sei);
+						pr_dolby_dbg("type %d, size %d\n", sei_payload_type, sei_payload_size);
+					
+					if (sei_payload_type == SEI_TYPE_MASTERING_DISP_COLOUR_VOLUME) {
+						len_2086_sei = sei_payload_size;
+						memcpy(payload_2086_sei, p + 4, len_2086_sei);
+					} else if (sei_payload_type == SEI_TYPE_USERDATA_REGISTERED_ITUT_T35) {
+						len_2094_sei = sei_payload_size;
+						memcpy(payload_2094_sei, p + 4, len_2094_sei);
 					}
-					if (len_2086_sei > 0 &&
-						len_2094_sei > 0)
+					if (len_2086_sei > 0 && len_2094_sei > 0)
 						break;
 				}
 			}
 			p += size;
 		}
+		
 		if (len_2094_sei > 0) {
+			
 			/* source is VS10 */
 			*total_comp_size = 0;
 			*total_md_size = 0;
 			*src_format = FORMAT_DOVI;
+			
 			if (vf)
 				p_atsc_md.vui_param = vui_param;
+			
 			p_atsc_md.len_2086_sei = len_2086_sei;
-			memcpy(p_atsc_md.sei_2086, payload_2086_sei,
-				   len_2086_sei);
+			
+			memcpy(p_atsc_md.sei_2086, payload_2086_sei, len_2086_sei);
 			p_atsc_md.len_2094_sei = len_2094_sei;
-			memcpy(p_atsc_md.sei_2094, payload_2094_sei,
-				   len_2094_sei);
+			
+			memcpy(p_atsc_md.sei_2094, payload_2094_sei, len_2094_sei);
 			size = sizeof(struct dv_atsc);
+			
 			if (size > sizeof(meta_buf))
 				size = sizeof(meta_buf);
+			
 			memcpy(meta_buf, (unsigned char *)(&p_atsc_md), size);
+			
 			if ((debug_dolby & 4) && dump_enable) {
 				pr_dolby_dbg("metadata(%d):\n", size);
 				for (i = 0; i < size; i += 8)
@@ -3317,40 +3326,34 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 
 			if (!metadata_parser) {
 
-				metadata_parser =
-						p_funcs_stb->metadata_parser_init
-								(dolby_vision_flags
-								 & FLAG_CHANGE_SEQ_HEAD
-								 ? 1 : 0);
-				p_funcs_stb->metadata_parser_reset
-						(reset_flag | 1);
+				metadata_parser = p_funcs_stb->metadata_parser_init(dolby_vision_flags & FLAG_CHANGE_SEQ_HEAD ? 1 : 0);
+				
+				p_funcs_stb->metadata_parser_reset(reset_flag | 1);
 
 				if (metadata_parser) {
 					parser_ready = 1;
 					if (debug_dolby & 1)
 						pr_dolby_dbg("metadata parser init OK\n");
 				}
+				
 			} else {
 
-				if (p_funcs_stb->metadata_parser_reset
-						(reset_flag |
-						 metadata_parser_reset_flag
-						) == 0)
+				if (p_funcs_stb->metadata_parser_reset(reset_flag | metadata_parser_reset_flag) == 0)
 					metadata_parser_reset_flag = 0;
 
 				parser_ready = 1;
 			}
 			if (!parser_ready) {
 				spin_unlock_irqrestore(&dovi_lock, flags);
-				pr_dolby_error
-				("meta(%d), pts(%lld) -> parser init fail\n",
-				 size, vf->pts_us64);
+				
+				pr_dolby_error("meta(%d), pts(%lld) -> parser init fail\n", size, vf->pts_us64);
+				
 				if (vf)
-					pr_dolby_error
-					("meta(%d), pts(%lld) -> metadata parser init fail\n",
-					 size, vf->pts_us64);
+					pr_dolby_error("meta(%d), pts(%lld) -> metadata parser init fail\n", size, vf->pts_us64);
+				
 				*total_comp_size = backup_comp_size;
 				*total_md_size = backup_md_size;
+				
 				ret = 2;
 				goto parse_err;
 			}
@@ -3358,8 +3361,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 			md_size = 0;
 			comp_size = 0;
 
-			rpu_ret =
-					p_funcs_stb->metadata_parser_process
+			rpu_ret = p_funcs_stb->metadata_parser_process
 							(meta_buf, size,
 							 comp_buf + *total_comp_size,
 							 &comp_size,
@@ -3368,28 +3370,27 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 							 true);
 
 			if (rpu_ret < 0) {
-				pr_dolby_error
-				("meta(%d), pts(%lld)->parser process fail\n",
-				 size, vf->pts_us64);
+				pr_dolby_error("meta(%d), pts(%lld)->parser process fail\n", size, vf->pts_us64);
+				
 				if (vf)
-					pr_dolby_error
-					("meta(%d), pts(%lld) -> metadata parser process fail\n",
-					 size, vf->pts_us64);
+					pr_dolby_error("meta(%d), pts(%lld) -> metadata parser process fail\n", size, vf->pts_us64);
+				
 				ret = 3;
 			} else {
-				if (*total_comp_size + comp_size
-					< COMP_BUF_SIZE)
+				
+				if (*total_comp_size + comp_size < COMP_BUF_SIZE)
 					*total_comp_size += comp_size;
 				else
 					parser_overflow = true;
 
-				if (*total_md_size + md_size
-					< MD_BUF_SIZE)
+				if (*total_md_size + md_size < MD_BUF_SIZE)
 					*total_md_size += md_size;
 				else
 					parser_overflow = true;
+				
 				if (rpu_ret == 1)
 					*ret_flags = 1;
+				
 				ret = 0;
 			}
 			spin_unlock_irqrestore(&dovi_lock, flags);
@@ -3401,12 +3402,11 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 	}
 
 	if (*total_md_size) {
+		
 		if ((debug_dolby & 1) && vf)
-			pr_dolby_dbg
-			("meta(%d), pts(%lld) -> md(%d), comp(%d)\n",
-			 size, vf->pts_us64,
-			 *total_md_size, *total_comp_size);
-		if ((debug_dolby & 4) && dump_enable)  {
+			pr_dolby_dbg("meta(%d), pts(%lld) -> md(%d), comp(%d)\n", size, vf->pts_us64, *total_md_size, *total_comp_size);
+		
+		if ((debug_dolby & 4) && dump_enable) {
 			pr_dolby_dbg("parsed md(%d):\n", *total_md_size);
 			for (i = 0; i < *total_md_size + 7; i += 8) {
 				pr_info("%02x %02x %02x %02x %02x %02x %02x %02x\n",
@@ -3420,8 +3420,10 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 						md_buf[i + 7]);
 			}
 			pr_dolby_dbg("parsed comp(%d):\n", *total_comp_size);
+			
 			if (*total_comp_size < dump_size)
 				dump_size = *total_comp_size;
+			
 			for (i = 0; i < dump_size + 7; i += 8)
 				pr_info("%02x %02x %02x %02x %02x %02x %02x %02x\n",
 						comp_buf[i],
