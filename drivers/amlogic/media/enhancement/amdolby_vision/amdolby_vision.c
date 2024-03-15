@@ -4255,13 +4255,12 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 
 	if (vf) {
 		video_frame = true;
-		w = (vf->type & VIDTYPE_COMPRESS) ?
-			vf->compWidth : vf->width;
-		h = (vf->type & VIDTYPE_COMPRESS) ?
-			vf->compHeight : vf->height;
+		w = (vf->type & VIDTYPE_COMPRESS) ? vf->compWidth : vf->width;
+		h = (vf->type & VIDTYPE_COMPRESS) ? vf->compHeight : vf->height;
 	}
 
 	if (vf && (vf->source_type == VFRAME_SOURCE_TYPE_OTHERS)) {
+		
 		enum vframe_signal_fmt_e fmt;
 
 		input_mode = IN_MODE_OTT;
@@ -4273,16 +4272,14 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 
 		/* check source format */
 		fmt = get_vframe_src_fmt(vf);
-		if ((fmt == VFRAME_SIGNAL_FMT_DOVI || fmt == VFRAME_SIGNAL_FMT_INVALID) &&
-			!vf->discard_dv_data) {
-			vf_notify_provider_by_name
-					(dv_provider,
-					 VFRAME_EVENT_RECEIVER_GET_AUX_DATA,
-					 (void *)&req);
+		if ((fmt == VFRAME_SIGNAL_FMT_DOVI || fmt == VFRAME_SIGNAL_FMT_INVALID) && !vf->discard_dv_data) {
+			
+			vf_notify_provider_by_name(dv_provider, VFRAME_EVENT_RECEIVER_GET_AUX_DATA, (void *)&req);
 		}
+		
 		/* use callback aux date first, if invalid, use sei_ptr */
-		if ((!req.aux_buf || !req.aux_size) &&
-			fmt == VFRAME_SIGNAL_FMT_DOVI) {
+		if ((!req.aux_buf || !req.aux_size) && fmt == VFRAME_SIGNAL_FMT_DOVI) {
+			
 			u32 sei_size = 0;
 			char *sei;
 
@@ -4316,15 +4313,19 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			ret = get_md_from_src_fmt(vf);
 			
 			if (ret == 1) { /*parse succeeded*/
+				
 				meta_flag_bl = 0;
 				src_format = FORMAT_DOVI;
+				
 				memcpy(md_buf[current_id], vf->src_fmt.md_buf, vf->src_fmt.md_size);
 				memcpy(comp_buf[current_id], vf->src_fmt.comp_buf, vf->src_fmt.comp_size);
+				
 				total_md_size =  vf->src_fmt.md_size;
 				total_comp_size =  vf->src_fmt.comp_size;
 				ret_flags = vf->src_fmt.parse_ret_flags;
 				
 				if ((debug_dolby & 4) && dump_enable) {
+					
 					pr_dolby_dbg("get md_buf %p, size(%d):\n", vf->src_fmt.md_buf, vf->src_fmt.md_size);
 					
 					for (i = 0; i < total_md_size; i += 8)
@@ -4354,9 +4355,9 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 								comp_buf[current_id][i + 6],
 								comp_buf[current_id][i + 7]);
 				}
+				
 			} else {  /*no parse or parse failed*/
-				meta_flag_bl =
-						parse_sei_and_meta
+				meta_flag_bl = parse_sei_and_meta
 								(vf, &req,
 								 &total_comp_size,
 								 &total_md_size,
