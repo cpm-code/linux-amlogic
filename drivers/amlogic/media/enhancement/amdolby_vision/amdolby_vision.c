@@ -4373,16 +4373,17 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			if (ret_flags && req.dv_enhance_exist) {
 				
 				if (!strcmp(dv_provider, "dvbldec"))
-					vf_notify_provider_by_name
-							(dv_provider,
+					vf_notify_provider_by_name(dv_provider,
 							 VFRAME_EVENT_RECEIVER_DOLBY_BYPASS_EL,
 							 (void *)&req);
 				
 				pr_dolby_dbg("bypass mel\n");
 			}
 			
-			if (ret_flags == 1)
+			if (ret_flags == 1) {
 				mel_flag = is_mel = true;
+				pr_dolby_dbg("mel set\n");
+			}
 			
 			if (!is_dv_standard_es(req.dv_enhance_exist, ret_flags, w)) {
 				src_format = FORMAT_SDR;
@@ -4457,14 +4458,12 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 					el_req.aux_size = 0;
 					
 					if (!strcmp(dv_provider, "dvbldec"))
-						vf_notify_provider_by_name
-								("dveldec",
+						vf_notify_provider_by_name("dveldec",
 								 VFRAME_EVENT_RECEIVER_GET_AUX_DATA,
 								 (void *)&el_req);
 					
 					if (el_req.aux_buf && el_req.aux_size) {
-						meta_flag_el =
-								parse_sei_and_meta
+						meta_flag_el = parse_sei_and_meta
 										(el_vf, &el_req,
 										 &el_comp_size,
 										 &el_md_size,
@@ -4478,8 +4477,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 						src_bdp = 12;
 					}
 					
-					/* force set format as DOVI*/
-					/*	when meta data error */
+					/* force set format as DOVI */
+					/* when meta data error */
 					if (meta_flag_el && el_req.aux_buf && el_req.aux_size)
 						src_format = FORMAT_DOVI;
 					
