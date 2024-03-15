@@ -6452,19 +6452,15 @@ static void set_full_pq_value(struct dv_full_pq_info_s full_pq_info)
 	if (!set_inter_pq) {
 		exter_value = full_pq_info.brightness;
 		if (!is_valid_pq_exter_value(exter_value)) {
-			exter_value =
-					clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-			pr_info("clamps brightness from %d to %d\n",
-					full_pq_info.brightness, exter_value);
+			exter_value = clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
+			pr_info("clamps brightness from %d to %d\n", full_pq_info.brightness, exter_value);
 		}
 		inter_value = map_pq_exter_to_inter(PQ_BRIGHTNESS, exter_value);
 	} else {
 		inter_value = full_pq_info.brightness;
 		if (!is_valid_pq_inter_value(inter_value)) {
-			inter_value =
-					clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-			pr_info("clamps brightness from %d to %d\n",
-					full_pq_info.brightness, inter_value);
+			inter_value = clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
+			pr_info("clamps brightness from %d to %d\n", full_pq_info.brightness, inter_value);
 		}
 	}
 	cfg_info[cur_pic_mode].brightness = inter_value;
@@ -6473,19 +6469,15 @@ static void set_full_pq_value(struct dv_full_pq_info_s full_pq_info)
 	if (!set_inter_pq) {
 		exter_value = full_pq_info.contrast;
 		if (!is_valid_pq_exter_value(exter_value)) {
-			exter_value =
-					clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-			pr_info("clamps contrast from %d to %d\n",
-					full_pq_info.contrast, exter_value);
+			exter_value = clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
+			pr_info("clamps contrast from %d to %d\n", full_pq_info.contrast, exter_value);
 		}
 		inter_value = map_pq_exter_to_inter(PQ_CONTRAST, exter_value);
 	} else {
 		inter_value = full_pq_info.contrast;
 		if (!is_valid_pq_inter_value(inter_value)) {
-			inter_value =
-					clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-			pr_info("clamps contrast from %d to %d\n",
-					full_pq_info.contrast, inter_value);
+			inter_value = clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
+			pr_info("clamps contrast from %d to %d\n", full_pq_info.contrast, inter_value);
 		}
 	}
 	cfg_info[cur_pic_mode].contrast = inter_value;
@@ -6494,19 +6486,15 @@ static void set_full_pq_value(struct dv_full_pq_info_s full_pq_info)
 	if (!set_inter_pq) {
 		exter_value = full_pq_info.colorshift;
 		if (!is_valid_pq_exter_value(exter_value)) {
-			exter_value =
-					clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-			pr_info("clamps colorshift from %d to %d\n",
-					full_pq_info.colorshift, exter_value);
+			exter_value = clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
+			pr_info("clamps colorshift from %d to %d\n", full_pq_info.colorshift, exter_value);
 		}
 		inter_value = map_pq_exter_to_inter(PQ_COLORSHIFT, exter_value);
 	} else {
 		inter_value = full_pq_info.colorshift;
 		if (!is_valid_pq_inter_value(inter_value)) {
-			inter_value =
-					clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-			pr_info("clamps colorshift from %d to %d\n",
-					full_pq_info.colorshift, inter_value);
+			inter_value = clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
+			pr_info("clamps colorshift from %d to %d\n", full_pq_info.colorshift, inter_value);
 		}
 	}
 	cfg_info[cur_pic_mode].colorshift = inter_value;
@@ -6515,19 +6503,15 @@ static void set_full_pq_value(struct dv_full_pq_info_s full_pq_info)
 	if (!set_inter_pq) {
 		exter_value = full_pq_info.saturation;
 		if (!is_valid_pq_exter_value(exter_value)) {
-			exter_value =
-					clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-			pr_info("clamps saturation from %d to %d\n",
-					full_pq_info.saturation, exter_value);
+			exter_value = clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
+			pr_info("clamps saturation from %d to %d\n", full_pq_info.saturation, exter_value);
 		}
 		inter_value = map_pq_exter_to_inter(PQ_SATURATION, exter_value);
 	} else {
 		inter_value = full_pq_info.saturation;
 		if (!is_valid_pq_inter_value(inter_value)) {
-			inter_value =
-					clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-			pr_info("clamps saturation from %d to %d\n",
-					full_pq_info.saturation, inter_value);
+			inter_value = clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
+			pr_info("clamps saturation from %d to %d\n", full_pq_info.saturation, inter_value);
 		}
 	}
 	cfg_info[cur_pic_mode].saturation = inter_value;
@@ -6536,29 +6520,25 @@ static void set_full_pq_value(struct dv_full_pq_info_s full_pq_info)
 
 	if (debug_dolby & 0x200) {
 		pr_info("----------%s: mode:%d----------\n", __func__, mode);
-		exter_value = map_pq_inter_to_exter(PQ_BRIGHTNESS,
-											cfg_info[mode].brightness);
+		exter_value = map_pq_inter_to_exter(PQ_BRIGHTNESS, cfg_info[mode].brightness);
 		pr_info("%s: [inter:%d, exter:%d]\n",
 				pq_item_str[PQ_BRIGHTNESS],
 				cfg_info[mode].brightness,
 				exter_value);
 
-		exter_value = map_pq_inter_to_exter(PQ_CONTRAST,
-											cfg_info[mode].contrast);
+		exter_value = map_pq_inter_to_exter(PQ_CONTRAST, cfg_info[mode].contrast);
 		pr_info("%s: [inter:%d, exter:%d]\n",
 				pq_item_str[PQ_CONTRAST],
 				cfg_info[mode].contrast,
 				exter_value);
 
-		exter_value = map_pq_inter_to_exter(PQ_COLORSHIFT,
-											cfg_info[mode].colorshift);
+		exter_value = map_pq_inter_to_exter(PQ_COLORSHIFT, cfg_info[mode].colorshift);
 		pr_info("%s: [inter:%d, exter:%d]\n",
 				pq_item_str[PQ_COLORSHIFT],
 				cfg_info[mode].colorshift,
 				exter_value);
 
-		exter_value = map_pq_inter_to_exter(PQ_SATURATION,
-											cfg_info[mode].saturation);
+		exter_value = map_pq_inter_to_exter(PQ_SATURATION, cfg_info[mode].saturation);
 		pr_info("%s: [inter:%d, exter:%d]\n",
 				pq_item_str[PQ_SATURATION],
 				cfg_info[mode].saturation,
