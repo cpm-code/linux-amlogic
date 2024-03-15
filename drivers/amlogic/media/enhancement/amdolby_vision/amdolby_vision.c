@@ -4211,34 +4211,6 @@ static void send_hdmi_pkt_ahead
 	}
 }
 
-static u32 null_vf_cnt;
-static bool video_off_handled;
-static int is_video_output_off(struct vframe_s *vf)
-{
-	if ((READ_VPP_DV_REG(VPP_MISC) & (1 << 10)) == 0) {
-
-		/*Not reset frame0/1 clipping*/
-		/*when core off to avoid green garbage*/
-
-		if (!vf)
-			null_vf_cnt++;
-		else
-			null_vf_cnt = 0;
-
-		if (null_vf_cnt > dolby_vision_wait_delay + 1) {
-			null_vf_cnt = 0;
-			return 1;
-		}
-
-		if (video_off_handled)
-			return 1;
-
-	} else {
-		video_off_handled = 0;
-	}
-	return 0;
-}
-
 bool is_dv_standard_es(int dvel, int mflag, int width)
 {
 	if (dolby_vision_profile == 4 && dvel == 1 && mflag == 0 && width >= 3840)
@@ -4993,17 +4965,9 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 
 		if (debug_dolby & 1) {
 
-			if (is_video_output_off(vf))
-				pr_dolby_dbg("setting %d->%d(T:%d-%d), osd:%dx%d\n",
-							 src_format, dst_format,
-							 dolby_vision_target_min,
-							 dolby_vision_target_max[src_format][dst_format],
-							 osd_graphic_width,
-							 osd_graphic_height);
-
 			if (el_flag) {
 
-				pr_dolby_dbg("v %d: %dx%d %d->%d(T:%d-%d), g %d: %dx%d %d->%d,%s\n",
+				pr_dolby_dbg("v %d: %dx%d %d->%d(T:%d-%d), g %d: %dx%d %d->%d, %s\n",
 							 dovi_setting_video_flag,
 							 w == 0xffff ? 0 : w,
 							 h == 0xffff ? 0 : h,
