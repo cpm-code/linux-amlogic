@@ -7148,31 +7148,28 @@ static ssize_t amdolby_vision_write
 
 static ssize_t amdolby_vision_read
 		(struct file *file, char __user *buf,
-size_t count, loff_t *ppos)
+		size_t count, loff_t *ppos)
 {
-char *out;
-u32 data_size = 0, res, ret_val = -1;
+	char *out;
+	u32 data_size = 0, res, ret_val = -1;
 
-if (!is_dolby_vision_enable())
-return ret_val;
-out = tv_dolby_vision_get_crc(&data_size);
-if (data_size > CRC_BUFF_SIZE) {
-pr_err("crc_output_buff_off is out of bound\n");
-tv_dolby_vision_crc_clear(0);
-return ret_val;
-}
+	if (!is_dolby_vision_enable())
+		return ret_val;
 
-if (out && data_size > 0) {
-res = copy_to_user((void *)buf,
-				   (void *)out,
-				   data_size);
-ret_val = data_size - res;
-pr_info
-("%s crc size %d, res: %d, ret: %d\n",
-__func__, data_size, res, ret_val);
-tv_dolby_vision_crc_clear(0);
-}
-return ret_val;
+	out = tv_dolby_vision_get_crc(&data_size);
+	if (data_size > CRC_BUFF_SIZE) {
+		pr_err("crc_output_buff_off is out of bound\n");
+		tv_dolby_vision_crc_clear(0);
+		return ret_val;
+	}
+
+	if (out && data_size > 0) {
+		res = copy_to_user((void *)buf, (void *)out, data_size);
+		ret_val = data_size - res;
+		pr_info("%s crc size %d, res: %d, ret: %d\n", __func__, data_size, res, ret_val);
+		tv_dolby_vision_crc_clear(0);
+	}
+	return ret_val;
 }
 
 static int amdolby_vision_release(struct inode *inode, struct file *file)
