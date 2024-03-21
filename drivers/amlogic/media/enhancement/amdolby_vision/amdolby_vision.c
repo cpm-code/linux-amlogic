@@ -438,7 +438,6 @@ static struct dv_atsc p_atsc_md;
 
 static int content_fps = 24;
 static int gd_rf_adjust;
-static u32 last_vf_valid_crc;
 
 #define MAX_DV_PICTUREMODES 40
 struct pq_config *bin_to_cfg;
@@ -1728,7 +1727,6 @@ void enable_dolby_vision(int enable)
 				dolby_vision_core1_on = false;
 				dolby_vision_core1_on_cnt = 0;
 				frame_count = 0;
-				last_vf_valid_crc = 0;
 				pr_dolby_dbg("Dolby Vision core1 turn off\n");
 			}
 		}
@@ -1799,7 +1797,6 @@ void enable_dolby_vision(int enable)
 		}
 
 		frame_count = 0;
-		last_vf_valid_crc = 0;
 		core1_disp_hsize = 0;
 		core1_disp_vsize = 0;
 		dolby_vision_on = false;
