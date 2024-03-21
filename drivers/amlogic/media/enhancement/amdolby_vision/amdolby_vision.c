@@ -262,7 +262,7 @@ static bool dolby_vision_el_disable;
 #define FLAG_DOVI2HDR10_NOMAPPING	0x100000	/* For HDR10 don't do any tone mapping? */
 #define FLAG_PRIORITY_GRAPHIC		0x200000	/* Force Graphic Priority */
 #define FLAG_DISABLE_LOAD_VSVDB		0x400000	/* Disable loading from the HDMI - Vendor Specific Video Data Block - would only see difference in LLDV? */
-#define FLAG_DISABLE_CRC			0x800000	/* */
+#define FLAG_DISABLE_CRC			0x800000	/* Only related to Certification ? */
 #define FLAG_MUTE					0x4000000	/* Mute to do with Core 3 */
 #define FLAG_FORCE_HDMI_PKT			0x8000000	/* Force Pakcet on HDMI - code controlled */
 #define FLAG_TOGGLE_FRAME			0x80000000	/* Switch between modes ? */
