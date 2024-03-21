@@ -241,8 +241,6 @@ int get_dv_support_info(void)
 }
 EXPORT_SYMBOL(get_dv_support_info);
 
-char cur_crc[32] = "invalid";
-
 static uint dolby_vision_on_count;
 static bool dolby_vision_el_disable;
 
@@ -7020,7 +7018,6 @@ void tv_dolby_vision_crc_clear(int flag)
 	pr_info("clear crc_output_buf\n");
 	if (crc_output_buf)
 		memset(crc_output_buf, 0, CRC_BUFF_SIZE);
-	strcpy(cur_crc, "invalid");
 }
 
 char *tv_dolby_vision_get_crc(u32 *len)
@@ -8011,7 +8008,7 @@ static ssize_t amdolby_vision_core3_switch_store
 static ssize_t  amdolby_vision_crc_show(struct class *cla,
 										struct class_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\n", cur_crc);
+	return sprintf(buf, "\n");
 }
 
 static ssize_t dv_video_on_show
