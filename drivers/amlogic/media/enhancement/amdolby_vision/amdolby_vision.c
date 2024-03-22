@@ -3782,7 +3782,6 @@ static int notify_vd_signal_to_amvideo(struct vd_signal_info_s *vd_signal)
 	return 0;
 }
 
-/* #define HDMI_SEND_ALL_PKT */
 static u32 last_dst_format = FORMAT_SDR;
 static bool send_hdmi_pkt
 		(enum signal_format_enum src_format,
@@ -3960,14 +3959,6 @@ static bool send_hdmi_pkt
 			vinfo->vout_device->fresh_tx_hdr_pkt)
 			vinfo->vout_device->fresh_tx_hdr_pkt(&hdr10_data);
 
-#ifdef HDMI_SEND_ALL_PKT
-		if (vinfo && vinfo->vout_device &&
-			vinfo->vout_device->fresh_tx_vsif_pkt) {
-
-			vinfo->vout_device->fresh_tx_vsif_pkt
-				(0, 0, NULL, true);		}
-#endif
-
 		if (last_dst_format != FORMAT_HDR10 ||
 			(dolby_vision_flags & FLAG_FORCE_HDMI_PKT))
 			pr_dolby_dbg("send hdmi pkt: HDR10\n");
@@ -4003,33 +3994,6 @@ static bool send_hdmi_pkt
 			prepare_vsif_pkt(&vsif, &dovi_setting, vinfo, src_format);
 			prepare_emp_vsif_pkt(vsif_emp, &dovi_setting, vinfo);
 		}
-
-#ifdef HDMI_SEND_ALL_PKT
-		hdr10_data.features =
-			  (1 << 29)	/* video available */
-			| (5 << 26)	/* unspecified */
-			| (0 << 25)	/* limit */
-			| (1 << 24)	/* color available */
-			| (1 << 16)	/* bt709 */
-			| (1 << 8)	/* bt709 */
-			| (1 << 0);	/* bt709 */
-
-		for (i = 0; i < 3; i++) {
-			hdr10_data.primaries[i][0] = 0;
-			hdr10_data.primaries[i][1] = 0;
-		}
-
-		hdr10_data.white_point[0] = 0;
-		hdr10_data.white_point[1] = 0;
-		hdr10_data.luminance[0] = 0;
-		hdr10_data.luminance[1] = 0;
-		hdr10_data.max_content = 0;
-		hdr10_data.max_frame_average = 0;
-
-		if (vinfo && vinfo->vout_device &&
-		    vinfo->vout_device->fresh_tx_hdr_pkt)
-			vinfo->vout_device->fresh_tx_hdr_pkt(&hdr10_data);
-#endif
 
 		if (vinfo && vinfo->vout_device &&
 			vinfo->vout_device->fresh_tx_vsif_pkt) {
