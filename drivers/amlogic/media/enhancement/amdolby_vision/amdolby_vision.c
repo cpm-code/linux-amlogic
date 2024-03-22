@@ -1502,26 +1502,20 @@ static void apply_stb_core_settings
 	}
 
 	if (mask & 4) { 
+			
 		v_size = vinfo->height;
-		if ((vinfo->width == 720 &&
-			 vinfo->height == 480 &&
-			 vinfo->height != vinfo->field_height) ||
-			(vinfo->width == 720 &&
-			 vinfo->height == 576 &&
-			 vinfo->height != vinfo->field_height) ||
-			(vinfo->width == 1920 &&
-			 vinfo->height == 1080 &&
-			 vinfo->height != vinfo->field_height) ||
-			(vinfo->width == 1920 &&
-			 vinfo->height == 1080 &&
-			 vinfo->height != vinfo->field_height &&
-			 vinfo->sync_duration_num
-			 / vinfo->sync_duration_den == 50))
+		
+		if ((vinfo->width == 720 && vinfo->height == 480 && vinfo->height != vinfo->field_height) ||
+			(vinfo->width == 720 && vinfo->height == 576 && vinfo->height != vinfo->field_height) ||
+			(vinfo->width == 1920 && vinfo->height == 1080 && vinfo->height != vinfo->field_height) ||
+			(vinfo->width == 1920 && vinfo->height == 1080 &&
+			 vinfo->height != vinfo->field_height && vinfo->sync_duration_num / vinfo->sync_duration_den == 50))
 			v_size = v_size / 2;
+
 		mute_type = get_mute_type();
 
 		if ((get_video_mute() == VIDEO_MUTE_ON_DV) && (!(dolby_vision_flags & FLAG_MUTE) || cur_mute_type != mute_type)) {
-
+			
 			pr_dolby_dbg("mute %s\n", mute_type_str[mute_type]);
 
 			/* unmute vpp and mute by core3 */
