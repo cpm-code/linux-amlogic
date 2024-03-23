@@ -4490,11 +4490,13 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			meta_flag_bl = 0;
 		}
 
+		/* Have el layer, and not mel - then want to process as fel (if enable_fel flag is enabled) */
 		if (el_flag && !mel_flag &&
 			((dolby_vision_flags & FLAG_CERTIFICAION) == 0) && !enable_fel) {
 			el_flag = 0;
 			dolby_vision_el_disable = true;
 		}
+  
 		if (src_format != FORMAT_DOVI) {
 			el_flag = 0;
 			mel_flag = 0;
