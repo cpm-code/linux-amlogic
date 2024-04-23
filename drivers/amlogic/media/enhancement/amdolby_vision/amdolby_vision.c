@@ -2338,8 +2338,7 @@ static enum signal_format_enum get_cur_src_format(void)
 }
 
 static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_format)
-{
-	
+{	
 	const struct vinfo_s *vinfo;
 	int mode_change = 0;
 
@@ -2347,6 +2346,8 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 		return mode_change;
 
 	vinfo = get_current_vinfo();
+	
+	/* If MVC (Multi View Coding?) - Then cannot use DoVi */
 	if (src_format == FORMAT_MVC) {
 		if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
 			if (debug_dolby & 2)
@@ -2358,10 +2359,12 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 		}
 		return mode_change;
 	}
+
+	/* If CUVA - (China HDR Format?) - Then cannot use DoVi */
 	if (src_format == FORMAT_CUVA) {
 		if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
 			if (debug_dolby & 2)
-				pr_dolby_dbg("cuva, dovi output -> DOLBY_VISION_OUTPUT_MODE_BYPASS\n");
+				pr_dolby_dbg("cuva, dovi output -> BYPASS\n");
 			*mode = DOLBY_VISION_OUTPUT_MODE_BYPASS;
 			mode_change = 1;
 		} else {
@@ -2370,6 +2373,7 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 		return mode_change;
 	}
 
+	/* Follow the TV - if can do DoVi then let it convert to DoVi ? */
 	if (dolby_vision_policy == DOLBY_VISION_FOLLOW_SINK) {
 		
 		/* bypass dv_mode with efuse */
@@ -2382,14 +2386,18 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 			}
 			return mode_change;
 		}
-		
+
+		/* HLG - cannot convert to DoVi - so bypass */
+		/* HDR10Plus and policy not to convert to DoVi - then bypass */
 		if (src_format == FORMAT_HLG || (src_format == FORMAT_HDR10PLUS && !(dolby_vision_hdr10_policy & HDRP_BY_DV))) {
+			
 			if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
 				if (debug_dolby & 2)
 					pr_dolby_dbg("hlg/hdr+, dovi output -> BYPASS\n");
 				*mode = DOLBY_VISION_OUTPUT_MODE_BYPASS;
 				mode_change = 1;
 			}
+
 		} else if (cur_csc_type[VD1_PATH] != 0xffff && (get_hdr_module_status(VD1_PATH) == HDR_MODULE_ON)) {
 			
 			/*if vpp is playing hlg/hdr10+*/
@@ -2404,6 +2412,10 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 			return mode_change;
 			
 		} else if (vinfo && sink_support_dolby_vision(vinfo)) {
+
+			/*****************************************************/
+			/* If we get there then sending down the DoVi Tunnel */
+			/*****************************************************/
 			
 			/* TV support DOVI, All -> DOVI */
 			if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL) {
@@ -2411,38 +2423,49 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 				*mode = DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL;
 				mode_change = 1;
 			}
+			
 		} else if (vinfo && sink_support_hdr(vinfo)) {
+			
 			/* TV support HDR, All -> HDR */
 			if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_HDR10) {
 				pr_dolby_dbg("src=%d, dovi output -> DOLBY_VISION_OUTPUT_MODE_HDR10\n", src_format);
 				*mode = DOLBY_VISION_OUTPUT_MODE_HDR10;
 				mode_change = 1;
 			}
+			
 		} else {
+			
 			/* TV not support DOVI and HDR */
 			if (src_format == FORMAT_DOVI || src_format == FORMAT_DOVI_LL) {
+				
 				/* DOVI to SDR */
 				if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_SDR8) {
 					pr_dolby_dbg("dovi, dovi output -> DOLBY_VISION_OUTPUT_MODE_SDR8\n");
 					*mode = DOLBY_VISION_OUTPUT_MODE_SDR8;
 					mode_change = 1;
 				}
+				
 			} else if (src_format == FORMAT_HDR10) {
+				
 				if (dolby_vision_hdr10_policy & HDR_BY_DV_F_SINK) {
+					
 					if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_SDR8) {
 						/* HDR10 to SDR */
 						pr_dolby_dbg("hdr, dovi output -> DOLBY_VISION_OUTPUT_MODE_SDR8\n");
-						*mode =
-								DOLBY_VISION_OUTPUT_MODE_SDR8;
+						*mode = DOLBY_VISION_OUTPUT_MODE_SDR8;
 						mode_change = 1;
 					}
+					
 				} else if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
+					
 					/* HDR bypass */
 					pr_dolby_dbg("hdr, dovi output -> DOLBY_VISION_OUTPUT_MODE_BYPASS\n");
 					*mode = DOLBY_VISION_OUTPUT_MODE_BYPASS;
 					mode_change = 1;
+					
 				}
 			} else if (is_meson_g12b_cpu() || is_meson_g12a_cpu()) {
+				
 				/* dv cores keep on if in sdr mode */
 				if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_SDR8) {
 					/* SDR to SDR */
@@ -2450,13 +2473,17 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 					*mode = DOLBY_VISION_OUTPUT_MODE_SDR8;
 					mode_change = 1;
 				}
+				
 			} else if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
+				
 				/* HDR/SDR bypass */
 				pr_dolby_dbg("sdr, dovi output -> DOLBY_VISION_OUTPUT_MODE_BYPASS\n");
 				*mode = DOLBY_VISION_OUTPUT_MODE_BYPASS;
 				mode_change = 1;
+				
 			}
 		}
+		
 	} else if (dolby_vision_policy == DOLBY_VISION_FOLLOW_SOURCE) {
 		
 		/* bypass dv_mode with efuse */
@@ -2469,9 +2496,9 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 			}
 			return mode_change;
 		}
-		
-		if ((cur_csc_type[VD1_PATH] != 0xffff) &&
-			(get_hdr_module_status(VD1_PATH) == HDR_MODULE_ON) &&
+
+		/* Bypass if HDR is on (and format not DoVi) */
+		if ((cur_csc_type[VD1_PATH] != 0xffff) && (get_hdr_module_status(VD1_PATH) == HDR_MODULE_ON) &&
 			(!((src_format == FORMAT_DOVI) || (src_format == FORMAT_DOVI_LL)))) {
 			
 			/* bypass dolby incase VPP is not in sdr mode */
@@ -2532,7 +2559,9 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 			*mode = DOLBY_VISION_OUTPUT_MODE_BYPASS;
 			mode_change = 1;
 		}
+		
 	} else if (dolby_vision_policy == DOLBY_VISION_FORCE_OUTPUT_MODE) {
+		
 		if (dolby_vision_mode != *mode) {
 			pr_dolby_dbg("src=%d, dovi output mode change %d -> %d\n", src_format, dolby_vision_mode, *mode);
 			mode_change = 1;
