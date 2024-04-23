@@ -2371,6 +2371,7 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 	}
 
 	if (dolby_vision_policy == DOLBY_VISION_FOLLOW_SINK) {
+		
 		/* bypass dv_mode with efuse */
 		if (efuse_mode == 1 && !dolby_vision_efuse_bypass)  {
 			if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
@@ -2381,6 +2382,7 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 			}
 			return mode_change;
 		}
+		
 		if (src_format == FORMAT_HLG || (src_format == FORMAT_HDR10PLUS && !(dolby_vision_hdr10_policy & HDRP_BY_DV))) {
 			if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
 				if (debug_dolby & 2)
@@ -2458,7 +2460,6 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 	} else if (dolby_vision_policy == DOLBY_VISION_FOLLOW_SOURCE) {
 		
 		/* bypass dv_mode with efuse */
-		
 		if (efuse_mode == 1 && !dolby_vision_efuse_bypass) {
 			if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
 				*mode = DOLBY_VISION_OUTPUT_MODE_BYPASS;
@@ -2468,18 +2469,21 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 			}
 			return mode_change;
 		}
+		
 		if ((cur_csc_type[VD1_PATH] != 0xffff) &&
 			(get_hdr_module_status(VD1_PATH) == HDR_MODULE_ON) &&
-			(!((src_format == FORMAT_DOVI) ||
-			   (src_format == FORMAT_DOVI_LL)))) {
+			(!((src_format == FORMAT_DOVI) || (src_format == FORMAT_DOVI_LL)))) {
+			
 			/* bypass dolby incase VPP is not in sdr mode */
 			if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
 				pr_dolby_dbg("hdr module on, dovi output -> DOLBY_VISION_OUTPUT_MODE_BYPASS\n");
 				*mode = DOLBY_VISION_OUTPUT_MODE_BYPASS;
 				mode_change = 1;
-			}
+			}			
 			return mode_change;
-		} else if ((src_format == FORMAT_DOVI) || (src_format == FORMAT_DOVI_LL)) {
+			
+		} else if ((src_format == FORMAT_DOVI) || (src_format == FORMAT_DOVI_LL)) {		/* Source is DoVi */
+			
 			/* DOVI source */
 			if (vinfo && sink_support_dolby_vision(vinfo)) {
 				/* TV support DOVI, DOVI -> DOVI */
@@ -2490,22 +2494,22 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 				}
 			} else if (vinfo && sink_support_hdr(vinfo)) {
 				/* TV support HDR, DOVI -> HDR */
-				if (dolby_vision_mode !=
-					DOLBY_VISION_OUTPUT_MODE_HDR10) {
+				if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_HDR10) {
 					pr_dolby_dbg("dovi, dovi output -> DOLBY_VISION_OUTPUT_MODE_HDR10\n");
 					*mode = DOLBY_VISION_OUTPUT_MODE_HDR10;
 					mode_change = 1;
 				}
 			} else {
 				/* TV not support DOVI and HDR, DOVI -> SDR */
-				if (dolby_vision_mode !=
-					DOLBY_VISION_OUTPUT_MODE_SDR8) {
+				if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_SDR8) {
 					pr_dolby_dbg("dovi, dovi output -> DOLBY_VISION_OUTPUT_MODE_SDR8\n");
 					*mode = DOLBY_VISION_OUTPUT_MODE_SDR8;
 					mode_change = 1;
 				}
 			}
-		} else if ((src_format == FORMAT_HDR10) && (dolby_vision_hdr10_policy & HDR_BY_DV_F_SRC)) {
+			
+		} else if ((src_format == FORMAT_HDR10) && (dolby_vision_hdr10_policy & HDR_BY_DV_F_SRC)) { /* Source is HDR10 */
+			
 			if (vinfo && sink_support_hdr(vinfo)) {
 				/* TV support HDR, HDR -> HDR */
 				if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_HDR10) {
@@ -2521,6 +2525,7 @@ static int dolby_vision_policy_process(int *mode, enum signal_format_enum src_fo
 					mode_change = 1;
 				}
 			}
+			
 		} else if (dolby_vision_mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) {
 			/* HDR/SDR bypass */
 			pr_dolby_dbg("sdr, dovi output -> DOLBY_VISION_OUTPUT_MODE_BYPASS\n");
@@ -2576,16 +2581,18 @@ int is_dovi_frame(struct vframe_s *vf)
 	req.low_latency = 0;
 
 	if (vf->source_type == VFRAME_SOURCE_TYPE_OTHERS) {
+		
 		if (!strcmp(dv_provider, "dvbldec"))
-			vf_notify_provider_by_name
-					(dv_provider,
-					 VFRAME_EVENT_RECEIVER_GET_AUX_DATA,
-					 (void *)&req);
+			vf_notify_provider_by_name(dv_provider, VFRAME_EVENT_RECEIVER_GET_AUX_DATA, (void *)&req);
+		
 		if (req.dv_enhance_exist)
 			return 1;
+		
 		if (!req.aux_buf || !req.aux_size)
 			return 0;
+		
 		p = req.aux_buf;
+		
 		while (p < req.aux_buf + req.aux_size - 8) {
 			size = *p++;
 			size = (size << 8) | *p++;
