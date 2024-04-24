@@ -7093,10 +7093,10 @@ static int amdolby_vision_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static long amdolby_vision_ioctl(struct file *file,
-								 unsigned int cmd, unsigned long arg)
+static long amdolby_vision_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 #define MAX_BYTES (256)
+	
 	int ret = 0;
 	int mode_num = 0;
 	int mode_id = 0;
@@ -7111,8 +7111,7 @@ static long amdolby_vision_ioctl(struct file *file,
 	void __user *argp = (void __user *)arg;
 
 	if (debug_dolby & 0x200)
-		pr_info("[DV]: %s: cmd_nr = 0x%x\n",
-				__func__, _IOC_NR(cmd));
+		pr_info("[DV]: %s: cmd_nr = 0x%x\n", __func__, _IOC_NR(cmd));
 
 	if (!module_installed) {
 		pr_info("[DV] module not install\n");
@@ -7124,30 +7123,34 @@ static long amdolby_vision_ioctl(struct file *file,
 		return ret;
 	}
 	switch (cmd) {
+		
 		case DV_IOC_GET_DV_PIC_MODE_NUM:
 			mode_num = get_pic_mode_num();
 			put_user(mode_num, (u32 __user *)argp);
 			break;
+		
 		case DV_IOC_GET_DV_PIC_MODE_NAME:
-			if (copy_from_user(&pic_info, argp,
-							   sizeof(struct pic_mode_info_s)) == 0) {
+			if (copy_from_user(&pic_info, argp, sizeof(struct pic_mode_info_s)) == 0) {
+				
 				mode_id = pic_info.pic_mode_id;
 				strcpy(pic_info.name, get_pic_mode_name(mode_id));
+				
 				if (debug_dolby & 0x200)
-					pr_info("[DV]: get mode %d, name %s\n",
-							pic_info.pic_mode_id, pic_info.name);
-				if (copy_to_user(argp,
-								 &pic_info,
-								 sizeof(struct pic_mode_info_s)))
+					pr_info("[DV]: get mode %d, name %s\n", pic_info.pic_mode_id, pic_info.name);
+				
+				if (copy_to_user(argp, &pic_info, sizeof(struct pic_mode_info_s)))
 					ret = -EFAULT;
+				
 			} else {
 				ret = -EFAULT;
 			}
 			break;
+
 		case DV_IOC_GET_DV_PIC_MODE_ID:
 			mode_id = get_pic_mode();
 			put_user(mode_id, (u32 __user *)argp);
 			break;
+		
 		case DV_IOC_SET_DV_PIC_MODE_ID:
 			if (copy_from_user(&mode_id, argp, sizeof(s32)) == 0) {
 				if (debug_dolby & 0x200)
@@ -7157,9 +7160,9 @@ static long amdolby_vision_ioctl(struct file *file,
 				ret = -EFAULT;
 			}
 			break;
+		
 		case DV_IOC_GET_DV_SINGLE_PQ_VALUE:
-			if (copy_from_user(&pq_info, argp,
-							   sizeof(struct dv_pq_info_s)) == 0) {
+			if (copy_from_user(&pq_info, argp, sizeof(struct dv_pq_info_s)) == 0) {
 				mode_id = pq_info.pic_mode_id;
 				pq_item = pq_info.item;
 				pq_info.value = get_single_pq_value(mode_id, pq_item);
@@ -7170,31 +7173,29 @@ static long amdolby_vision_ioctl(struct file *file,
 							pq_item_str[pq_item],
 							pq_info.value);
 
-				if (copy_to_user(argp,
-								 &pq_info,
-								 sizeof(struct dv_pq_info_s)))
+				if (copy_to_user(argp, &pq_info, sizeof(struct dv_pq_info_s)))
 					ret = -EFAULT;
+				
 			} else {
 				ret = -EFAULT;
 			}
 			break;
+		
 		case DV_IOC_GET_DV_FULL_PQ_VALUE:
-			if (copy_from_user(&pq_full_info, argp,
-							   sizeof(struct dv_full_pq_info_s)) == 0) {
+			if (copy_from_user(&pq_full_info, argp, sizeof(struct dv_full_pq_info_s)) == 0) {
 				mode_id = pq_full_info.pic_mode_id;
 				pq_full_info = get_full_pq_value(mode_id);
 
-				if (copy_to_user(argp,
-								 &pq_full_info,
-								 sizeof(struct dv_full_pq_info_s)))
+				if (copy_to_user(argp, &pq_full_info, sizeof(struct dv_full_pq_info_s)))
 					ret = -EFAULT;
+
 			} else {
 				ret = -EFAULT;
 			}
 			break;
+		
 		case DV_IOC_SET_DV_SINGLE_PQ_VALUE:
-			if (copy_from_user(&pq_info, argp,
-							   sizeof(struct dv_pq_info_s)) == 0) {
+			if (copy_from_user(&pq_info, argp, sizeof(struct dv_pq_info_s)) == 0) {
 				mode_id = pq_info.pic_mode_id;
 				pq_item = pq_info.item;
 				pq_value = pq_info.value;
@@ -7210,17 +7211,17 @@ static long amdolby_vision_ioctl(struct file *file,
 				ret = -EFAULT;
 			}
 			break;
+		
 		case DV_IOC_SET_DV_FULL_PQ_VALUE:
-			if (copy_from_user(&pq_full_info, argp,
-							   sizeof(struct dv_full_pq_info_s)) == 0) {
+			if (copy_from_user(&pq_full_info, argp, sizeof(struct dv_full_pq_info_s)) == 0) {
 				set_full_pq_value(pq_full_info);
 			} else {
 				ret = -EFAULT;
 			}
 			break;
+		
 		case DV_IOC_SET_DV_PQ_RESET:
-			if (copy_from_user(&pq_reset, argp,
-							   sizeof(enum pq_reset_e)) == 0) {
+			if (copy_from_user(&pq_reset, argp, sizeof(enum pq_reset_e)) == 0) {
 				restore_dv_pq_setting(pq_reset);
 				if (debug_dolby & 0x200)
 					pr_info("[DV]: reset mode %d\n", pq_reset);
@@ -7228,9 +7229,9 @@ static long amdolby_vision_ioctl(struct file *file,
 				ret = -EFAULT;
 			}
 			break;
+		
 		case DV_IOC_SET_DV_CONFIG_FILE:
-			if (copy_from_user(&config_file, argp,
-							   sizeof(struct dv_config_file_s)) == 0) {
+			if (copy_from_user(&config_file, argp, sizeof(struct dv_config_file_s)) == 0) {
 
 				if (debug_dolby & 0x200)
 					pr_info("[DV]: config_file %s, %s\n",
@@ -7240,8 +7241,10 @@ static long amdolby_vision_ioctl(struct file *file,
 				ret = -EFAULT;
 			}
 			break;
+		
 		case DV_IOC_CONFIG_DV_BL:
 			if (copy_from_user(&force_disable_dv_backlight, argp, sizeof(s32)) == 0) {
+		
 				if (debug_dolby & 0x200)
 					pr_info("[DV]: disable dv bl %d\n", force_disable_dv_backlight);
 
@@ -7249,14 +7252,15 @@ static long amdolby_vision_ioctl(struct file *file,
 				ret = -EFAULT;
 			}
 			break;
+
 		case DV_IOC_SET_DV_AMBIENT:
-			if (copy_from_user(&ambient_config_new, argp,
-							   sizeof(struct ambient_cfg_s)) == 0) {
+			if (copy_from_user(&ambient_config_new, argp, sizeof(struct ambient_cfg_s)) == 0) {
 				ambient_update = true;
 			} else {
 				ret = -EFAULT;
 			}
 			break;
+
 		default:
 			ret = -EINVAL;
 			break;
@@ -7265,8 +7269,7 @@ static long amdolby_vision_ioctl(struct file *file,
 }
 
 #ifdef CONFIG_COMPAT
-static long amdolby_vision_compat_ioctl(struct file *file, unsigned int cmd,
-	unsigned long arg)
+static long amdolby_vision_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	unsigned long ret;
 
@@ -7315,7 +7318,6 @@ static const char *amdolby_vision_debug_usage_str = {
 		"echo bypass_all_vpp_pq 1 > /sys/class/amdolby_vision/debug; force bypass vpp pq in cert mode\n"
 		"echo enable_vpu_probe 1 > /sys/class/amdolby_vision/debug; enable vpu probe\n"
 		"echo ko_info > /sys/class/amdolby_vision/debug; query ko info\n"
-
 };
 
 static ssize_t  amdolby_vision_debug_show
@@ -7355,8 +7357,9 @@ static ssize_t amdolby_vision_debug_store
 		if (kstrtoul(parm[1], 10, &tbl_id) < 0)
 			return -EINVAL;
 		if (kstrtoul(parm[2], 16, &value) < 0)
-			return -EINVAL;
+			return -EINVAL;		
 		tv_dolby_vision_dma_table_modify((u32)tbl_id, (u64)value);
+
 	} else if (!strcmp(parm[0], "dv_efuse")) {
 		tv_dolby_vision_efuse_info();
 	} else if (!strcmp(parm[0], "dv_el")) {
