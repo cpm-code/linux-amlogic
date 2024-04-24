@@ -131,15 +131,33 @@ static unsigned int last_dolby_vision_policy;
 /* bit5: follow sink 0: bypass SDR to vpp, 1: process SDR by dolby core */
 /* bit6: follow source 0: bypass SDR to vpp, 1: process SDR by dolby core */
 
-#define HDR_BY_DV_F_SINK 0x1	/* 000001 */	
-#define HDR_BY_DV_F_SRC 0x2		/* 000010 */
-#define HDRP_BY_DV 0x4			/* 000100 */
-#define HLG_BY_DV_F_SINK 0x8	/* 001000 */
-#define HLG_BY_DV_F_SRC 0x10	/* 001010 */
-#define SDR_BY_DV_F_SINK 0x20	/* 010100 */	
-#define SDR_BY_DV_F_SRC 0x40	/* 101000 */
+#define HDR_BY_DV_F_SINK 0x1	/* 1  0000001 */	
+#define HDR_BY_DV_F_SRC 0x2		/* 2  0000010 */
+#define HDRP_BY_DV 0x4			/* 4  0000100 */
+#define HLG_BY_DV_F_SINK 0x8	/* 8  0001000 */
+#define HLG_BY_DV_F_SRC 0x10	/* 16 0010000 */
+#define SDR_BY_DV_F_SINK 0x20	/* 32 0100000 */	
+#define SDR_BY_DV_F_SRC 0x40	/* 64 1000000 */
 
 /* 000000 */ -- All off VPP process none Dolby Vision.
+
+/* 0x2 HDR_BY_DV_F_SRC */
+/* 0x10 HLG_BY_DV_F_SRC */
+/* 0x40 SDR_BY_DV_F_SRC */
+	
+/* 0x2 + 0x10 + 0x40 = 0x52 = 82 */
+	
+/* 0x1 HDR_BY_DV_F_SINK */
+/* 0x8 HLG_BY_DV_F_SINK */
+/* 0x20 SDR_BY_DV_F_SINK */
+
+/* 0x1 + 0x8 + 0x20 = 0x29 = 41 */
+
+/* 0x4 HDRP_BY_DV */
+
+/* 0x1 + 0x8 +0x20 + 0x4 = 0x2D = 45 */
+
+/* 0x73 = 115 ?? */
 
 static unsigned int dolby_vision_hdr10_policy = 0; /* (HDR_BY_DV_F_SRC | HLG_BY_DV_F_SRC | SDR_BY_DV_F_SRC) */
 module_param(dolby_vision_hdr10_policy, uint, 0664);
