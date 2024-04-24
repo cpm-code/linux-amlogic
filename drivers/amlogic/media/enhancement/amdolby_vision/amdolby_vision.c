@@ -7323,39 +7323,50 @@ static ssize_t amdolby_vision_debug_store
 		tv_dolby_vision_dma_table_modify((u32)tbl_id, (u64)value);
 
 	} else if (!strcmp(parm[0], "dv_efuse")) {
+		
 		tv_dolby_vision_efuse_info();
+		
 	} else if (!strcmp(parm[0], "dv_el")) {
+		
 		tv_dolby_vision_el_info();
+		
 	} else if (!strcmp(parm[0], "enable_tunnel")) {
+		
 		if (kstrtoul(parm[1], 10, &val) < 0)
 			return -EINVAL;
 		enable_tunnel = val;
 		pr_info("enable_tunnel %d\n", enable_tunnel);
 
 	} else if (!strcmp(parm[0], "debug_bypass_vpp_pq")) {
+		
 		if (kstrtoul(parm[1], 10, &val) < 0)
 			return -EINVAL;
 		debug_bypass_vpp_pq = val;
-		pr_info("set debug_bypass_vpp_pq %d\n",
-				debug_bypass_vpp_pq);
+		pr_info("set debug_bypass_vpp_pq %d\n", debug_bypass_vpp_pq);
+		
 	} else if (!strcmp(parm[0], "force_cert_bypass_vpp_pq")) {
+		
 		if (kstrtoul(parm[1], 10, &val) < 0)
 			return -EINVAL;
 		if (val == 0)
 			bypass_all_vpp_pq = 0;
 		else
 			bypass_all_vpp_pq = 1;
-		pr_info("set bypass_all_vpp_pq %d\n",
-				bypass_all_vpp_pq);
+		pr_info("set bypass_all_vpp_pq %d\n", bypass_all_vpp_pq);
+		
 	} else if (!strcmp(parm[0], "enable_fel")) {
+		
 		if (kstrtoul(parm[1], 10, &val) < 0)
 			return -EINVAL;
 		enable_fel = val;
 		is_mel = false;
 		pr_info("enable_fel %d\n", enable_fel);
+		
 	} else if (!strcmp(parm[0], "ko_info")) {
+		
 		if (ko_info)
 			pr_info("ko info: %s\n", ko_info);
+		
 	} else {
 		pr_info("unsupport cmd\n");
 	}
@@ -7805,8 +7816,10 @@ static ssize_t amdolby_vision_reg_store
 
 	if (!buf)
 		return count;
+	
 	buf_orig = kstrdup(buf, GFP_KERNEL);
 	parse_param(buf_orig, (char **)&parm);
+	
 	if (!strcmp(parm[0], "rv")) {
 		if (kstrtoul(parm[1], 16, &val) < 0) {
 			kfree(buf_orig);
@@ -7890,8 +7903,7 @@ static ssize_t amdolby_vision_core3_switch_store
 	return count;
 }
 
-static ssize_t  amdolby_vision_crc_show(struct class *cla,
-										struct class_attribute *attr, char *buf)
+static ssize_t  amdolby_vision_crc_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
 	return sprintf(buf, "\n");
 }
@@ -7902,9 +7914,7 @@ static ssize_t dv_video_on_show
 		 char *buf)
 {
 	ssize_t len = 0;
-
-	len += sprintf(buf + len, "%d\n",
-				   is_dolby_vision_video_on());
+	len += sprintf(buf + len, "%d\n", is_dolby_vision_video_on());
 	return len;
 }
 
@@ -7937,16 +7947,16 @@ static struct dv_device_data_s dolby_vision_g12 = {
 
 static const struct of_device_id amlogic_dolby_vision_match[] = {
 		{
-				.compatible = "amlogic, dolby_vision_g12a",
-				.data = &dolby_vision_g12,
+			.compatible = "amlogic, dolby_vision_g12a",
+			.data = &dolby_vision_g12,
 		},
 		{
-				.compatible = "amlogic, dolby_vision_g12b",
-				.data = &dolby_vision_g12,
+			.compatible = "amlogic, dolby_vision_g12b",
+			.data = &dolby_vision_g12,
 		},
 		{
-				.compatible = "amlogic, dolby_vision_sm1",
-				.data = &dolby_vision_g12,
+			.compatible = "amlogic, dolby_vision_sm1",
+			.data = &dolby_vision_g12,
 		},
 		{},
 };
@@ -7958,7 +7968,9 @@ static int amdolby_vision_probe(struct platform_device *pdev)
 	struct amdolby_vision_dev_s *devp = &amdolby_vision_dev;
 
 	pr_info("\n amdolby_vision probe start & ver: %s\n", DRIVER_VER);
+	
 	if (pdev->dev.of_node) {
+		
 		const struct of_device_id *match;
 		struct dv_device_data_s *dv_meson;
 		struct device_node *of_node = pdev->dev.of_node;
@@ -7981,23 +7993,26 @@ static int amdolby_vision_probe(struct platform_device *pdev)
 		}
 
 	}
+	
 	pr_info("\n cpu_id=%d\n", dv_meson_dev.cpu_id);
 	memset(devp, 0, (sizeof(struct amdolby_vision_dev_s)));
 
 	ret = alloc_chrdev_region(&devp->devno, 0, 1, AMDOLBY_VISION_NAME);
 	if (ret < 0)
 		goto fail_alloc_region;
-	devp->clsp = class_create(THIS_MODULE,
-							  AMDOLBY_VISION_CLASS_NAME);
+	
+	devp->clsp = class_create(THIS_MODULE, AMDOLBY_VISION_CLASS_NAME);
+	
 	if (IS_ERR(devp->clsp)) {
 		ret = PTR_ERR(devp->clsp);
 		goto fail_create_class;
 	}
+	
 	for (i = 0;  amdolby_vision_class_attrs[i].attr.name; i++) {
-		if (class_create_file(devp->clsp,
-							  &amdolby_vision_class_attrs[i]) < 0)
+		if (class_create_file(devp->clsp, &amdolby_vision_class_attrs[i]) < 0)
 			goto fail_class_create_file;
 	}
+	
 	cdev_init(&devp->cdev, &amdolby_vision_fops);
 	devp->cdev.owner = THIS_MODULE;
 	
@@ -8012,6 +8027,7 @@ static int amdolby_vision_probe(struct platform_device *pdev)
 		goto fail_create_device;
 
 	}
+	
 	dolby_vision_addr();
 	dolby_vision_init_receiver(pdev);
 	init_waitqueue_head(&devp->dv_queue);
@@ -8028,8 +8044,7 @@ static int amdolby_vision_probe(struct platform_device *pdev)
 	fail_class_create_file:
 	pr_info("[amdolby_vision.] : amdolby_vision class create file error.\n");
 	for (i = 0; amdolby_vision_class_attrs[i].attr.name; i++) {
-		class_remove_file(devp->clsp,
-						  &amdolby_vision_class_attrs[i]);
+		class_remove_file(devp->clsp, &amdolby_vision_class_attrs[i]);
 	}
 	class_destroy(devp->clsp);
 	fail_create_class:
