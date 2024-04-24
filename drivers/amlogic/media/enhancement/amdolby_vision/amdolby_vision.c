@@ -2674,7 +2674,6 @@ bool is_dovi_dual_layer_frame(struct vframe_s *vf)
 }
 EXPORT_SYMBOL(is_dovi_dual_layer_frame);
 
-
 #define signal_color_primaries ((vf->signal_type >> 16) & 0xff)
 #define signal_transfer_characteristic ((vf->signal_type >> 8) & 0xff)
 
@@ -2691,6 +2690,7 @@ static bool is_hlg_frame(struct vframe_s *vf)
 {
 	if (!vf)
 		return false;
+	
 	if (((get_dolby_vision_hdr_policy() & 2) == 0) &&
 		(signal_transfer_characteristic == 14 ||
 		 signal_transfer_characteristic == 18) &&
@@ -2703,9 +2703,9 @@ static bool is_hlg_frame(struct vframe_s *vf)
 static bool vf_is_hdr10_plus(struct vframe_s *vf)
 {
 	if (signal_transfer_characteristic == 0x30 &&
-		(signal_color_primaries == 9 ||
-		 signal_color_primaries == 2))
+		(signal_color_primaries == 9 || signal_color_primaries == 2))
 		return true;
+	
 	return false;
 }
 
@@ -2713,6 +2713,7 @@ static bool is_cuva_frame(struct vframe_s *vf)
 {
 	if ((vf->signal_type >> 31) & 1)
 		return true;
+	
 	return false;
 }
 
@@ -2722,24 +2723,24 @@ static bool is_hdr10plus_frame(struct vframe_s *vf)
 
 	if (!vf)
 		return false;
+	
 	if (!(dolby_vision_hdr10_policy & HDRP_BY_DV)) {
 		/* report hdr10 for the content hdr10+ and
 		 * sink is hdr10+ case
 		 */
 		if (signal_transfer_characteristic == 0x30 &&
 			(sink_support_hdr10_plus(vinfo)) &&
-			(signal_color_primaries == 9 ||
-			 signal_color_primaries == 2))
+			(signal_color_primaries == 9 || signal_color_primaries == 2))
 			return true;
 	}
+	
 	return false;
 }
 
 static bool vf_is_hdr10(struct vframe_s *vf)
 {
 	if (signal_transfer_characteristic == 16 &&
-		(signal_color_primaries == 9 ||
-		 signal_color_primaries == 2))
+		(signal_color_primaries == 9 || signal_color_primaries == 2))
 		return true;
 	return false;
 }
@@ -2750,17 +2751,19 @@ static bool is_hdr10_frame(struct vframe_s *vf)
 
 	if (!vf)
 		return false;
-	if ((signal_transfer_characteristic == 16 ||
-		 /* report as hdr10 for the content hdr10+ and
+	
+	if ((signal_transfer_characteristic == 16 ||		 
+		 /* 
+		  * report as hdr10 for the content hdr10+ and
 		  * sink not support hdr10+ or use DV to handle
 		  * hdr10+ as hdr10
-		  */
+		  */		
 		 (signal_transfer_characteristic == 0x30 &&
 		  ((!sink_support_hdr10_plus(vinfo)) ||
 		   (dolby_vision_hdr10_policy & HDRP_BY_DV)))) &&
-		(signal_color_primaries == 9 ||
-		 signal_color_primaries == 2))
+		(signal_color_primaries == 9 || signal_color_primaries == 2))
 		return true;
+	
 	return false;
 }
 
@@ -5812,17 +5815,17 @@ EXPORT_SYMBOL(is_dv_control_backlight);
 
 void set_dolby_vision_mode(int mode)
 {
-	if (dolby_vision_enable
-		&& (dolby_vision_request_mode == 0xff)) {
-		if (dolby_vision_policy_process(
-				&mode, get_cur_src_format())) {
+	if (dolby_vision_enable && (dolby_vision_request_mode == 0xff)) {
+		if (dolby_vision_policy_process(&mode, get_cur_src_format())) {
+			
 			dolby_vision_set_toggle_flag(1);
+			
 			if (mode != DOLBY_VISION_OUTPUT_MODE_BYPASS &&
-				dolby_vision_mode ==
-				DOLBY_VISION_OUTPUT_MODE_BYPASS)
+				dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_BYPASS)
 				dolby_vision_wait_on = true;
-			pr_info("DOVI output change from %d to %d\n",
-					dolby_vision_mode, mode);
+			
+			pr_info("DOVI output change from %d to %d\n", dolby_vision_mode, mode);
+			
 			dolby_vision_target_mode = mode;
 			dolby_vision_mode = mode;
 		}
@@ -5880,6 +5883,7 @@ int get_dolby_vision_hdr_policy(void)
 
 	if (!is_dolby_vision_enable())
 		return 0;
+	
 	if (dolby_vision_policy == DOLBY_VISION_FOLLOW_SOURCE) {
 		/* policy == FOLLOW_SRC, check hdr/hlg policy */
 		ret |= (dolby_vision_hdr10_policy & HDR_BY_DV_F_SRC) ? 1 : 0;
@@ -7857,8 +7861,7 @@ static ssize_t amdolby_vision_dv_mode_show(struct class *cla,
 	pr_info("\tDOLBY_VISION_OUTPUT_MODE_SDR10		4\n");
 	pr_info("\tDOLBY_VISION_OUTPUT_MODE_SDR8		5\n");
 	if (is_dolby_vision_enable())
-		pr_info("current dv_mode = %s\n",
-				dv_mode_str[get_dolby_vision_mode()]);
+		pr_info("current dv_mode = %s\n", dv_mode_str[get_dolby_vision_mode()]);
 	else
 		pr_info("current dv_mode = off\n");
 	return 0;
