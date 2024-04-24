@@ -5935,11 +5935,14 @@ static void parse_param_amdolby_vision(char *buf_orig, char **parm)
 
 static inline s16 clamps(s16 value, s16 v_min, s16 v_max)
 {
-if (value > v_max)
-return v_max;
-if (value < v_min)
-return v_min;
-return value;
+
+	if (value > v_max)
+	return v_max;
+
+	if (value < v_min)
+		return v_min;
+	
+	return value;
 }
 
 /*to do*/
@@ -5959,16 +5962,13 @@ static void update_cp_cfg(void)
 	unsigned long lockflags;
 	struct target_config *tdc;
 
-	if (cur_pic_mode >= num_picture_mode || num_picture_mode == 0 ||
-		!bin_to_cfg) {
-		pr_info("%s, invalid para %d/%d, bin_to_cfg %p",
-				__func__, cur_pic_mode, num_picture_mode, bin_to_cfg);
+	if (cur_pic_mode >= num_picture_mode || num_picture_mode == 0 || !bin_to_cfg) {
+		pr_info("%s, invalid para %d/%d, bin_to_cfg %p", __func__, cur_pic_mode, num_picture_mode, bin_to_cfg);
 		return;
 	}
 
-	memcpy(pq_config_fake,
-		   &bin_to_cfg[cur_pic_mode],
-		   sizeof(struct pq_config));
+	memcpy(pq_config_fake, &bin_to_cfg[cur_pic_mode], sizeof(struct pq_config));
+	
 	tdc = &(((struct pq_config *)pq_config_fake)->tdc);
 	tdc->d_brightness = cfg_info[cur_pic_mode].brightness;
 	tdc->d_contrast = cfg_info[cur_pic_mode].contrast;
@@ -6002,30 +6002,18 @@ static void restore_dv_pq_setting(enum pq_reset_e pq_reset)
 	for (mode = 0; mode < num_picture_mode; mode++) {
 		if (pq_reset == RESET_PQ_FOR_CUR && mode != cur_pic_mode)
 			continue;
-		cfg_info[mode].brightness =
-				bin_to_cfg[mode].tdc.d_brightness;
-		cfg_info[mode].contrast =
-				bin_to_cfg[mode].tdc.d_contrast;
-		cfg_info[mode].colorshift =
-				bin_to_cfg[mode].tdc.d_color_shift;
-		cfg_info[mode].saturation =
-				bin_to_cfg[mode].tdc.d_saturation;
-		memcpy(cfg_info[mode].vsvdb,
-			   bin_to_cfg[mode].tdc.vsvdb,
-			   sizeof(cfg_info[mode].vsvdb));
+		cfg_info[mode].brightness = bin_to_cfg[mode].tdc.d_brightness;
+		cfg_info[mode].contrast = bin_to_cfg[mode].tdc.d_contrast;
+		cfg_info[mode].colorshift = bin_to_cfg[mode].tdc.d_color_shift;
+		cfg_info[mode].saturation = bin_to_cfg[mode].tdc.d_saturation;
+		memcpy(cfg_info[mode].vsvdb, bin_to_cfg[mode].tdc.vsvdb, sizeof(cfg_info[mode].vsvdb));
 	}
-	cur_debug_tprimary[0][0] =
-			bin_to_cfg[0].tdc.t_primaries[0];
-	cur_debug_tprimary[0][1] =
-			bin_to_cfg[0].tdc.t_primaries[1];
-	cur_debug_tprimary[1][0] =
-			bin_to_cfg[0].tdc.t_primaries[2];
-	cur_debug_tprimary[1][1] =
-			bin_to_cfg[0].tdc.t_primaries[3];
-	cur_debug_tprimary[2][0] =
-			bin_to_cfg[0].tdc.t_primaries[4];
-	cur_debug_tprimary[2][1] =
-			bin_to_cfg[0].tdc.t_primaries[5];
+	cur_debug_tprimary[0][0] = bin_to_cfg[0].tdc.t_primaries[0];
+	cur_debug_tprimary[0][1] = bin_to_cfg[0].tdc.t_primaries[1];
+	cur_debug_tprimary[1][0] = bin_to_cfg[0].tdc.t_primaries[2];
+	cur_debug_tprimary[1][1] = bin_to_cfg[0].tdc.t_primaries[3];
+	cur_debug_tprimary[2][0] = bin_to_cfg[0].tdc.t_primaries[4];
+	cur_debug_tprimary[2][1] = bin_to_cfg[0].tdc.t_primaries[5];
 
 	update_cp_cfg();
 	if (debug_dolby & 0x200)
@@ -6120,8 +6108,7 @@ static s16 map_pq_exter_to_inter
 	inter_range = inter_pq_max - inter_pq_min;
 	exter_range = exter_pq_max - exter_pq_min;
 
-	inter_value = inter_pq_min +
-				  (tmp - exter_pq_min) * inter_range / exter_range;
+	inter_value = inter_pq_min + (tmp - exter_pq_min) * inter_range / exter_range;
 
 	if (debug_dolby & 0x200)
 		pr_info("%s: %s [%d]->[%d]\n",
@@ -6231,20 +6218,16 @@ static struct dv_full_pq_info_s get_full_pq_value(int mode)
 		return full_pq_info;
 	}
 
-	exter_value = map_pq_inter_to_exter(PQ_BRIGHTNESS,
-										cfg_info[mode].brightness);
+	exter_value = map_pq_inter_to_exter(PQ_BRIGHTNESS, cfg_info[mode].brightness);
 	full_pq_info.brightness = exter_value;
 
-	exter_value = map_pq_inter_to_exter(PQ_CONTRAST,
-										cfg_info[mode].contrast);
+	exter_value = map_pq_inter_to_exter(PQ_CONTRAST, cfg_info[mode].contrast);
 	full_pq_info.contrast = exter_value;
 
-	exter_value = map_pq_inter_to_exter(PQ_COLORSHIFT,
-										cfg_info[mode].colorshift);
+	exter_value = map_pq_inter_to_exter(PQ_COLORSHIFT, cfg_info[mode].colorshift);
 	full_pq_info.colorshift = exter_value;
 
-	exter_value = map_pq_inter_to_exter(PQ_SATURATION,
-										cfg_info[mode].saturation);
+	exter_value = map_pq_inter_to_exter(PQ_SATURATION, cfg_info[mode].saturation);
 	full_pq_info.saturation = exter_value;
 
 	if (debug_dolby & 0x200) {
@@ -6282,10 +6265,8 @@ static void set_single_pq_value(int mode, enum pq_item_e item, s16 value)
 	}
 	if (!set_inter_pq) {
 		if (!is_valid_pq_exter_value(exter_value)) {
-			exter_value =
-					clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-			pr_info("clamps %s to %d\n",
-					pq_item_str[item], exter_value);
+			exter_value = clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
+			pr_info("clamps %s to %d\n", pq_item_str[item], exter_value);
 		}
 		inter_value = map_pq_exter_to_inter(item, exter_value);
 		if (debug_dolby & 0x200) {
@@ -6296,10 +6277,8 @@ static void set_single_pq_value(int mode, enum pq_item_e item, s16 value)
 	} else {
 		inter_value = value;
 		if (!is_valid_pq_inter_value(inter_value)) {
-			inter_value =
-					clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-			pr_info("clamps %s to %d\n",
-					pq_item_str[item], inter_value);
+			inter_value = clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
+			pr_info("clamps %s to %d\n", pq_item_str[item], inter_value);
 		}
 		if (debug_dolby & 0x200) {
 			exter_value = map_pq_inter_to_exter(item, inter_value);
@@ -6478,8 +6457,7 @@ static ssize_t amdolby_vision_load_cfg_status_show
 		 struct class_attribute *attr,
 		 char *buf)
 {
-	return snprintf(buf, 40, "%d\n",
-					load_bin_config);
+	return snprintf(buf, 40, "%d\n", load_bin_config);
 }
 
 static ssize_t amdolby_vision_load_cfg_status_store
@@ -6494,11 +6472,13 @@ static ssize_t amdolby_vision_load_cfg_status_store
 	r = kstrtoint(buf, 0, &value);
 	if (r != 0)
 		return -EINVAL;
+	
 	load_bin_config = value;
 	if (load_bin_config)
 		update_cp_cfg();
 	else
 		pq_config_set_flag = false;
+	
 	return count;
 }
 
@@ -6614,49 +6594,64 @@ static ssize_t amdolby_vision_pq_info_store
 		goto ERR;
 
 	if (!strcmp(parm[0], "picture_mode")) {
+		
 		if (kstrtoint(parm[1], 10, &val) != 0)
 			goto ERR;
 		if (is_valid_pic_mode(val))
 			set_pic_mode(val);
 		else
 			pr_info("err picture_mode\n");
+		
 	} else if (!strcmp(parm[0], "brightness")) {
+		
 		if (kstrtoint(parm[1], 10, &val) != 0)
 			goto ERR;
 
 		item = PQ_BRIGHTNESS;
+		
 	} else if (!strcmp(parm[0], "contrast")) {
+		
 		if (kstrtoint(parm[1], 10, &val) != 0)
 			goto ERR;
 
 		item = PQ_CONTRAST;
+		
 	} else if (!strcmp(parm[0], "colorshift")) {
+		
 		if (kstrtoint(parm[1], 10, &val) != 0)
 			goto ERR;
 
 		item = PQ_COLORSHIFT;
+		
 	} else if (!strcmp(parm[0], "saturation")) {
+		
 		if (kstrtoint(parm[1], 10, &val) != 0)
 			goto ERR;
 		item = PQ_SATURATION;
+		
 	} else if (!strcmp(parm[0], "all")) {
+		
 		if (kstrtoint(parm[1], 10, &val1) != 0 ||
 			kstrtoint(parm[2], 10, &val2) != 0 ||
 			kstrtoint(parm[3], 10, &val3) != 0 ||
 			kstrtoint(parm[4], 10, &val4) != 0 ||
 			kstrtoint(parm[5], 10, &val5) != 0)
 			goto ERR;
+		
 		full_pq_info.pic_mode_id = val1;
 		full_pq_info.brightness = val2;
 		full_pq_info.contrast = val3;
 		full_pq_info.colorshift = val4;
 		full_pq_info.saturation = val5;
 		set_full_pq_value(full_pq_info);
+		
 	} else if (!strcmp(parm[0], "reset")) {
+		
 		if (kstrtoint(parm[1], 10, &val) != 0)
 			goto ERR;
 		pq_reset = val;
 		restore_dv_pq_setting(pq_reset);
+		
 	} else {
 		pr_info("unsupport cmd\n");
 	}
@@ -6687,25 +6682,15 @@ static ssize_t amdolby_vision_bin_config_show
 				cfg_info[mode].pic_mode_name);
 		pq_config = &bin_to_cfg[mode];
 		config = &pq_config->tdc;
-		pr_info("gamma:                %d\n",
-				config->gamma);
-		pr_info("eotf:                 %d-%s\n",
-				config->eotf,
-				eotf_str[config->eotf]);
-		pr_info("range_spec:           %d\n",
-				config->range_spec);
-		pr_info("max_pq:               %d\n",
-				config->max_pq);
-		pr_info("min_pq:               %d\n",
-				config->min_pq);
-		pr_info("max_pq_dm3:           %d\n",
-				config->max_pq_dm3);
-		pr_info("min_lin:              %d\n",
-				config->min_lin);
-		pr_info("max_lin:              %d\n",
-				config->max_lin);
-		pr_info("max_lin_dm3:          %d\n",
-				config->max_lin_dm3);
+		pr_info("gamma:                %d\n", config->gamma);
+		pr_info("eotf:                 %d-%s\n", config->eotf, eotf_str[config->eotf]);
+		pr_info("range_spec:           %d\n", config->range_spec);
+		pr_info("max_pq:               %d\n", config->max_pq);
+		pr_info("min_pq:               %d\n", config->min_pq);
+		pr_info("max_pq_dm3:           %d\n", config->max_pq_dm3);
+		pr_info("min_lin:              %d\n", config->min_lin);
+		pr_info("max_lin:              %d\n", config->max_lin);
+		pr_info("max_lin_dm3:          %d\n", config->max_lin_dm3);
 		pr_info("tPrimaries:           %d,%d,%d,%d,%d,%d,%d,%d\n",
 				config->t_primaries[0],
 				config->t_primaries[1],
@@ -6715,58 +6700,33 @@ static ssize_t amdolby_vision_bin_config_show
 				config->t_primaries[5],
 				config->t_primaries[6],
 				config->t_primaries[7]);
-		pr_info("m_sweight:             %d\n",
-				config->m_sweight);
-		pr_info("trim_slope_bias:       %d\n",
-				config->trim_slope_bias);
-		pr_info("trim_offset_bias:      %d\n",
-				config->trim_offset_bias);
-		pr_info("trim_power_bias:       %d\n",
-				config->trim_power_bias);
-		pr_info("ms_weight_bias:        %d\n",
-				config->ms_weight_bias);
-		pr_info("chroma_weight_bias:    %d\n",
-				config->chroma_weight_bias);
-		pr_info("saturation_gain_bias:  %d\n",
-				config->saturation_gain_bias);
-		pr_info("d_brightness:          %d\n",
-				config->d_brightness);
-		pr_info("d_contrast:            %d\n",
-				config->d_contrast);
-		pr_info("d_color_shift:         %d\n",
-				config->d_color_shift);
-		pr_info("d_saturation:          %d\n",
-				config->d_saturation);
-		pr_info("d_backlight:           %d\n",
-				config->d_backlight);
-		pr_info("dbg_exec_paramsprint:  %d\n",
-				config->dbg_exec_params_print_period);
-		pr_info("dbg_dm_md_print_period:%d\n",
-				config->dbg_dm_md_print_period);
-		pr_info("dbg_dmcfg_print_period:%d\n",
-				config->dbg_dm_cfg_print_period);
+		pr_info("m_sweight:             %d\n", config->m_sweight);
+		pr_info("trim_slope_bias:       %d\n", config->trim_slope_bias);
+		pr_info("trim_offset_bias:      %d\n", config->trim_offset_bias);
+		pr_info("trim_power_bias:       %d\n", config->trim_power_bias);
+		pr_info("ms_weight_bias:        %d\n", config->ms_weight_bias);
+		pr_info("chroma_weight_bias:    %d\n", config->chroma_weight_bias);
+		pr_info("saturation_gain_bias:  %d\n", config->saturation_gain_bias);
+		pr_info("d_brightness:          %d\n", config->d_brightness);
+		pr_info("d_contrast:            %d\n", config->d_contrast);
+		pr_info("d_color_shift:         %d\n", config->d_color_shift);
+		pr_info("d_saturation:          %d\n", config->d_saturation);
+		pr_info("d_backlight:           %d\n", config->d_backlight);
+		pr_info("dbg_exec_paramsprint:  %d\n", config->dbg_exec_params_print_period);
+		pr_info("dbg_dm_md_print_period:%d\n", config->dbg_dm_md_print_period);
+		pr_info("dbg_dmcfg_print_period:%d\n", config->dbg_dm_cfg_print_period);
 		pr_info("\n");
 		pr_info("------ Global Dimming configuration ------\n");
-		pr_info("gd_enable:            %d\n",
-				config->gd_config.gd_enable);
-		pr_info("gd_wmin:              %d\n",
-				config->gd_config.gd_wmin);
-		pr_info("gd_wmax:              %d\n",
-				config->gd_config.gd_wmax);
-		pr_info("gd_wmm:               %d\n",
-				config->gd_config.gd_wmm);
-		pr_info("gd_wdyn_rng_sqrt:     %d\n",
-				config->gd_config.gd_wdyn_rng_sqrt);
-		pr_info("gd_weight_mean:       %d\n",
-				config->gd_config.gd_weight_mean);
-		pr_info("gd_weight_std:        %d\n",
-				config->gd_config.gd_weight_std);
-		pr_info("gd_delay_ms_hdmi:     %d\n",
-				config->gd_config.gd_delay_msec_hdmi);
-		pr_info("gd_rgb2yuv_ext:       %d\n",
-				config->gd_config.gd_rgb2yuv_ext);
-		pr_info("gd_wdyn_rng_sqrt:     %d\n",
-				config->gd_config.gd_wdyn_rng_sqrt);
+		pr_info("gd_enable:            %d\n", config->gd_config.gd_enable);
+		pr_info("gd_wmin:              %d\n", config->gd_config.gd_wmin);
+		pr_info("gd_wmax:              %d\n", config->gd_config.gd_wmax);
+		pr_info("gd_wmm:               %d\n", config->gd_config.gd_wmm);
+		pr_info("gd_wdyn_rng_sqrt:     %d\n", config->gd_config.gd_wdyn_rng_sqrt);
+		pr_info("gd_weight_mean:       %d\n", config->gd_config.gd_weight_mean);
+		pr_info("gd_weight_std:        %d\n", config->gd_config.gd_weight_std);
+		pr_info("gd_delay_ms_hdmi:     %d\n", config->gd_config.gd_delay_msec_hdmi);
+		pr_info("gd_rgb2yuv_ext:       %d\n", config->gd_config.gd_rgb2yuv_ext);
+		pr_info("gd_wdyn_rng_sqrt:     %d\n", config->gd_config.gd_wdyn_rng_sqrt);
 		pr_info("gd_m33_rgb2yuv:       %d,%d,%d\n",
 				config->gd_config.gd_m33_rgb2yuv[0][0],
 				config->gd_config.gd_m33_rgb2yuv[0][1],
@@ -6779,85 +6739,52 @@ static ssize_t amdolby_vision_bin_config_show
 				config->gd_config.gd_m33_rgb2yuv[2][0],
 				config->gd_config.gd_m33_rgb2yuv[2][1],
 				config->gd_config.gd_m33_rgb2yuv[2][2]);
-		pr_info("gd_m33_rgb2yuv_scale2p:%d\n",
-				config->gd_config.gd_m33_rgb2yuv_scale2p);
-		pr_info("gd_rgb2yuv_off_ext:    %d\n",
-				config->gd_config.gd_rgb2yuv_off_ext);
+		pr_info("gd_m33_rgb2yuv_scale2p:%d\n", config->gd_config.gd_m33_rgb2yuv_scale2p);
+		pr_info("gd_rgb2yuv_off_ext:    %d\n", config->gd_config.gd_rgb2yuv_off_ext);
 		pr_info("gd_rgb2yuv_off:        %d,%d,%d\n",
 				config->gd_config.gd_rgb2yuv_off[0],
 				config->gd_config.gd_rgb2yuv_off[1],
 				config->gd_config.gd_rgb2yuv_off[2]);
-		pr_info("gd_up_bound:           %d\n",
-				config->gd_config.gd_up_bound);
-		pr_info("gd_low_bound:          %d\n",
-				config->gd_config.gd_low_bound);
-		pr_info("last_max_pq:           %d\n",
-				config->gd_config.last_max_pq);
-		pr_info("gd_wmin_pq:            %d\n",
-				config->gd_config.gd_wmin_pq);
-		pr_info("gd_wmax_pq:            %d\n",
-				config->gd_config.gd_wmax_pq);
-		pr_info("gd_wm_pq:              %d\n",
-				config->gd_config.gd_wm_pq);
-		pr_info("gd_trigger_period:     %d\n",
-				config->gd_config.gd_trigger_period);
-		pr_info("gd_trigger_lin_thresh: %d\n",
-				config->gd_config.gd_trigger_lin_thresh);
-		pr_info("gdDelayMilliSec_ott:   %d\n",
-				config->gd_config.gd_delay_msec_ott);
-		pr_info("gd_rise_weight:        %d\n",
-				config->gd_config.gd_rise_weight);
-		pr_info("gd_fall_weight:        %d\n",
-				config->gd_config.gd_fall_weight);
-		pr_info("gd_delay_msec_ll:      %d\n",
-				config->gd_config.gd_delay_msec_ll);
-		pr_info("gd_contrast:           %d\n",
-				config->gd_config.gd_contrast);
+		pr_info("gd_up_bound:           %d\n", config->gd_config.gd_up_bound);
+		pr_info("gd_low_bound:          %d\n", config->gd_config.gd_low_bound);
+		pr_info("last_max_pq:           %d\n", config->gd_config.last_max_pq);
+		pr_info("gd_wmin_pq:            %d\n", config->gd_config.gd_wmin_pq);
+		pr_info("gd_wmax_pq:            %d\n", config->gd_config.gd_wmax_pq);
+		pr_info("gd_wm_pq:              %d\n", config->gd_config.gd_wm_pq);
+		pr_info("gd_trigger_period:     %d\n", config->gd_config.gd_trigger_period);
+		pr_info("gd_trigger_lin_thresh: %d\n", config->gd_config.gd_trigger_lin_thresh);
+		pr_info("gdDelayMilliSec_ott:   %d\n", config->gd_config.gd_delay_msec_ott);
+		pr_info("gd_rise_weight:        %d\n", config->gd_config.gd_rise_weight);
+		pr_info("gd_fall_weight:        %d\n", config->gd_config.gd_fall_weight);
+		pr_info("gd_delay_msec_ll:      %d\n", config->gd_config.gd_delay_msec_ll);
+		pr_info("gd_contrast:           %d\n", config->gd_config.gd_contrast);
 		pr_info("\n");
 
 		pr_info("------ Adaptive boost configuration ------\n");
-		pr_info("ab_enable:             %d\n",
-				config->ab_config.ab_enable);
-		pr_info("ab_highest_tmax:       %d\n",
-				config->ab_config.ab_highest_tmax);
-		pr_info("ab_lowest_tmax:        %d\n",
-				config->ab_config.ab_lowest_tmax);
-		pr_info("ab_rise_weight:        %d\n",
-				config->ab_config.ab_rise_weight);
-		pr_info("ab_fall_weight:        %d\n",
-				config->ab_config.ab_fall_weight);
-		pr_info("ab_delay_msec_hdmi:    %d\n",
-				config->ab_config.ab_delay_msec_hdmi);
-		pr_info("ab_delay_msec_ott:     %d\n",
-				config->ab_config.ab_delay_msec_ott);
-		pr_info("ab_delay_msec_ll:      %d\n",
-				config->ab_config.ab_delay_msec_ll);
+		pr_info("ab_enable:             %d\n", config->ab_config.ab_enable);
+		pr_info("ab_highest_tmax:       %d\n", config->ab_config.ab_highest_tmax);
+		pr_info("ab_lowest_tmax:        %d\n", config->ab_config.ab_lowest_tmax);
+		pr_info("ab_rise_weight:        %d\n", config->ab_config.ab_rise_weight);
+		pr_info("ab_fall_weight:        %d\n", config->ab_config.ab_fall_weight);
+		pr_info("ab_delay_msec_hdmi:    %d\n", config->ab_config.ab_delay_msec_hdmi);
+		pr_info("ab_delay_msec_ott:     %d\n", config->ab_config.ab_delay_msec_ott);
+		pr_info("ab_delay_msec_ll:      %d\n", config->ab_config.ab_delay_msec_ll);
 		pr_info("\n");
 
 		pr_info("------- Ambient light configuration ------\n");
-		pr_info("ambient:            %d\n",
-				config->ambient_config.ambient);
-		pr_info("t_front_lux:        %d\n",
-				config->ambient_config.t_front_lux);
-		pr_info("t_front_lux_scale:  %d\n",
-				config->ambient_config.t_front_lux_scale);
-		pr_info("t_rear_lum:         %d\n",
-				config->ambient_config.t_rear_lum);
-		pr_info("t_rear_lum_scale:   %d\n",
-				config->ambient_config.t_rear_lum_scale);
+		pr_info("ambient:            %d\n", config->ambient_config.ambient);
+		pr_info("t_front_lux:        %d\n", config->ambient_config.t_front_lux);
+		pr_info("t_front_lux_scale:  %d\n", config->ambient_config.t_front_lux_scale);
+		pr_info("t_rear_lum:         %d\n", config->ambient_config.t_rear_lum);
+		pr_info("t_rear_lum_scale:   %d\n", config->ambient_config.t_rear_lum_scale);
 		pr_info("t_whitexy:          %d, %d\n",
 				config->ambient_config.t_whitexy[0],
 				config->ambient_config.t_whitexy[1]);
-		pr_info("t_surround_reflecti:%d\n",
-				config->ambient_config.t_surround_reflection);
-		pr_info("t_screen_reflection:%d\n",
-				config->ambient_config.t_screen_reflection);
-		pr_info("al_delay:           %d\n",
-				config->ambient_config.al_delay);
-		pr_info("al_rise:            %d\n",
-				config->ambient_config.al_rise);
-		pr_info("al_fall:            %d\n",
-				config->ambient_config.al_fall);
+		pr_info("t_surround_reflecti:%d\n", config->ambient_config.t_surround_reflection);
+		pr_info("t_screen_reflection:%d\n", config->ambient_config.t_screen_reflection);
+		pr_info("al_delay:           %d\n", config->ambient_config.al_delay);
+		pr_info("al_rise:            %d\n", config->ambient_config.al_rise);
+		pr_info("al_fall:            %d\n", config->ambient_config.al_fall);
 
 		pr_info("vsvdb:              %x,%x,%x,%x,%x,%x,%x\n",
 				config->vsvdb[0],
@@ -6881,18 +6808,13 @@ static ssize_t amdolby_vision_bin_config_show
 				config->ocsc_config.lms2rgb_mat[2][0],
 				config->ocsc_config.lms2rgb_mat[2][1],
 				config->ocsc_config.lms2rgb_mat[2][2]);
-		pr_info("lms2rgb_mat_scale:  %d\n",
-				config->ocsc_config.lms2rgb_mat_scale);
+		pr_info("lms2rgb_mat_scale:  %d\n", config->ocsc_config.lms2rgb_mat_scale);
 		pr_info("\n");
 
-		pr_info("dm31_avail:         %d\n",
-				config->dm31_avail);
-		pr_info("bright_preservation:%d\n",
-				config->bright_preservation);
-		pr_info("total_viewing_modes:%d\n",
-				config->total_viewing_modes_num);
-		pr_info("viewing_mode_valid: %d\n",
-				config->viewing_mode_valid);
+		pr_info("dm31_avail:         %d\n", config->dm31_avail);
+		pr_info("bright_preservation:%d\n", config->bright_preservation);
+		pr_info("total_viewing_modes:%d\n", config->total_viewing_modes_num);
+		pr_info("viewing_mode_valid: %d\n", config->viewing_mode_valid);
 		pr_info("\n");
 	}
 	return 0;
