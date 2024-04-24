@@ -437,6 +437,10 @@ static struct dv_atsc p_atsc_md;
 static int content_fps = 24;
 static int gd_rf_adjust;
 
+/***********************************************/
+/* What is this picture modes for TV not STB ? */
+/***********************************************/
+
 #define MAX_DV_PICTUREMODES 40
 struct pq_config *bin_to_cfg;
 
@@ -457,11 +461,7 @@ static const s16 EXTER_MAX_PQ = 256;
 static const s16 INTER_MIN_PQ = -4096;
 static const s16 INTER_MAX_PQ = 4095;
 
-const char *pq_item_str[] = {"brightness",
-							 "contrast",
-							 "colorshift",
-							 "saturation"};
-
+const char *pq_item_str[] = {"brightness", "contrast", "colorshift","saturation"};
 const char *eotf_str[] = {"bt1886", "pq", "power"};
 
 static u32 cur_debug_tprimary[3][2];
@@ -469,7 +469,11 @@ static int debug_tprimary;
 
 /*0: set exter pq [-256,256]. 1:set inter pq [-4096,4095]*/
 static int set_inter_pq;
+
 static DEFINE_SPINLOCK(cfg_lock);
+
+/***********************************************/
+/***********************************************/
 
 unsigned int debug_dolby;
 module_param(debug_dolby, uint, 0664);
@@ -5933,8 +5937,7 @@ static void update_vsvdb_to_rx(void)
 
 	if (memcmp(&current_vsvdb[0], p, sizeof(current_vsvdb))) {
 		memcpy(&current_vsvdb[0], p, sizeof(current_vsvdb));
-		pr_info("%s: %d %d %d %d %d %d %d\n",
-				__func__, p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
+		pr_info("%s: %d %d %d %d %d %d %d\n", __func__, p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
 	}
 }
 
@@ -6051,9 +6054,7 @@ static s16 map_pq_inter_to_exter(enum pq_item_e pq_item, s16 inter_value)
 }
 
 /*external range -> internal range*/
-static s16 map_pq_exter_to_inter
-		(enum pq_item_e pq_item,
-		 s16 exter_value)
+static s16 map_pq_exter_to_inter(enum pq_item_e pq_item, s16 exter_value)
 {
 	s16 inter_pq_min;
 	s16 inter_pq_max;
@@ -6640,8 +6641,7 @@ static ssize_t amdolby_vision_bin_config_show
 
 	pr_info("There are %d picture modes\n", num_picture_mode);
 	for (mode = 0; mode < num_picture_mode; mode++) {
-		pr_info("================ Picture Mode: %s =================\n",
-				cfg_info[mode].pic_mode_name);
+		pr_info("================ Picture Mode: %s =================\n", cfg_info[mode].pic_mode_name);
 		pq_config = &bin_to_cfg[mode];
 		config = &pq_config->tdc;
 		pr_info("gamma:                %d\n", config->gamma);
