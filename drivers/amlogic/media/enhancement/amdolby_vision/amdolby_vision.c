@@ -2672,16 +2672,21 @@ EXPORT_SYMBOL(is_dovi_dual_layer_frame);
 #define signal_transfer_characteristic ((vf->signal_type >> 8) & 0xff)
 
 /* signal_transfer_characteristic 1 -> BT709 (SDR) */
-/* signal_transfer_characteristic 14 -> BT2020 (SDR) */
-/* signal_transfer_characteristic 16 -> BT2100 (HDR) */
-/* signal_transfer_characteristic 18 -> BT2100 (HLG) */
+/* signal_transfer_characteristic 2 -> unknown */
+/* signal_transfer_characteristic 14 -> BT2020 (SDR10) (10 bit)*/
+/* signal_transfer_characteristic 14 -> BT2020 (SDR12) (12 bit)*/
+/* signal_transfer_characteristic 16 -> BT2100 (HDR10) */
+/* signal_transfer_characteristic 18 -> BT2100 (HLG10) */
+/* signal_transfer_characteristic 48 (0x30) -> (HDR10+) */
 
 /* colour_primaries 1 -> BT709 (SDR) */
+/* colour_primaries 2 -> unknown */
 /* colour_primaries 9 -> BT2020 (SDR) / BT2100 (HDR/HLG) */
 
 static bool vf_is_hlg(struct vframe_s *vf)
 {
-	if ((signal_transfer_characteristic == 14 || signal_transfer_characteristic == 18) && signal_color_primaries == 9)
+	/*if ((signal_transfer_characteristic == 14 || signal_transfer_characteristic == 18) && signal_color_primaries == 9)*/
+	if ((signal_transfer_characteristic == 18) && signal_color_primaries == 9)
 		return true;
 	return false;
 }
@@ -2692,7 +2697,8 @@ static bool is_hlg_frame(struct vframe_s *vf)
 		return false;
 	
 	if (((get_dolby_vision_hdr_policy() & 2) == 0) &&
-		(signal_transfer_characteristic == 14 || signal_transfer_characteristic == 18) && signal_color_primaries == 9)
+		/*(signal_transfer_characteristic == 14 || signal_transfer_characteristic == 18) && signal_color_primaries == 9)*/
+		(signal_transfer_characteristic == 18) && signal_color_primaries == 9)
 		return true;
 
 	return false;
