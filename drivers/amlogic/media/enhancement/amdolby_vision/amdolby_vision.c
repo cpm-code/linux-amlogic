@@ -2671,6 +2671,14 @@ EXPORT_SYMBOL(is_dovi_dual_layer_frame);
 #define signal_color_primaries ((vf->signal_type >> 16) & 0xff)
 #define signal_transfer_characteristic ((vf->signal_type >> 8) & 0xff)
 
+/* signal_transfer_characteristic 1 -> BT709 (SDR) */
+/* signal_transfer_characteristic 14 -> BT2020 (SDR) */
+/* signal_transfer_characteristic 16 -> BT2100 (HDR) */
+/* signal_transfer_characteristic 18 -> BT2100 (HLG) */
+
+/* colour_primaries 1 -> BT709 (SDR) */
+/* colour_primaries 9 -> BT2020 (SDR) / BT2100 (HDR/HLG) */
+
 static bool vf_is_hlg(struct vframe_s *vf)
 {
 	if ((signal_transfer_characteristic == 14 || signal_transfer_characteristic == 18) && signal_color_primaries == 9)
