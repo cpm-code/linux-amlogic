@@ -139,7 +139,7 @@ static unsigned int last_dolby_vision_policy;
 #define SDR_BY_DV_F_SINK 0x20	/* 32 0100000 */	
 #define SDR_BY_DV_F_SRC 0x40	/* 64 1000000 */
 
-/* 000000 */ -- All off VPP process none Dolby Vision.
+/* 0000000 */ -- All off VPP process none Dolby Vision.
 
 /* 0x2 HDR_BY_DV_F_SRC */
 /* 0x10 HLG_BY_DV_F_SRC */
@@ -157,7 +157,7 @@ static unsigned int last_dolby_vision_policy;
 
 /* 0x1 + 0x8 +0x20 + 0x4 = 0x2D = 45 */
 
-/* 0x73 = 115 ?? */
+/* 0x1 + 0x2 + 0x10 + 0x20 + 0x40 = 0x73 = 115 ?? why default to this ?? */
 
 static unsigned int dolby_vision_hdr10_policy = 0; /* (HDR_BY_DV_F_SRC | HLG_BY_DV_F_SRC | SDR_BY_DV_F_SRC) */
 module_param(dolby_vision_hdr10_policy, uint, 0664);
