@@ -2765,15 +2765,15 @@ static bool is_hdr10_frame(struct vframe_s *vf)
 	if (!vf)
 		return false;
 	
-	if ((signal_transfer_characteristic == 16 ||		 
-		 /* 
-		  * report as hdr10 for the content hdr10+ and
-		  * sink not support hdr10+ or use DV to handle
-		  * hdr10+ as hdr10
-		  */		
-		 (signal_transfer_characteristic == 0x30 &&
-		  ((!sink_support_hdr10_plus(vinfo)) ||
-		   (dolby_vision_hdr10_policy & HDRP_BY_DV)))) &&
+	if (
+		(signal_transfer_characteristic == 16 ||		 
+		 	/* 
+		  	* report as hdr10 for the content hdr10+ and
+		  	* sink not support hdr10+ or use DV to handle
+		  	* hdr10+ as hdr10
+		  	*/		
+		 	(signal_transfer_characteristic == 0x30 && ( (!sink_support_hdr10_plus(vinfo)) || (dolby_vision_hdr10_policy & HDRP_BY_DV))))		
+		&&
 		(signal_color_primaries == 9 || signal_color_primaries == 2))
 		return true;
 	
