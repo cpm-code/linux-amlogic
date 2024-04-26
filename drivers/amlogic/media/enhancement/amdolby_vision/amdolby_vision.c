@@ -2679,9 +2679,19 @@ EXPORT_SYMBOL(is_dovi_dual_layer_frame);
 /* signal_transfer_characteristic 18 -> BT2100 (HLG10) */
 /* signal_transfer_characteristic 48 (0x30) -> (HDR10+) */
 
-/* colour_primaries 1 -> BT709 (SDR) */
-/* colour_primaries 2 -> unknown */
-/* colour_primaries 9 -> BT2020 (SDR) / BT2100 (HDR/HLG) */
+/* signal_colour_primaries 1 -> BT709 (SDR) */
+/* signal_colour_primaries 2 -> unknown */
+/* signal_colour_primaries 9 -> BT2020 (SDR) / BT2100 (HDR/HLG) */
+
+/* https://www.atsc.org/wp-content/uploads/2021/03/A341-2019-Video-HEVC-with-Amendment-No-1.pdf */
+
+/* SDR -> signal_colour_primaries 1 or 9 	and signal_transfer_characteristic 1 */
+/* HDR -> signal_colour_primaries 9 		and signal_transfer_characteristic 16 */
+/* HLG -> signal_colour_primaries 9		and signal_transfer_characteristic 18 */
+
+/* From Code - need better source for this? */
+	
+/* HDR10+ -> signal_color_primaries 2 or 9 	and signal_transfer_characteristic 48 (0x30) */
 
 static bool vf_is_hlg(struct vframe_s *vf)
 {
