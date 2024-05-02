@@ -2693,6 +2693,7 @@ EXPORT_SYMBOL(is_dovi_dual_layer_frame);
 	
 /* HDR10+ -> signal_color_primaries 2 or 9 	and signal_transfer_characteristic 48 (0x30) */
 
+/* Test for hlg */
 static bool vf_is_hlg(struct vframe_s *vf)
 {
 	/*if ((signal_transfer_characteristic == 14 || signal_transfer_characteristic == 18) && signal_color_primaries == 9)*/
@@ -2701,6 +2702,7 @@ static bool vf_is_hlg(struct vframe_s *vf)
 	return false;
 }
 
+/ * Test for hlg - checks hdr10 policy not set for hlg (i.e. no convertion to dovi) */
 static bool is_hlg_frame(struct vframe_s *vf)
 {
 	if (!vf)
@@ -2714,6 +2716,7 @@ static bool is_hlg_frame(struct vframe_s *vf)
 	return false;
 }
 
+/* Test for hdr10 plus */
 static bool vf_is_hdr10_plus(struct vframe_s *vf)
 {
 	if (signal_transfer_characteristic == 0x30 && (signal_color_primaries == 9 || signal_color_primaries == 2))
@@ -2722,6 +2725,7 @@ static bool vf_is_hdr10_plus(struct vframe_s *vf)
 	return false;
 }
 
+/* Test for cuva */
 static bool is_cuva_frame(struct vframe_s *vf)
 {
 	if ((vf->signal_type >> 31) & 1)
@@ -2730,6 +2734,7 @@ static bool is_cuva_frame(struct vframe_s *vf)
 	return false;
 }
 
+/* Test for hdr10+ - checks hdr10 policy not set for hdr10+ (i.e. no convertion to dovi) */
 static bool is_hdr10plus_frame(struct vframe_s *vf)
 {
 	const struct vinfo_s *vinfo = get_current_vinfo();
@@ -2750,6 +2755,7 @@ static bool is_hdr10plus_frame(struct vframe_s *vf)
 	return false;
 }
 
+/* Test for hdr10 */
 static bool vf_is_hdr10(struct vframe_s *vf)
 {
 	if (signal_transfer_characteristic == 16 &&
@@ -2758,6 +2764,7 @@ static bool vf_is_hdr10(struct vframe_s *vf)
 	return false;
 }
 
+/* Test for hdr10 - checks hdr10 policy not set for hdr10 (i.e. no convertion to dovi) */
 static bool is_hdr10_frame(struct vframe_s *vf)
 {
 	const struct vinfo_s *vinfo = get_current_vinfo();
@@ -2807,6 +2814,7 @@ int dolby_vision_check_mvc(struct vframe_s *vf)
 }
 EXPORT_SYMBOL(dolby_vision_check_mvc);
 
+/* Check Policy and hdr10 policy */
 int dolby_vision_check_hlg(struct vframe_s *vf)
 {
 	int mode;
