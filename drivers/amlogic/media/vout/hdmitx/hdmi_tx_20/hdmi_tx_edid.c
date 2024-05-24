@@ -901,6 +901,18 @@ static void Edid_ParsingSpeakerDATABlock(struct hdmitx_info *info,
 	}
 }
 
+void Edid_ParseDolbyVSVDB(struct dv_info *dv, unsigned char *buf)
+{
+	if (dv && buf) {		
+		// Allocate memory incase someone passes wrong ieeeoui. TODO: Possible to construct the ieeeoui here instead then remove that need - how to set the length correctly, or just limit to V2 Dolby VSVDB maybe.
+		struct hdr10_plus_info *hdr10_plus = 
+		struct cuva_info *cuva = 
+		_Edid_ParsingVendSpec(dv, hdr10_plus, cuva, buf);
+		kfree(hdr10_plus);
+		kfree(cuva);
+	}
+}
+
 static void _Edid_ParsingVendSpec(struct dv_info *dv,
 				  struct hdr10_plus_info *hdr10_plus,
 				  struct cuva_info *cuva,
