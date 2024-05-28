@@ -1101,6 +1101,13 @@ static void _Edid_ParsingVendSpec(struct dv_info *dv,
 		pr_info("hdmitx: edid: maybe invalid dv%d data\n", dv->ver);
 }
 
+void edid_parse_dolby_vsvdb(struct dv_info *dv, unsigned char *buf)
+{
+	if (dv && buf) {
+		_Edid_ParsingVendSpec(dv, NULL, NULL, buf);
+	}
+}
+
 static void Edid_ParsingVendSpec(struct hdmitx_dev *hdev,
 				 struct rx_cap *prxcap,
 				 unsigned char *buf)
