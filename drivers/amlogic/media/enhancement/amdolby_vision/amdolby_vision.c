@@ -309,6 +309,18 @@ static unsigned int dolby_vision_flags = FLAG_BYPASS_VPP | FLAG_FORCE_CVM;
 module_param(dolby_vision_flags, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_flags, "\n dolby_vision_flags\n");
 
+static unsigned int dolby_vision_dolby_vsvdb_inject = 0;
+module_param(dolby_vision_dolby_vsvdb_inject, uint, 0664);
+MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_inject, "\n dolby_vision_dolby_vsvdb_inject\n");
+
+static char *dolby_vision_dolby_vsvdb_payload = "";
+module_param(dolby_vision_dolby_vsvdb_payload, charp, 0664);
+MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_payload, "\n dolby_vision_dolby_vsvdb_payload\n");
+
+static bool dolby_vision_hdr_for_lldv = false;
+module_param(dolby_vision_hdr_for_lldv, bool, 0664);
+MODULE_PARM_DESC(dolby_vision_hdr_for_lldv, "\n dolby_vision_hdr_for_lldv\n");
+
 /*bit0:reset core1 reg; bit1:reset core2 reg;bit2:reset core3 reg*/
 /*bit3: reset core1 lut; bit4: reset core2 lut*/
 static unsigned int force_update_reg;
@@ -7311,6 +7323,37 @@ static bool send_hdmi_pkt
 			pr_dolby_dbg("\tMPALL = %d\n\n",
 				hdr10_data.max_frame_average);
 		}
+	} else if (dst_format == FORMAT_DOVI && dovi_setting.dovi_ll_enable && dolby_vision_hdr_for_lldv) {
+
+		sdr_transition_delay = 0;
+		hdr10_data.features =
+			  (1 << 29)		/* 1 video available / present */
+			| (5 << 26)		/* 5 unspecified */
+			| (0 << 25)		/* 0 limited range */
+			| (1 << 24)		/* 1 color available / present */
+			| (9 << 16)		/* 9 primaries bt2020 */
+			| (0x10 << 8)	/* 16 transfer char. smpte-st-2084 */
+			| (10 << 0);	/* 10 matrix co. bt2020nc */
+
+		for (i = 0; i < 3; i++) {
+			hdr10_data.primaries[i][0] = 0;
+			hdr10_data.primaries[i][1] = 0;
+		}
+		hdr10_data.white_point[0] = 0;
+		hdr10_data.white_point[1] = 0;
+		hdr10_data.luminance[0] = 0;
+		hdr10_data.luminance[1] = 0;
+		hdr10_data.max_content = 0;
+		hdr10_data.max_frame_average = 0;
+
+		if (vinfo && vinfo->vout_device &&
+		    vinfo->vout_device->fresh_tx_hdr_pkt)
+			vinfo->vout_device->fresh_tx_hdr_pkt(&hdr10_data);
+
+		last_dst_format = dst_format;
+		vd_signal.signal_type = SIGNAL_HDR10;
+		notify_vd_signal_to_amvideo(&vd_signal);
+
 	} else if (dst_format == FORMAT_DOVI) {
 		struct dv_vsif_para vsif;
 
@@ -7841,6 +7884,37 @@ bool check_vf_changed(struct vframe_s *vf)
 	return changed;
 }
 
+static void inject_dolby_vsvdb(const struct vinfo_s *vinfo)
+{
+	// Get the DOLBY VSVDB from the parameter
+	size_t payload_str_len = strlen(dolby_vision_dolby_vsvdb_payload);
+	struct dv_info *dv = 0;
+	char dolby_vsvdb[25];
+	unsigned char buf[12];
+	unsigned int i = 0;
+
+	if (payload_str_len != 14) {
+		pr_info("inject_dolby_vsvdb failed - Cannot parse: Length wrong, must be a Dolby VSVDB V1 or V2 - 14 Hex Char Payload. [%s]\n", dolby_vision_dolby_vsvdb_payload);
+		return;
+	}
+
+	strcpy(dolby_vsvdb, "EB0146D000"); // VSVDB Header and Dolby IEEE OUI
+	strcat(dolby_vsvdb, dolby_vision_dolby_vsvdb_payload);
+
+	// Convert from hex in string to bytes
+	for (i = 0; i < 12; i++) {
+		char hex_byte[3] = { dolby_vsvdb[i*2], dolby_vsvdb[(i*2)+1], '\0' };
+		buf[i] = (unsigned char)(simple_strtoul(hex_byte, NULL, 16) & 0xFF);
+	}
+
+	// Parse the dv_info.
+	dv = vinfo->vout_device->dv_info;
+	if (dv) {
+		memset(dv, 0, sizeof(struct dv_info));
+		edid_parse_dolby_vsvdb(dv, buf);
+	}
+}
+
 static u32 last_total_md_size;
 static u32 last_total_comp_size;
 /* toggle mode: 0: not toggle; 1: toggle frame; 2: use keep frame */
@@ -7901,6 +7975,12 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 
 	if (!dolby_vision_enable || !module_installed)
 		return -1;
+
+	/* inject dolby vsvdb when asked, do only once per time */
+	if (dolby_vision_dolby_vsvdb_inject == 1) {
+		inject_dolby_vsvdb(vinfo);
+		dolby_vision_dolby_vsvdb_inject = 2;
+	}
 
 	if (vf) {
 		video_frame = true;
