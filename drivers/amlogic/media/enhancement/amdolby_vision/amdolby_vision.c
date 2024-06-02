@@ -7333,7 +7333,7 @@ static bool send_hdmi_pkt
 			| (1 << 24)		/* 1 color available / present */
 			| (9 << 16)		/* 9 primaries bt2020 */
 			| (0x10 << 8)	/* 16 transfer char. smpte-st-2084 */
-			| (10 << 0);	/* 10 matrix co. bt2020nc */
+			| (10 << 0);	/* 10 matrix co. bt2020c / 9  bt2020nc */
 
 		for (i = 0; i < 3; i++) {
 			hdr10_data.primaries[i][0] = 0;
