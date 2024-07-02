@@ -4316,6 +4316,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		}
 
 		if (src_format != FORMAT_DOVI && is_hdr10_frame(vf)) {
+			pr_dolby_dbg("HDR10-Frame");
+			
 			src_format = FORMAT_HDR10;
 			/* prepare parameter from SEI for hdr10 */
 			p_mdc =	&vf->prop.master_display_colour;
