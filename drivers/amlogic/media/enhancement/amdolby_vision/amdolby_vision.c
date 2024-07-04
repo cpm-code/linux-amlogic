@@ -317,6 +317,18 @@ static char *dolby_vision_dolby_vsvdb_payload = "";
 module_param(dolby_vision_dolby_vsvdb_payload, charp, 0664);
 MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_payload, "\n dolby_vision_dolby_vsvdb_payload\n");
 
+static bool dolby_vision_hdr_for_lldv = false;
+module_param(dolby_vision_hdr_for_lldv, bool, 0664);
+MODULE_PARM_DESC(dolby_vision_hdr_for_lldv, "\n dolby_vision_hdr_for_lldv\n");
+
+static unsigned int dolby_vision_hdr_inject = 0;
+module_param(dolby_vision_hdr_inject, uint, 0664);
+MODULE_PARM_DESC(dolby_vision_hdr_inject, "\n dolby_vision_hdr_inject\n");
+
+static char *dolby_vision_hdr_payload = "";
+module_param(dolby_vision_hdr_payload, charp, 0664);
+MODULE_PARM_DESC(dolby_vision_hdr_payload, "\n dolby_vision_hdr_payload\n");
+
 /*bit0:reset core1 reg; bit1:reset core2 reg;bit2:reset core3 reg*/
 /*bit3: reset core1 lut; bit4: reset core2 lut*/
 static unsigned int force_update_reg;
@@ -7100,6 +7112,71 @@ static int notify_vd_signal_to_amvideo(struct vd_signal_info_s *vd_signal)
 	return 0;
 }
 
+static u32 get_swap_endian_u32(char* input)
+{
+	long result;
+	int ret;
+
+	char data[5];
+	data[0] = input[2];
+	data[1] = input[3];
+	data[2] = input[0];
+	data[3] = input[1];
+	data[4] = '\0';
+
+	ret = kstrtol(data, 16, &result);
+	return (ret == 0) ? (u32)result : 0;
+}
+
+static void set_hdr10_data_for_lldv(void)
+{
+	hdr10_data.features =
+			  (1 << 29)		/* 1 video available / present */
+			| (5 << 26)		/* 5 unspecified */
+			| (0 << 25)		/* 0 limited range */
+			| (1 << 24)		/* 1 color available / present */
+			| (9 << 16)		/* 9 primaries bt2020 */
+			| (0x10 << 8)	/* 16 transfer char. smpte-st-2084 */
+			| (10 << 0);	/* 10 matrix co. bt2020c / 9  bt2020nc */
+
+	// Not injecting or attempting to inject but payload is not 48 byte long - then set all 0.
+	if ((dolby_vision_hdr_inject == 0) || ((dolby_vision_hdr_inject == 1) && (strlen(dolby_vision_hdr_payload) != 48))) {
+
+		int i = 0;
+
+		for (i = 0; i < 3; i++) {
+			hdr10_data.primaries[i][0] = 0;
+			hdr10_data.primaries[i][1] = 0;
+		}
+		hdr10_data.white_point[0] = 0;
+		hdr10_data.white_point[1] = 0;
+		hdr10_data.luminance[0] = 0;
+		hdr10_data.luminance[1] = 0;
+		hdr10_data.max_content = 0;
+		hdr10_data.max_frame_average = 0;
+
+		dolby_vision_hdr_inject = 2; // Do not set again until inject reset to 0;
+
+	// Injecting and payload is 48 byte long - then parse payload and inject (if parsing fails then will be 0 for that element).
+	} else if ((dolby_vision_hdr_inject == 1) && (strlen(dolby_vision_hdr_payload) == 48)) {
+
+		int i = 0;
+
+		for (i = 0; i < 3; i++) {
+			hdr10_data.primaries[i][0] = get_swap_endian_u32(dolby_vision_hdr_payload+(i*8));
+			hdr10_data.primaries[i][1] = get_swap_endian_u32(dolby_vision_hdr_payload+(i*8)+4);
+		}
+		hdr10_data.white_point[0] = get_swap_endian_u32(dolby_vision_hdr_payload+24);
+		hdr10_data.white_point[1] = get_swap_endian_u32(dolby_vision_hdr_payload+28);
+		hdr10_data.luminance[0] = get_swap_endian_u32(dolby_vision_hdr_payload+32);
+		hdr10_data.luminance[1] = get_swap_endian_u32(dolby_vision_hdr_payload+36);
+		hdr10_data.max_content = get_swap_endian_u32(dolby_vision_hdr_payload+40);
+		hdr10_data.max_frame_average = get_swap_endian_u32(dolby_vision_hdr_payload+44);
+
+		dolby_vision_hdr_inject = 3; // Do not set again until inject reset to 1;
+	}
+}
+
 /* #define HDMI_SEND_ALL_PKT */
 static u32 last_dst_format = FORMAT_SDR;
 static bool send_hdmi_pkt
@@ -7319,6 +7396,20 @@ static bool send_hdmi_pkt
 			pr_dolby_dbg("\tMPALL = %d\n\n",
 				hdr10_data.max_frame_average);
 		}
+	} else if (dst_format == FORMAT_DOVI && dovi_setting.dovi_ll_enable && dolby_vision_hdr_for_lldv) {
+
+		sdr_transition_delay = 0;
+
+		set_hdr10_data_for_lldv();
+
+		if (vinfo && vinfo->vout_device &&
+		    vinfo->vout_device->fresh_tx_hdr_pkt)
+			vinfo->vout_device->fresh_tx_hdr_pkt(&hdr10_data);
+
+		last_dst_format = dst_format;
+		vd_signal.signal_type = SIGNAL_HDR10;
+		notify_vd_signal_to_amvideo(&vd_signal);
+
 	} else if (dst_format == FORMAT_DOVI) {
 		struct dv_vsif_para vsif;
 
