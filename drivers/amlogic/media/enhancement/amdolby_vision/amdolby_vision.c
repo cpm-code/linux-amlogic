@@ -6950,7 +6950,7 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 		}
 	}
 
-	if (flag && (debug_dolby & 1)) {
+	if (debug_dolby & 1) {
 		pr_dolby_dbg
 			("HDR10: present %d, %d, %d, %d\n",
 			 p_mdc->present_flag, p_cll->max_content,
