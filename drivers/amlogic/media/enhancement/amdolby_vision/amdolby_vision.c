@@ -309,6 +309,14 @@ static unsigned int dolby_vision_flags = FLAG_BYPASS_VPP | FLAG_FORCE_CVM;
 module_param(dolby_vision_flags, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_flags, "\n dolby_vision_flags\n");
 
+static unsigned int dolby_vision_dolby_vsvdb_inject = 0;
+module_param(dolby_vision_dolby_vsvdb_inject, uint, 0664);
+MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_inject, "\n dolby_vision_dolby_vsvdb_inject\n");
+
+static char *dolby_vision_dolby_vsvdb_payload = "";
+module_param(dolby_vision_dolby_vsvdb_payload, charp, 0664);
+MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_payload, "\n dolby_vision_dolby_vsvdb_payload\n");
+
 /*bit0:reset core1 reg; bit1:reset core2 reg;bit2:reset core3 reg*/
 /*bit3: reset core1 lut; bit4: reset core2 lut*/
 static unsigned int force_update_reg;
@@ -7841,6 +7849,45 @@ bool check_vf_changed(struct vframe_s *vf)
 	return changed;
 }
 
+static void inject_dolby_vsvdb(void)
+{
+  // After developing this found can pass into /dev/dolby_vision 
+  // Could not make that work though - crashes kodi side for some reason.
+  // So have this routine instead, can remove if you get that working!
+
+  /* inject dolby vsvdb when asked, do only once per time */
+  if (dolby_vision_dolby_vsvdb_inject == 1) {
+
+    // Get the DOLBY VSVDB from the parameter
+    size_t payload_str_len = strlen(dolby_vision_dolby_vsvdb_payload);
+    char dolby_vsvdb[25];
+    unsigned char buf[12];
+    unsigned int i = 0;
+
+    if (payload_str_len != 14) {
+      pr_info("inject_dolby_vsvdb failed - Cannot parse: Length wrong, must be a Dolby VSVDB V1 or V2 - 14 Hex Char Payload. [%s]\n", dolby_vision_dolby_vsvdb_payload);
+      return;
+    }
+
+    strcpy(dolby_vsvdb, "EB0146D000"); // VSVDB Header and Dolby IEEE OUI
+    strcat(dolby_vsvdb, dolby_vision_dolby_vsvdb_payload);
+
+    // Convert from hex in string to bytes
+    for (i = 0; i < 12; i++) {
+      char hex_byte[3] = { dolby_vsvdb[i*2], dolby_vsvdb[(i*2)+1], '\0' };
+      buf[i] = (unsigned char)(simple_strtoul(hex_byte, NULL, 16) & 0xFF);
+    }
+
+    dolby_vision_update_vsvdb_config(buf, 12);
+
+    dolby_vision_dolby_vsvdb_inject = 2;
+    dolby_vision_flags |= FLAG_DISABLE_LOAD_VSVDB; 
+
+  } else if (dolby_vision_dolby_vsvdb_inject == 0) {
+    dolby_vision_flags &= ~FLAG_DISABLE_LOAD_VSVDB;
+  }
+}
+
 static u32 last_total_md_size;
 static u32 last_total_comp_size;
 /* toggle mode: 0: not toggle; 1: toggle frame; 2: use keep frame */
@@ -9047,6 +9094,9 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			 &hdr10_param,
 			 &new_dovi_setting);
 	}
+
+	inject_dolby_vsvdb();	
+
 	if (!vsvdb_config_set_flag) {
 		memset(&new_dovi_setting.vsvdb_tbl[0],
 		       0, sizeof(new_dovi_setting.vsvdb_tbl));
