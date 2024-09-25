@@ -678,6 +678,10 @@ static int set_disp_mode_auto(void)
 	hdev->para = para;
 	vic = hdmitx_edid_get_VIC(hdev, mode, 1);
 
+	pr_info("set_disp_mode_auto - eotf type [%d] tunnel mode [%d] vic [%d] cd [%d] cs [%s]\n",
+		hdev->hdmi_current_eotf_type, hdev->hdmi_current_tunnel_mode, vic,
+		colour_depths[para->cd - COLORDEPTH_24B], colour_sampling[para->cs]);
+
 	// force colour subsampling when DV mode
 	switch (hdev->hdmi_current_eotf_type) {
 		case EOTF_T_DOLBYVISION:
@@ -797,6 +801,9 @@ static int set_disp_mode_auto(void)
 					colour_depths[para->cd - COLORDEPTH_24B], vic);
 		}
 	}
+
+	pr_info("set_disp_mode_auto - cd [%d] cs [%s]\n",
+		colour_depths[para->cd - COLORDEPTH_24B], colour_sampling[para->cs]);
 
 	if (strncmp(info->name, "2160p30hz", strlen("2160p30hz")) == 0) {
 		vic = HDMI_4k2k_30;
