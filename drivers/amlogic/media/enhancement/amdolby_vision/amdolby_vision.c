@@ -4860,7 +4860,7 @@ static int dvel_receiver_event_fun(int type, void *data, void *arg)
 		/*	metadata_parser = NULL;*/
 		/*} */
 		spin_unlock_irqrestore(&dovi_lock, flags);
-		memset(&hdr10_data, 0, sizeof(hdr10_data));
+		if (dolby_vision_hdr_inject == 0) memset(&hdr10_data, 0, sizeof(hdr10_data));
 		memset(&hdr10_param, 0, sizeof(hdr10_param));
 		frame_count = 0;
 		setting_update_count = 0;
@@ -4877,7 +4877,7 @@ static int dvel_receiver_event_fun(int type, void *data, void *arg)
 		for (i = 0; i < 16; i++)
 			dv_vf[i][0] = dv_vf[i][1] = NULL;
 		spin_unlock_irqrestore(&dovi_lock, flags);
-		memset(&hdr10_data, 0, sizeof(hdr10_data));
+		if (dolby_vision_hdr_inject == 0) memset(&hdr10_data, 0, sizeof(hdr10_data));
 		memset(&hdr10_param, 0, sizeof(hdr10_param));
 		frame_count = 0;
 		setting_update_count = 0;
