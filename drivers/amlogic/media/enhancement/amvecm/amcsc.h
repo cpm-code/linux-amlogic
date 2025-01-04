@@ -70,6 +70,8 @@ enum vpp_lut_sel_e {
 };
 #define NUM_LUT 5
 
+int vpp_lut_curve_load(enum vpp_lut_sel_e s, char* c);
+
 /* matrix registers */
 struct matrix_s {
 	u16 pre_offset[3];
@@ -152,12 +154,12 @@ extern unsigned int vecm_latch_flag;
 extern signed int vd1_contrast_offset;
 extern signed int saturation_offset;
 extern uint sdr_mode;
-extern uint hdr_mode;
 extern uint hdr_flag;
 extern int video_rgb_ogo_xvy_mtx_latch;
 extern int video_rgb_ogo_xvy_mtx;
 extern int tx_op_color_primary;
 extern uint cur_csc_type[VD_PATH_MAX];
+extern bool hdr2_needs_update;
 
 /* 0: source: use src meta */
 /* 1: Auto: 601/709=709 P3/2020=P3 */

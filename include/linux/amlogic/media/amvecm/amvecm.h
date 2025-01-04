@@ -600,6 +600,14 @@ struct hdr_metadata_info_s {
 
 extern void vpp_vd_adj1_saturation_hue(signed int sat_val,
 	signed int hue_val, struct vframe_s *vf);
+extern void vpp_vd_adj2_saturation_hue(signed int sat_val,
+	signed int hue_val);
+int amvecm_set_contrast1(int val);
+int amvecm_set_contrast2(int val);
+signed int amvecm_get_contrast1(void);
+signed int amvecm_get_contrast2(void);
+signed int amvecm_get_brightness1(void);
+extern unsigned int vecm_latch_flag;
 extern void amvecm_sharpness_enable(int sel);
 extern int metadata_read_u32(uint32_t *value);
 extern int metadata_wait(struct vframe_s *vf);

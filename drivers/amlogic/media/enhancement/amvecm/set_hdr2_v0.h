@@ -197,6 +197,7 @@ enum mtx_csc_e {
 	MATRIX_BT2020YUV_BT2020RGB = 0x40,
 	MATRIX_BT2020RGB_709RGB,
 	MATRIX_BT2020RGB_CUSRGB,
+	MATRIX_BT2020YUV_CUSYUV,
 };
 
 extern void mtx_setting(enum vpp_matrix_e mtx_sel,
@@ -243,3 +244,4 @@ int cuva_hdr_update(
 	enum hdr_module_sel module_sel,
 	enum hdr_process_sel hdr_process_select);
 void mtx_init(enum vpp_matrix_e mtx_sel, enum mtx_csc_e mtx_csc, int mtx_on);
+extern uint get_hdr_mode(void);
