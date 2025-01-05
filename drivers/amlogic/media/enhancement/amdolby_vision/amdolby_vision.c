@@ -8746,7 +8746,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		bypass_frame = -1;
 	}
 
-	if (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_BYPASS) {
+	if (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_BYPASS
+		&& dolby_vision_wait_count == 0) {
 		new_dovi_setting.video_width = 0;
 		new_dovi_setting.video_height = 0;
 		new_dovi_setting.mode_changed = 0;
