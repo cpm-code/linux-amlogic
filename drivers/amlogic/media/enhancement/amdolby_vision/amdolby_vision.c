@@ -6384,6 +6384,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 				}
 				parser_ready = 1;
 			}
+
 			if (!parser_ready) {
 				spin_unlock_irqrestore(&dovi_lock, flags);
 				pr_dolby_error
@@ -6455,6 +6456,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 		}
 		p += size;
 	}
+
 	/*continue to check atsc/dvb dv*/
 	if (atsc_sei && *src_format != FORMAT_DOVI) {
 		struct dv_vui_parameters vui_param;
@@ -6633,6 +6635,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 				}
 				parser_ready = 1;
 			}
+
 			if (!parser_ready) {
 				spin_unlock_irqrestore(&dovi_lock, flags);
 				pr_dolby_error
@@ -10141,6 +10144,7 @@ int dolby_vision_process(struct vframe_s *vf,
 				dolby_vision_set_toggle_flag(1);
 			}
 		}
+
 		if ((dolby_vision_flags & FLAG_TOGGLE_FRAME) ||
 		((video_status == -1) && dolby_vision_core1_on)) {
 			pr_dolby_dbg("update when video off\n");
