@@ -2954,6 +2954,9 @@ static int dolby_core2_set
 	VSYNC_WR_DV_REG(DOLBY_CORE2A_CTRL, 0);
 	VSYNC_WR_DV_REG(DOLBY_CORE2A_CTRL, 0);
 
+	/* may be set already but .... */
+	p_core2_dm_regs[23] = vsize << 16 | (hsize & 0xffff);
+
 	if (dm_count == 0)
 		count = 24;
 	else
