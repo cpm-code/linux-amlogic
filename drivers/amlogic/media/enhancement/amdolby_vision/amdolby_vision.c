@@ -5905,8 +5905,7 @@ EXPORT_SYMBOL(is_dovi_dual_layer_frame);
 
 static bool vf_is_hlg(struct vframe_s *vf)
 {
-	if ((signal_transfer_characteristic == 14 ||
-	     signal_transfer_characteristic == 18) &&
+	if ((signal_transfer_characteristic == 18) &&
 	     signal_color_primaries == 9)
 		return true;
 	return false;
@@ -5917,9 +5916,8 @@ static bool is_hlg_frame(struct vframe_s *vf)
 	if (!vf)
 		return false;
 	if ((is_meson_tm2_tvmode() ||
-		(get_dolby_vision_hdr_policy() & 2) == 0) &&
-		(signal_transfer_characteristic == 14 ||
-		signal_transfer_characteristic == 18) &&
+		(get_dolby_vision_hdr_policy() & HDR_BY_DV_F_SRC) == 0) &&
+		(signal_transfer_characteristic == 18) &&
 		signal_color_primaries == 9)
 		return true;
 
