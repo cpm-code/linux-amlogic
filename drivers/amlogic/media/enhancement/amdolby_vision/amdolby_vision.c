@@ -5016,7 +5016,7 @@ static void dump_setting
 	int i;
 	u32 *p;
 
-	if ((debug_flag & 0x10) && dump_enable) {
+	if ((debug_flag & 0x10) && dump_enable && 0) {
 		pr_info("core1\n");
 		p = (u32 *)&setting->dm_reg1;
 		for (i = 0; i < 27; i++)
@@ -5156,7 +5156,11 @@ static void dump_setting
 		pr_info("core3 real reg\n");
 		for (i = DOLBY_CORE3_REG_START;
 			i <= DOLBY_CORE3_REG_START + 67; i++)
-			pr_info("[0x%4x] = 0x%x\n",
+			pr_info("[0x%4x] = 0x%08x\n",
+				i, READ_VPP_DV_REG(i));
+		for (i = DOLBY_CORE3_REG_START + 0xf8;
+			i <= DOLBY_CORE3_REG_START + 0xfe; i++)
+			pr_info("[0x%4x] = 0x%08x\n",
 				i, READ_VPP_DV_REG(i));
 	}
 
@@ -8263,8 +8267,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		if (toggle_mode == 1) {
 			if (debug_dolby & 2)
 				pr_dolby_dbg
-					("+++ get bl(%p-%lld) +++\n",
-					 vf, vf->pts_us64);
+					("+++ get bl(%p-%lld) +++ at %u\n",
+					 vf, vf->pts_us64, __LINE__);
 			dolby_vision_vf_add(vf, NULL);
 		}
 	} else if (vf && (vf->source_type == VFRAME_SOURCE_TYPE_OTHERS)) {
@@ -8549,8 +8553,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			}
 		} else if (toggle_mode == 1) {
 			if (debug_dolby & 2)
-				pr_dolby_dbg("+++ get bl(%p-%lld) +++\n",
-					     vf, vf->pts_us64);
+				pr_dolby_dbg("+++ get bl(%p-%lld) +++ at %u\n",
+					     vf, vf->pts_us64, __LINE__);
 			dolby_vision_vf_add(vf, NULL);
 		}
 
@@ -9666,8 +9670,8 @@ int dolby_vision_wait_metadata(struct vframe_s *vf)
 					dolby_vision_wait_count = 0;
 				}
 
-				pr_dolby_dbg("dolby_vision_need_wait src=%d mode=%d\n",
-					check_format, mode);
+				pr_dolby_dbg("%s dolby_vision_need_wait src=%d mode=%d\n",
+					__func__, check_format, mode);
 			}
 		}
 		/*chip after g12 not used bit VPP_MISC 9:11*/
@@ -9789,8 +9793,8 @@ int dolby_vision_update_src_format(struct vframe_s *vf, u8 toggle_mode)
 				dolby_vision_target_mode = mode;
 				dolby_vision_wait_on = true;
 				pr_dolby_dbg
-				("dolby_vision_need_wait src=%d mode=%d\n",
-				 check_format, mode);
+				("%s dolby_vision_need_wait src=%d mode=%d\n",
+				 __func__, check_format, mode);
 			}
 		}
 		/* don't use run mode when sdr -> dv and vd1 not disable */
