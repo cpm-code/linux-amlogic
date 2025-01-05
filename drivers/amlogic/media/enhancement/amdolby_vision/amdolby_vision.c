@@ -5725,9 +5725,9 @@ static int dolby_vision_policy_process
 			} else {
 				/* TV not support DOVI and HDR, DOVI -> SDR */
 				if (dolby_vision_mode !=
-				DOLBY_VISION_OUTPUT_MODE_SDR8) {
-					pr_dolby_dbg("dovi, dovi output -> DOLBY_VISION_OUTPUT_MODE_SDR8\n");
-					*mode = DOLBY_VISION_OUTPUT_MODE_SDR8;
+				DOLBY_VISION_OUTPUT_MODE_SDR10) {
+					pr_dolby_dbg("dovi, dovi output -> DOLBY_VISION_OUTPUT_MODE_SDR10\n");
+					*mode = DOLBY_VISION_OUTPUT_MODE_SDR10;
 					mode_change = 1;
 				}
 			}
