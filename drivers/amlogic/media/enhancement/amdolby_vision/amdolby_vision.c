@@ -4725,6 +4725,7 @@ void enable_dolby_vision(int enable)
 		dolby_vision_mode = DOLBY_VISION_OUTPUT_MODE_BYPASS;
 		dolby_vision_src_format = 0;
 		dolby_vision_on_count = 0;
+		dolby_vision_enable = 0;
 		cur_csc_type[VD1_PATH] = VPP_MATRIX_NULL;
 		/* clean mute flag for next time dv on */
 		dolby_vision_flags &= ~FLAG_MUTE;
