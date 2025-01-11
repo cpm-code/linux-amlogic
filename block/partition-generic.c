@@ -434,6 +434,31 @@ static int drop_partitions(struct gendisk *disk, struct block_device *bdev)
 	return 0;
 }
 
+int mpt_found = 0;
+
+static int validate_mpt_partition(struct parsed_partitions *state)
+{
+	sector_t sect_num;
+	Sector sect;
+	unsigned char *data;
+	int ret = 0;
+
+	/* MPT signature is at 0x2400000 */
+	sect_num = (0x2400000 / 512) *
+		(queue_logical_block_size(state->bdev->bd_disk->queue) / 512);
+
+	data = read_part_sector(state, sect_num, &sect);
+	if (!data)
+		return ret;
+
+	/* check for 'MPT\0' */
+	if (!strncmp(data, "MPT", 4))
+		ret = 1;
+
+	put_dev_sector(sect);
+	return ret;
+}
+
 int rescan_partitions(struct gendisk *disk, struct block_device *bdev)
 {
 	struct parsed_partitions *state = NULL;
@@ -455,6 +480,21 @@ rescan:
 	bdev->bd_invalidated = 0;
 	if (!get_capacity(disk) || !(state = check_partition(disk, bdev)))
 		return 0;
+
+	/* 
+	 * skip adding partitions for eMMC device
+	 * on Android 14 GPT partitions are added as block devices /dev/mmcblk0p*
+	 * which are mounted under /media
+	 * but we expects block devices from partition names like /dev/env and /dev/userdata
+	 * that's why we exit here and mount partitions from MPT
+	 */
+	if (validate_mpt_partition(state)) {
+		pr_info("%s: skip mounting disk with MPT partition\n", disk->disk_name);
+		mpt_found = 1;
+		res = 0;
+		goto out_free_state;
+	}
+
 	if (IS_ERR(state)) {
 		/*
 		 * I/O error reading the partition table.  If any
@@ -545,6 +585,7 @@ rescan:
 			md_autodetect_dev(part_to_dev(part)->devt);
 #endif
 	}
+out_free_state:
 	free_partitions(state);
 	return 0;
 }

@@ -1368,6 +1368,8 @@ int add_fake_boot_partition(struct gendisk *disk, char *name, int idx)
 	return 0;
 }
 
+extern int mpt_found;
+
 int aml_emmc_partition_ops(struct mmc_card *card, struct gendisk *disk)
 {
 	int ret = 0;
@@ -1400,7 +1402,11 @@ int aml_emmc_partition_ops(struct mmc_card *card, struct gendisk *disk)
 
 	gpt_h = (struct gpt_header *) buffer;
 
-	if (le64_to_cpu(gpt_h->signature) == GPT_HEADER_SIGNATURE) {
+	/*
+	 * Don't skip eMMC with GPT if it has MPT partions
+	 * We need these partitions to be added as /dev/part-name nomenclature
+	 */
+	if (mpt_found == 0 && le64_to_cpu(gpt_h->signature) == GPT_HEADER_SIGNATURE) {
 		kfree(buffer);
 		mmc_release_host(card->host);
 		return 0;
