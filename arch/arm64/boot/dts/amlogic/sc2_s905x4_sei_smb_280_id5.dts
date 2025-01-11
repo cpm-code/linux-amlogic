@@ -8,6 +8,10 @@
 	gpioleds {
 		/delete-node/ sys_led;
 	};
+
+	secmon {
+		no-memory;
+	};
 };
 
 &ethmac {

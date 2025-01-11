@@ -84,25 +84,27 @@ static int secmon_probe(struct platform_device *pdev)
 	if (!of_property_read_u32(np, "out_base_func", &id))
 		phy_out_base = get_sharemem_info(id);
 
-	if (of_property_read_u32(np, "reserve_mem_size", &mem_size)) {
-		pr_err("can't get reserve_mem_size, use default value\n");
-		mem_size = RESERVE_MEM_SIZE;
-	} else
-		pr_info("reserve_mem_size:0x%x\n", mem_size);
+	if (!of_property_read_bool(np, "no-memory")) {
+		if (of_property_read_u32(np, "reserve_mem_size", &mem_size)) {
+			pr_err("can't get reserve_mem_size, use default value\n");
+			mem_size = RESERVE_MEM_SIZE;
+		} else
+			pr_info("reserve_mem_size:0x%x\n", mem_size);
 
-	ret = of_reserved_mem_device_init(&pdev->dev);
-	if (ret) {
-		pr_info("reserve memory init fail:%d\n", ret);
-		return ret;
-	}
+		ret = of_reserved_mem_device_init(&pdev->dev);
+		if (ret) {
+			pr_info("reserve memory init fail:%d\n", ret);
+			return ret;
+		}
 
-	page = dma_alloc_from_contiguous(&pdev->dev, mem_size >> PAGE_SHIFT, 0);
-	if (!page) {
-		pr_err("alloc page failed, ret:%p\n", page);
-		return -ENOMEM;
+		page = dma_alloc_from_contiguous(&pdev->dev, mem_size >> PAGE_SHIFT, 0);
+		if (!page) {
+			pr_err("alloc page failed, ret:%p\n", page);
+			return -ENOMEM;
+		}
+		pr_info("get page:%p, %lx\n", page, page_to_pfn(page));
+		secmon_start_virt = (unsigned long)page_to_virt(page);
 	}
-	pr_info("get page:%p, %lx\n", page, page_to_pfn(page));
-	secmon_start_virt = (unsigned long)page_to_virt(page);
 
 	if (pfn_valid(__phys_to_pfn(phy_in_base)))
 		sharemem_in_base = (void __iomem *)__phys_to_virt(phy_in_base);
