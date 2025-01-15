@@ -398,11 +398,23 @@ module_param(g_vtiming, uint, 0664);
 MODULE_PARM_DESC(g_vtiming, "\n vpotch\n");
 
 static unsigned int dolby_vision_target_min = 50; /* 0.0001 */
+/*
 static unsigned int dolby_vision_target_max[3][3] = {
-	{ 4000, 1000, 100 }, /* DOVI => DOVI/HDR/SDR */
-	{ 1000, 1000, 100 }, /* HDR =>  DOVI/HDR/SDR */
-	{ 600, 1000, 100 },  /* SDR =>  DOVI/HDR/SDR */
+	{ 4000, 1000, 100 }, /* DOVI => DOVI/HDR/SDR  
+	{ 1000, 1000, 100 }, /* HDR =>  DOVI/HDR/SDR 
+	{ 600, 1000, 100 },  /* SDR =>  DOVI/HDR/SDR 
 };
+*/
+
+static unsigned int dolby_vision_target_lum_max[9] = { 
+	4000, 1000, 100,  // DOVI => DOVI/HDR/SDR
+	1000, 1000, 100,  // HDR  => DOVI/HDR/SDR
+	600,  1000, 100   // SDR  => DOVI/HDR/SDR
+};
+module_param_array(dolby_vision_target_lum_max, int, NULL, 0664);
+MODULE_PARM_DESC(dolby_vision_target_lum_max, "\n dolby_vision_target_lum_max\n");
+
+static unsigned int (*dolby_vision_target_max)[3] = (unsigned int (*)[3])dolby_vision_target_lum_max;
 
 static unsigned int dolby_vision_default_max[3][3] = {
 	{ 4000, 4000, 100 }, /* DOVI => DOVI/HDR/SDR */
