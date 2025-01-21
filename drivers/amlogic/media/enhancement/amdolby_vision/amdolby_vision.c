@@ -329,6 +329,18 @@ static char *dolby_vision_hdr_payload = "";
 module_param(dolby_vision_hdr_payload, charp, 0664);
 MODULE_PARM_DESC(dolby_vision_hdr_payload, "\n dolby_vision_hdr_payload\n");
 
+static bool dolby_vision_use_source_meta_levels = true;
+module_param(dolby_vision_use_source_meta_levels, bool, 0664);
+MODULE_PARM_DESC(dolby_vision_use_source_meta_levels, "\n dolby_vision_use_source_meta_levels\n");
+
+static bool dolby_vision_keep_source_meta_level_5 = false;
+module_param(dolby_vision_keep_source_meta_level_5, bool, 0664);
+MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_5, "\n dolby_vision_keep_source_meta_level_5\n");
+
+static bool dolby_vision_keep_source_meta_level_6 = false;
+module_param(dolby_vision_keep_source_meta_level_6, bool, 0664);
+MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_5, "\n dolby_vision_keep_source_meta_level_6\n");
+
 /*bit0:reset core1 reg; bit1:reset core2 reg;bit2:reset core3 reg*/
 /*bit3: reset core1 lut; bit4: reset core2 lut*/
 static unsigned int force_update_reg;
@@ -8026,6 +8038,127 @@ static void inject_dolby_vsvdb(void)
   }
 }
 
+#define ETSI_META_OFFSET 71
+#define CORE_META_LENGTH 512
+
+static unsigned char reversed_meta_buffer[CORE_META_LENGTH];
+static unsigned char combo_meta_buffer[CORE_META_LENGTH];
+
+static size_t reverse_dv_meta(
+    unsigned char *metadata, 
+    const struct md_reg_ipcore3 *in) 
+{
+	// Get original metadata size in bytes from first double word
+	size_t byte_size = (in->raw_metadata[0] & 0xffff00) >> 8;/*raw_metadata[0] bit 23:8 =>size*/
+
+	// Calculate how many double words we need
+  	size_t dw_needed = (byte_size + 3) / 4;
+  
+  	// Validate against structure limits
+  	if ((dw_needed > (CORE_META_LENGTH / 4)) || (dw_needed > in->size)) {
+		pr_err("reverse_dv_meta: Metadata size exceeds buffer limits\n");
+        return 0; // Error: would read past end
+    }
+
+	int i = 0, j = 0;
+	for (i = 0; i < dw_needed; i++) {
+		if (i == 0) { /*raw_metadata[0] bit7-0 valid, skip bit31-8*/
+			metadata[j++] = in->raw_metadata[i] & 0xFF;
+		} else {
+            metadata[j++] = (in->raw_metadata[i] >> 0) & 0xFF;
+            metadata[j++] = (in->raw_metadata[i] >> 8) & 0xFF;
+            metadata[j++] = (in->raw_metadata[i] >> 16) & 0xFF;
+            metadata[j++] = (in->raw_metadata[i] >> 24) & 0xFF;
+		}
+	}
+
+	return byte_size;
+}
+
+// replace core register format meta levels in core_meta with orig meta from source.
+static void source_meta_copy(
+	unsigned char* orig_meta_buffer, 
+	size_t orig_meta_size,
+	struct md_reg_ipcore3 *core_meta)
+{
+    if (!orig_meta_buffer || !core_meta) {
+        pr_err("source_meta_copy: Invalid input parameters (null pointers)\n");
+        return;
+    }
+
+	// Check if orig_meta_size is valid
+    if (orig_meta_size < ETSI_META_OFFSET) {
+        pr_err("source_meta_copy: Invalid orig_meta_size (%zu) < ETSI_META_OFFSET (%d)\n", orig_meta_size, ETSI_META_OFFSET);
+        return;
+    }
+
+  	// reverse the metadata foramtting from register format back to ETSI format.
+  	size_t reversed_meta_size = reverse_dv_meta(reversed_meta_buffer, core_meta);
+  	if (reversed_meta_size == 0) {
+   		pr_err("source_meta_copy: Could not reverse dv metadata.\n");
+		return;
+  	}
+
+  	if ((debug_dolby & 4) && dump_enable) {
+		dump_buffer("original metadata", orig_meta_buffer, orig_meta_size);
+		dump_buffer("reversed metadata", reversed_meta_buffer, reversed_meta_size);
+	}
+
+  	// ETSI GS CCM 001 V1.1.1 (2017-02)
+	// 71 Bytes in the main block (including number of ext blocks byte)
+
+	// Copy base ETSI metadata from reversed
+	memcpy(combo_meta_buffer, reversed_meta_buffer, ETSI_META_OFFSET); 
+
+  	size_t combo_meta_size = ETSI_META_OFFSET;
+	unsigned char* combo_index = combo_meta_buffer + ETSI_META_OFFSET;
+	const unsigned char* orig_index = orig_meta_buffer + ETSI_META_OFFSET;
+	const unsigned char* orig_end_index = orig_meta_buffer + orig_meta_size;
+
+	// Validate buffer sizes upfront
+	size_t remaining_space = CORE_META_LENGTH - ETSI_META_OFFSET;
+	size_t remaining_input = orig_meta_size - ETSI_META_OFFSET;
+
+	uint8_t num_levels = 0;
+
+    while ((orig_index < orig_end_index) && 
+	       (remaining_input >= 5) && 
+		   (remaining_space >= 5)) { 
+	
+		size_t level_size = be32_to_cpup((__be32 *)orig_index); 
+		uint8_t level = orig_index[4];	
+		level_size += 5; // complete level size includes the space for the size information itself (4) and level (1)
+
+        if (level_size > remaining_space || level_size > remaining_input) { 
+            pr_err("Invalid metadata: Level size exceeds remaining space or input\n");
+            break;
+        }
+	
+		// Choose what to copy
+		if ((level != 5 && level != 6) ||
+			(level == 5 && dolby_vision_keep_source_meta_level_5) ||
+			(level == 6 && dolby_vision_keep_source_meta_level_6))
+		{
+			memcpy(combo_index, orig_index, level_size); 
+			combo_index += level_size; 
+			combo_meta_size += level_size; 
+			remaining_space -= level_size;
+			num_levels++;
+		}
+		
+		orig_index += level_size; 
+    	remaining_input -= level_size;
+	}
+
+	combo_meta_buffer[ETSI_META_OFFSET-1] = num_levels; // update number of levels.
+
+  	if ((debug_dolby & 4) && dump_enable) 
+		dump_buffer("combined metadata", combo_meta_buffer, combo_meta_size);
+
+  	// push back into the core format raw_metadata.
+  	prepare_dv_meta(core_meta, combo_meta_buffer, combo_meta_size);
+}
+
 static u32 last_total_md_size;
 static u32 last_total_comp_size;
 /* toggle mode: 0: not toggle; 1: toggle frame; 2: use keep frame */
@@ -9432,6 +9565,11 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		(dolby_vision_flags & FLAG_DISABLE_COMPOSER),
 		&hdr10_param,
 		&new_dovi_setting);
+
+		// Override the dovi.ko metadata levels with the original from source
+		if (dolby_vision_use_source_meta_levels && (src_format == FORMAT_DOVI)) 
+			source_meta_copy(md_buf[current_id], total_md_size, &new_dovi_setting.md_reg3);
+
 	}
 	if (debug_dolby & 0x400) {
 		do_gettimeofday(&end);
