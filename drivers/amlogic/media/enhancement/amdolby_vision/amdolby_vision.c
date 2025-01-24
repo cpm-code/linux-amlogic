@@ -1664,6 +1664,32 @@ static unsigned int amdolby_vision_poll(struct file *file, poll_table *wait)
 	return mask;
 }
 
+static void dump_buffer(const char *prefix, const unsigned char *buffer, size_t size)
+{
+	size_t i;
+
+	pr_info("%s (%zu):\n", prefix, size);
+	for (i = 0; i < size; i += 16) {
+    	size_t remaining = size - i;
+		if (remaining >= 16) {
+    		pr_info("%02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x\n",
+				buffer[i],    buffer[i+1],  buffer[i+2],  buffer[i+3],
+        		buffer[i+4],  buffer[i+5],  buffer[i+6],  buffer[i+7],
+        		buffer[i+8],  buffer[i+9],  buffer[i+10], buffer[i+11],
+        		buffer[i+12], buffer[i+13], buffer[i+14], buffer[i+15]);
+    	} else {
+      		char line[64] = {0};
+      		char *ptr = line;
+      		size_t j;
+
+      		for (j = 0; j < remaining; j++) {
+        		ptr += sprintf(ptr, "%02x%s", buffer[i + j], (j + 1) % 4 == 0 ? "  " : " ");
+      		}
+      		pr_info("%s\n", line);
+    	}
+  	}
+}
+
 static void dump_tv_setting
 	(struct tv_dovi_setting_s *setting,
 	 int frame_cnt, int debug_flag)
