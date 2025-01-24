@@ -6376,7 +6376,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 					if (debug_dolby & 1)
 						pr_dolby_dbg("metadata parser init OK\n");
 				}
-			} else {
+			} else if (module_installed) {
 				if (is_meson_tvmode()) {
 					if (p_funcs_tv->metadata_parser_reset
 					    (metadata_parser_reset_flag) == 0)
@@ -9182,15 +9182,16 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		 cur_src_format, src_format,
 		 cur_dst_format, dst_format,
 		 frame_count, dolby_vision_flags);
-		p_funcs_stb->control_path
-			(FORMAT_INVALID, 0,
-			 comp_buf[current_id], 0,
-			 md_buf[current_id], 0,
-			 0, 0, 0, SIGNAL_RANGE_SMPTE,
-			 0, 0, 0, 0,
-			 0,
-			 &hdr10_param,
-			 &new_dovi_setting);
+		if (p_funcs_stb)
+			p_funcs_stb->control_path
+				(FORMAT_INVALID, 0,
+				comp_buf[current_id], 0,
+				md_buf[current_id], 0,
+				0, 0, 0, SIGNAL_RANGE_SMPTE,
+				0, 0, 0, 0,
+				0,
+				&hdr10_param,
+				&new_dovi_setting);
 	}
 
 	inject_dolby_vsvdb();	
@@ -9373,7 +9374,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			prepare_dv_meta
 				(&new_dovi_setting.md_reg3,
 				md_buf[current_id], total_md_size);
-	} else {
+	} else if (module_installed) {
 		flag = p_funcs_stb->control_path
 		(src_format, dst_format,
 		comp_buf[current_id],
