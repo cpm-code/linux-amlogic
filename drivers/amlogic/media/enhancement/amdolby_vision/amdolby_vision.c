@@ -6366,24 +6366,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 			}
 			if ((debug_dolby & 4) && dump_enable) {
 				pr_dolby_dbg("metadata(%d):\n", rpu_size);
-				for (i = 0; i < size; i += 16)
-					pr_info("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-						meta_buf[i],
-						meta_buf[i + 1],
-						meta_buf[i + 2],
-						meta_buf[i + 3],
-						meta_buf[i + 4],
-						meta_buf[i + 5],
-						meta_buf[i + 6],
-						meta_buf[i + 7],
-						meta_buf[i + 8],
-						meta_buf[i + 9],
-						meta_buf[i + 10],
-						meta_buf[i + 11],
-						meta_buf[i + 12],
-						meta_buf[i + 13],
-						meta_buf[i + 14],
-						meta_buf[i + 15]);
+				dump_buffer("metadata", meta_buf, rpu_size);
 			}
 			if (tv_mode) {
 				if (!p_funcs_tv) {
