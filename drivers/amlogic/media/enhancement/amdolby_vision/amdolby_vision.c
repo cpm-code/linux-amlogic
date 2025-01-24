@@ -7756,9 +7756,9 @@ bool is_dv_standard_es(int dvel, int mflag, int width)
 		return true;
 }
 
-static int prepare_dv_meta
+static inline int prepare_dv_meta
 	(struct md_reg_ipcore3 *out,
-	unsigned char *p_md, int size)
+	const unsigned char *p_md, const int size)
 {
 	int i, shift;
 	u32 value;
@@ -8027,7 +8027,7 @@ static void inject_dolby_vsvdb(void)
 static unsigned char reversed_meta_buffer[CORE_META_LENGTH];
 static unsigned char combo_meta_buffer[CORE_META_LENGTH];
 
-static size_t reverse_dv_meta(
+static inline size_t reverse_dv_meta(
     unsigned char *metadata, 
     const struct md_reg_ipcore3 *in) 
 {
@@ -8059,7 +8059,7 @@ static size_t reverse_dv_meta(
 }
 
 // replace core register format meta levels in core_meta with orig meta from source.
-static void source_meta_copy(
+static inline void source_meta_copy(
 	unsigned char* orig_meta_buffer, 
 	size_t orig_meta_size,
 	struct md_reg_ipcore3 *core_meta)
