@@ -6365,8 +6365,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 				rpu_size = size + 2;
 			}
 			if ((debug_dolby & 4) && dump_enable) {
-				pr_dolby_dbg("metadata(%d):\n", rpu_size);
-				dump_buffer("metadata", meta_buf, rpu_size);
+				dump_buffer("DOLBY: RPU metadata", meta_buf, rpu_size);
 			}
 			if (tv_mode) {
 				if (!p_funcs_tv) {
@@ -6528,17 +6527,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 		p = aux_buf;
 
 		if ((debug_dolby & 0x200) && dump_enable) {
-			pr_dolby_dbg("aux_buf(%d):\n", aux_size);
-			for (i = 0; i < aux_size; i += 8)
-				pr_info("\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
-					p[i],
-					p[i + 1],
-					p[i + 2],
-					p[i + 3],
-					p[i + 4],
-					p[i + 5],
-					p[i + 6],
-					p[i + 7]);
+			dump_buffer("DOLBY: aux_buf", p, aux_size);
 		}
 		while (p < aux_buf + aux_size - 8) {
 			size = *p++;
@@ -6607,17 +6596,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 				size = sizeof(meta_buf);
 			memcpy(meta_buf, (unsigned char *)(&p_atsc_md), size);
 			if ((debug_dolby & 4) && dump_enable) {
-				pr_dolby_dbg("metadata(%d):\n", size);
-				for (i = 0; i < size; i += 8)
-					pr_info("\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
-						meta_buf[i],
-						meta_buf[i + 1],
-						meta_buf[i + 2],
-						meta_buf[i + 3],
-						meta_buf[i + 4],
-						meta_buf[i + 5],
-						meta_buf[i + 6],
-						meta_buf[i + 7]);
+				dump_buffer("DOLBY: RPU metadata", meta_buf, size);
 			}
 			if (tv_mode) {
 				if (!p_funcs_tv) {
@@ -6752,31 +6731,11 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 			 size, vf->pts_us64,
 			 *total_md_size, *total_comp_size);
 		if ((debug_dolby & 4) && dump_enable)  {
-			pr_dolby_dbg("parsed md(%d):\n", *total_md_size);
-			for (i = 0; i < *total_md_size + 7; i += 8) {
-				pr_info("%02x %02x %02x %02x %02x %02x %02x %02x\n",
-					md_buf[i],
-					md_buf[i + 1],
-					md_buf[i + 2],
-					md_buf[i + 3],
-					md_buf[i + 4],
-					md_buf[i + 5],
-					md_buf[i + 6],
-					md_buf[i + 7]);
-			}
-			pr_dolby_dbg("parsed comp(%d):\n", *total_comp_size);
+			dump_buffer("DOLBY: parsed ETSI display management metadata", md_buf, *total_md_size);
+			pr_dolby_dbg("parsed ETSI composing metadata - full size (%d)\n", *total_comp_size);
 			if (*total_comp_size < dump_size)
 				dump_size = *total_comp_size;
-			for (i = 0; i < dump_size + 7; i += 8)
-				pr_info("%02x %02x %02x %02x %02x %02x %02x %02x\n",
-					comp_buf[i],
-					comp_buf[i + 1],
-					comp_buf[i + 2],
-					comp_buf[i + 3],
-					comp_buf[i + 4],
-					comp_buf[i + 5],
-					comp_buf[i + 6],
-					comp_buf[i + 7]);
+			dump_buffer("DOLBY: parsed ETSI composing metadata [first 100 bytes]", comp_buf, dump_size);
 		}
 	}
 parse_err:
@@ -8075,16 +8034,16 @@ static inline void source_meta_copy(
         return;
     }
 
-  	// reverse the metadata foramtting from register format back to ETSI format.
+	// reverse the metadata foramtting from register format back to ETSI format.
   	size_t reversed_meta_size = reverse_dv_meta(reversed_meta_buffer, core_meta);
   	if (reversed_meta_size == 0) {
    		pr_err("source_meta_copy: Could not reverse dv metadata.\n");
 		return;
-  	}
-
-  	if ((debug_dolby & 4) && dump_enable) {
-		dump_buffer("original metadata", orig_meta_buffer, orig_meta_size);
-		dump_buffer("reversed metadata", reversed_meta_buffer, reversed_meta_size);
+  	}  	
+	
+	if ((debug_dolby & 4) && dump_enable) {
+		dump_buffer("DOLBY: original ETSI display management metadata", orig_meta_buffer, orig_meta_size);
+		dump_buffer("DOLBY: reversed ETSI display management metadata", reversed_meta_buffer, reversed_meta_size);
 	}
 
   	// ETSI GS CCM 001 V1.1.1 (2017-02)
@@ -8136,7 +8095,7 @@ static inline void source_meta_copy(
 	combo_meta_buffer[ETSI_META_OFFSET-1] = num_levels; // update number of levels.
 
   	if ((debug_dolby & 4) && dump_enable) 
-		dump_buffer("combined metadata", combo_meta_buffer, combo_meta_size);
+		dump_buffer("DOLBY: combined ETSI display management metadata", combo_meta_buffer, combo_meta_size);
 
   	// push back into the core format raw_metadata.
   	prepare_dv_meta(core_meta, combo_meta_buffer, combo_meta_size);
@@ -8267,17 +8226,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			}
 			if ((debug_dolby & 4) || dump_emp) {
 				pr_info("vsem pkt count = %d\n", vf->emp.size);
-				for (i = 0; i < vsem_size; i += 8) {
-					pr_info("%02x %02x %02x %02x %02x %02x %02x %02x\n",
-						vsem_if_buf[i],
-						vsem_if_buf[i + 1],
-						vsem_if_buf[i + 2],
-						vsem_if_buf[i + 3],
-						vsem_if_buf[i + 4],
-						vsem_if_buf[i + 5],
-						vsem_if_buf[i + 6],
-						vsem_if_buf[i + 7]);
-				}
+				dump_buffer("vsem pkt", vsem_if_buf, vsem_size);
 			}
 		}
 
@@ -8287,18 +8236,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			memcpy(vsem_if_buf, vf->vsif.addr, vf->vsif.size);
 			vsem_if_size = vf->vsif.size;
 			if (debug_dolby & 4) {
-				pr_info("vsif size = %d\n", vf->vsif.size);
-				for (i = 0; i < vsem_if_size; i += 8) {
-					pr_info("%02x %02x %02x %02x %02x %02x %02x %02x\n",
-						vsem_if_buf[i],
-						vsem_if_buf[i + 1],
-						vsem_if_buf[i + 2],
-						vsem_if_buf[i + 3],
-						vsem_if_buf[i + 4],
-						vsem_if_buf[i + 5],
-						vsem_if_buf[i + 6],
-						vsem_if_buf[i + 7]);
-				}
+				dump_buffer("vsem_if_buf", vsem_if_buf, vsem_if_size);
 			}
 		}
 
@@ -8326,20 +8264,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 				vsem_if_buf[11] == 0xd0 &&
 				vsem_if_buf[12] == 0x00)) {
 				vsem_if_size = 0;
-				pr_dolby_dbg("vsem_if_buf is invalid!\n");
-				pr_dolby_dbg("%x %x %x %x %x %x %x %x %x %x %x %x\n",
-					     vsem_if_buf[0],
-					     vsem_if_buf[1],
-					     vsem_if_buf[2],
-					     vsem_if_buf[3],
-					     vsem_if_buf[4],
-					     vsem_if_buf[5],
-					     vsem_if_buf[6],
-					     vsem_if_buf[7],
-					     vsem_if_buf[8],
-					     vsem_if_buf[9],
-					     vsem_if_buf[10],
-					     vsem_if_buf[11]);
+				dump_buffer("DOLBY: vsem_if_buf is invalid!", vsem_if_buf, 12);
 			}
 		}
 		if ((dolby_vision_flags & FLAG_FORCE_DOVI_LL) ||
@@ -8389,17 +8314,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			}
 		}
 		if ((debug_dolby & 4) && req.aux_size) {
-			pr_dolby_dbg("metadata(%d):\n", req.aux_size);
-			for (i = 0; i < req.aux_size + 8; i += 8)
-				pr_info("\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
-					md_buf[current_id][i],
-					md_buf[current_id][i + 1],
-					md_buf[current_id][i + 2],
-					md_buf[current_id][i + 3],
-					md_buf[current_id][i + 4],
-					md_buf[current_id][i + 5],
-					md_buf[current_id][i + 6],
-					md_buf[current_id][i + 7]);
+			dump_buffer("DOLBY: ETSI display management metadata", md_buf[current_id], req.aux_size);
 		}
 
 		total_md_size = req.aux_size;
@@ -8492,34 +8407,16 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 				total_comp_size =  vf->src_fmt.comp_size;
 				ret_flags = vf->src_fmt.parse_ret_flags;
 				if ((debug_dolby & 4) && dump_enable) {
-					pr_dolby_dbg("get md_buf %p, size(%d):\n",
+					pr_dolby_dbg("get md_buf %p, size(%d)\n",
 						vf->src_fmt.md_buf,
 						vf->src_fmt.md_size);
-					for (i = 0; i < total_md_size; i += 8)
-						pr_info("%02x %02x %02x %02x %02x %02x %02x %02x\n",
-						md_buf[current_id][i],
-						md_buf[current_id][i + 1],
-						md_buf[current_id][i + 2],
-						md_buf[current_id][i + 3],
-						md_buf[current_id][i + 4],
-						md_buf[current_id][i + 5],
-						md_buf[current_id][i + 6],
-						md_buf[current_id][i + 7]);
-					pr_dolby_dbg("comp(%d):\n",
+					dump_buffer("DOLBY: ETSI display management metadata", md_buf[current_id], total_md_size);
+					pr_dolby_dbg("parsed ETSI composing metadata - full size (%d)\n",
 						vf->src_fmt.comp_size);
 					if (vf->src_fmt.comp_size < dump_size)
 						dump_size =
 						vf->src_fmt.comp_size;
-					for (i = 0; i < dump_size; i += 8)
-						pr_info("%02x %02x %02x %02x %02x %02x %02x %02x\n",
-						comp_buf[current_id][i],
-						comp_buf[current_id][i + 1],
-						comp_buf[current_id][i + 2],
-						comp_buf[current_id][i + 3],
-						comp_buf[current_id][i + 4],
-						comp_buf[current_id][i + 5],
-						comp_buf[current_id][i + 6],
-						comp_buf[current_id][i + 7]);
+					dump_buffer("DOLBY: ETSI composing metadata [first 100 bytes]", comp_buf[current_id], dump_size);
 				}
 			} else {  /*no parse or parse failed*/
 				meta_flag_bl =
@@ -8790,16 +8687,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			mel_flag = 0;
 			if ((debug_dolby & 4) && dump_enable) {
 				pr_dolby_dbg("metadata(%d):\n", req.aux_size);
-				for (i = 0; i < req.aux_size; i += 8)
-					pr_info("\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
-						md_buf[current_id][i],
-						md_buf[current_id][i + 1],
-						md_buf[current_id][i + 2],
-						md_buf[current_id][i + 3],
-						md_buf[current_id][i + 4],
-						md_buf[current_id][i + 5],
-						md_buf[current_id][i + 6],
-						md_buf[current_id][i + 7]);
+				dump_buffer("DOLBY: ETSI display management metadata", md_buf[current_id], req.aux_size);
 			}
 		} else {
 			if (toggle_mode == 2)
@@ -9658,18 +9546,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			src_format, dst_format, flag);
 		if ((debug_dolby & 0x2000) && dump_enable &&
 			total_md_size > 0) {
-			pr_dolby_dbg("control_path failed, md(%d):\n",
-				total_md_size);
-			for (i = 0; i < total_md_size + 7; i += 8)
-				pr_info("%02x %02x %02x %02x %02x %02x %02x %02x\n",
-					md_buf[current_id][i],
-					md_buf[current_id][i + 1],
-					md_buf[current_id][i + 2],
-					md_buf[current_id][i + 3],
-					md_buf[current_id][i + 4],
-					md_buf[current_id][i + 5],
-					md_buf[current_id][i + 6],
-					md_buf[current_id][i + 7]);
+			dump_buffer("DOLBY: control_path failed, ETSI display management metadata", 
+			  md_buf[current_id], total_md_size);
 		}
 	}
 	return -1; /* do nothing for this frame */
