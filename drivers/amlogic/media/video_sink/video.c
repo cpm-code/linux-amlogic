@@ -7689,7 +7689,7 @@ s32 update_vframe_src_fmt(
 		if (sei && size > 15) {
 			p = (char *)sei;
 			for (i = 0; i < size; i += 16)
-				pr_info("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				pr_info("%02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x\n",
 					p[i],
 					p[i + 1],
 					p[i + 2],
