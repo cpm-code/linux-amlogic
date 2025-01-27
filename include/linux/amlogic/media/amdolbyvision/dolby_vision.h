@@ -274,7 +274,6 @@ int get_dolby_vision_hdr_policy(void);
 int get_dv_support_info(void);
 void dv_vf_light_reg_provider(void);
 void dv_vf_light_unreg_provider(void);
-void dolby_vision_update_backlight(void);
 int dolby_vision_update_src_format(struct vframe_s *vf, u8 toggle_mode);
 void update_graphic_status(void);
 int parse_sei_and_meta_ext(
@@ -288,5 +287,5 @@ int parse_sei_and_meta_ext(
 	char *md_buf,
 	char *comp_buf);
 void dolby_vision_clear_buf(void);
-bool is_dv_control_backlight(void);
+
 #endif

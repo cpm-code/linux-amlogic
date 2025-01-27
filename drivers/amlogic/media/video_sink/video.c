@@ -4671,10 +4671,6 @@ static irqreturn_t vsync_isr_in(int irq, void *dev_id)
 #ifdef CONFIG_AMLOGIC_MEDIA_MSYNC
 	msync_vsync_update();
 #endif
-#ifdef CONFIG_AMLOGIC_MEDIA_ENHANCEMENT_DOLBYVISION
-	if (is_dolby_vision_on())
-		dolby_vision_update_backlight();
-#endif
 
 	if (cur_vd1_path_id == 0xff)
 		cur_vd1_path_id = vd1_path_id;

@@ -357,8 +357,6 @@ static bool force_reset_core2;
 static int core1_switch;
 static int core3_switch;
 static bool force_set_lut;
-static bool ambient_update;
-static struct ambient_cfg_s ambient_config_new;
 
 /*core reg must be set at first time. bit0 is for core2, bit1 is for core3*/
 static u32 first_reseted;
@@ -469,8 +467,6 @@ static s16 pq_center[MAX_DV_PICTUREMODES][4];
 struct dv_pq_range_s pq_range[4];
 u8 current_vsvdb[7];
 
-#define USE_CENTER_0 0
-
 int num_picture_mode;
 static int default_pic_mode = 1;/*bright(standard) mode as default*/
 static int cur_pic_mode;/*current picture mode id*/
@@ -573,7 +569,6 @@ static u64 stb_core1_lut[STB_DMA_TBL_SIZE];
 static bool mel_mode;
 static bool osd_update;
 static bool enable_fel;
-static int force_disable_dv_backlight;
 static bool bypass_all_vpp_pq;
 static int use_target_lum_from_cfg;
 
@@ -5316,42 +5311,6 @@ static int prepare_vsif_pkt
 	return 0;
 }
 
-unsigned char vsif_emp[32];
-static int prepare_emp_vsif_pkt
-	(unsigned char *vsif_PB,
-	struct dovi_setting_s *setting,
-	const struct vinfo_s *vinfo)
-{
-	if (!vinfo || !setting ||
-		!vinfo->vout_device || !vinfo->vout_device->dv_info)
-		return -1;
-	memset(vsif_PB, 0, 32);
-	/* low_latency */
-	if (setting->dovi_ll_enable)
-		vsif_PB[0] = 1 << 0;
-	/* dovi_signal_type */
-	vsif_PB[0] |= 1 << 1;
-	/* source_dm_version */
-	vsif_PB[0] |= 3 << 5;
-
-	if (vinfo->vout_device->dv_info->sup_backlight_control &&
-		(setting->ext_md.avail_level_mask & EXT_MD_LEVEL_2)) {
-		vsif_PB[1] |= 1 << 7;
-		vsif_PB[1] |=
-			setting->ext_md.level_2.target_max_pq_h & 0xf;
-		vsif_PB[2] =
-			setting->ext_md.level_2.target_max_pq_l;
-	}
-
-	if (setting->dovi_ll_enable && (setting->ext_md.avail_level_mask
-		& EXT_MD_LEVEL_255)) {
-		vsif_PB[1] |= 1 << 6;
-		vsif_PB[3] = setting->ext_md.level_255.run_mode;
-		vsif_PB[4] = setting->ext_md.level_255.run_version;
-		vsif_PB[5] = setting->ext_md.level_255.dm_debug_0;
-	}
-	return 0;
-}
 static int notify_vd_signal_to_amvideo(struct vd_signal_info_s *vd_signal)
 {
 	static int pre_signal = -1;
@@ -5667,8 +5626,6 @@ static bool send_hdmi_pkt
 		if (vinfo) {
 			prepare_vsif_pkt
 				(&vsif, &dovi_setting, vinfo, src_format);
-			prepare_emp_vsif_pkt
-				(vsif_emp, &dovi_setting, vinfo);
 		}
 #ifdef HDMI_SEND_ALL_PKT
 		hdr10_data.features =
@@ -7858,12 +7815,6 @@ void dolby_vision_set_toggle_flag(int flag)
 }
 EXPORT_SYMBOL(dolby_vision_set_toggle_flag);
 
-bool is_dv_control_backlight(void)
-{
-	return false;
-}
-EXPORT_SYMBOL(is_dv_control_backlight);
-
 void set_dolby_vision_mode(int mode)
 {
 	if ((is_meson_box() || is_meson_txlx() || is_meson_tm2())
@@ -7959,15 +7910,6 @@ int get_dolby_vision_hdr_policy(void)
 	return ret;
 }
 EXPORT_SYMBOL(get_dolby_vision_hdr_policy);
-
-void dolby_vision_update_backlight(void)
-{
-}
-EXPORT_SYMBOL(dolby_vision_update_backlight);
-
-void dolby_vision_disable_backlight(void)
-{
-}
 
 static void parse_param_amdolby_vision(char *buf_orig, char **parm)
 {
@@ -9516,26 +9458,6 @@ static long amdolby_vision_ioctl(struct file *file,
 			ret = -EFAULT;
 		}
 		break;
-	case DV_IOC_CONFIG_DV_BL:
-		if (copy_from_user(&force_disable_dv_backlight,
-			argp, sizeof(s32)) == 0) {
-			if (debug_dolby & 0x200)
-				pr_info("[DV]: disable dv bl %d\n",
-				force_disable_dv_backlight);
-			if (force_disable_dv_backlight)
-				dolby_vision_disable_backlight();
-		} else {
-			ret = -EFAULT;
-		}
-		break;
-	case DV_IOC_SET_DV_AMBIENT:
-		if (copy_from_user(&ambient_config_new, argp,
-			sizeof(struct ambient_cfg_s)) == 0) {
-			ambient_update = true;
-		} else {
-			ret = -EFAULT;
-		}
-		break;
 	default:
 		ret = -EINVAL;
 		break;
@@ -9584,9 +9506,6 @@ static const char *amdolby_vision_debug_usage_str = {
 	"echo dolby_dma index(D) value(H) > /sys/class/amdolby_vision/debug; dolby dma table modify\n"
 	"echo dv_efuse > /sys/class/amdolby_vision/debug; get dv efuse info\n"
 	"echo dv_el > /sys/class/amdolby_vision/debug; get dv enhanced layer info\n"
-	"echo force_support_emp 1/0 > /sys/class/amdolby_vision/debug; send emp\n"
-	"echo set_backlight_delay 0 > /sys/class/amdolby_vision/debug; set backlight no delay\n"
-	"echo set_backlight_delay 1 > /sys/class/amdolby_vision/debug; set backlight delay one vysnc\n"
 	"echo enable_vpu_probe 1 > /sys/class/amdolby_vision/debug; enable vpu probe\n"
 	"echo debug_bypass_vpp_pq 0 > /sys/class/amdolby_vision/debug; not debug mode\n"
 	"echo debug_bypass_vpp_pq 1 > /sys/class/amdolby_vision/debug; force disable vpp pq\n"
@@ -9843,36 +9762,6 @@ static ssize_t amdolby_vision_gd_rf_adjust_store
 	r = kstrtoint(buf, 0, &gd_rf_adjust);
 	if (r != 0)
 		return -EINVAL;
-
-	return count;
-}
-
-static ssize_t	amdolby_vision_force_disable_bl_show
-	(struct class *cla,
-	struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "force disable dv bl: %d\n",
-		force_disable_dv_backlight);
-}
-
-static ssize_t amdolby_vision_force_disable_bl_store
-	(struct class *cla,
-	struct class_attribute *attr,
-	const char *buf, size_t count)
-{
-	size_t r;
-
-	if (!buf)
-		return count;
-
-	r = kstrtoint(buf, 0, &force_disable_dv_backlight);
-	if (r != 0)
-		return -EINVAL;
-
-	pr_info("update force_disable_dv_backlight to %d\n",
-		force_disable_dv_backlight);
-	if (force_disable_dv_backlight)
-		dolby_vision_disable_backlight();
 
 	return count;
 }
@@ -10371,9 +10260,6 @@ static struct class_attribute amdolby_vision_class_attrs[] = {
 	__ATTR(gd_rf_adjust, 0644,
 	       amdolby_vision_gd_rf_adjust_show,
 	       amdolby_vision_gd_rf_adjust_store),
-	__ATTR(force_disable_dv_backlight, 0644,
-	       amdolby_vision_force_disable_bl_show,
-	       amdolby_vision_force_disable_bl_store),
 	__ATTR(use_target_lum_from_cfg, 0644,
 	       amdolby_vision_use_cfg_target_lum_show,
 	       amdolby_vision_use_cfg_target_lum_store),
