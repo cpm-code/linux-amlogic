@@ -237,7 +237,6 @@ struct vframe_s *dolby_vision_vf_peek_el(struct vframe_s *vf);
 void dolby_vision_dump_setting(int debug_flag);
 void dolby_vision_dump_struct(void);
 void enable_osd_path(int on, int shadow_mode);
-void tv_dolby_vision_config(int config);
 void dolby_vision_update_pq_config(char *pq_config_buf);
 int dolby_vision_update_setting(void);
 bool is_dolby_vision_stb_mode(void);
