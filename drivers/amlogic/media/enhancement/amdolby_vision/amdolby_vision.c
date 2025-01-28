@@ -7120,7 +7120,6 @@ int dolby_vision_process(struct vframe_s *vf,
 	int sink_changed = 0;
 	int format_changed = 0;
 	u8 core_mask = 0x7;
-	bool reverse_changed = false;
 	static u8 last_toggle_mode;
 	struct vout_device_s *p_vout = NULL;
 	if (!is_meson_box() && !is_meson_txlx() && !is_meson_tm2())
@@ -7260,8 +7259,7 @@ int dolby_vision_process(struct vframe_s *vf,
 	if (sink_changed || policy_changed || format_changed ||
 	    (video_status == 1 && !(dolby_vision_flags & FLAG_CERTIFICAION)) ||
 	    (graphic_status & 2) ||
-	    (dolby_vision_flags & FLAG_FORCE_HDMI_PKT) ||
-	    reverse_changed) {
+	    (dolby_vision_flags & FLAG_FORCE_HDMI_PKT)) {
 		if (debug_dolby & 1)
 			pr_dolby_dbg("sink %s,cap 0x%x,video %s,osd %s,vf %p,toggle %d\n",
 				     current_sink_available ? "on" : "off",

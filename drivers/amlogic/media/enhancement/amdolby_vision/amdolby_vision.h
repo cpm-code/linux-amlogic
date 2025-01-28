@@ -192,20 +192,9 @@ struct target_config {
 
 #pragma pack(pop)
 
-struct pq_config {
-	unsigned char backlight_lut[BACKLIGHT_LUT_SIZE];
-	struct target_config tdc;
-};
-
 enum input_mode_enum {
 	IN_MODE_OTT  = 0,
 	IN_MODE_HDMI = 1
-};
-
-struct ui_menu_params {
-	u16 u16_backlight_ui_val;
-	u16 u16_brightness_ui_val;
-	u16 u16_contrast_ui_val;
 };
 
 enum signal_format_enum {
@@ -466,35 +455,6 @@ struct dovi_setting_s {
 	u32 mode_changed;
 };
 
-struct dv_cfg_info_s {
-	int id;
-	char pic_mode_name[32];
-	s16  brightness;        /*Brightness */
-	s16  contrast;          /*Contrast */
-	s16  colorshift;        /*ColorShift or Tint*/
-	s16  saturation;        /*Saturation or color */
-	u8  vsvdb[7];
-};
-
-struct dv_pq_center_value_s {
-	s16  brightness;        /*Brightness */
-	s16  contrast;          /*Contrast */
-	s16  colorshift;        /*ColorShift or Tint*/
-	s16  saturation;        /*Saturation or color */
-};
-
-struct dv_pq_range_s {
-	s16  left;
-	s16  right;
-};
-
-struct tv_input_info_s {
-	s16 brightness_off[8][2];
-	s32 content_fps;
-	s32 gd_rf_adjust;
-	s32 debug_buf[498];
-};
-
 #define PREFIX_SEI_NUT_NAL 39
 #define SUFFIX_SEI_NUT_NAL 40
 #define SEI_TYPE_USERDATA_REGISTERED_ITUT_T35 4
@@ -536,13 +496,6 @@ struct dv_device_data_s {
 	enum cpuID_e cpu_id;
 };
 
-struct amdolby_vision_port_t {
-	const char *name;
-	struct device *dev;
-	const struct file_operations *fops;
-	void *runtime;
-};
-
 int control_path
 	(enum signal_format_enum in_format,
 	 enum signal_format_enum out_format,
@@ -555,36 +508,6 @@ int control_path
 	 int set_no_el,
 	 struct hdr10_parameter *hdr10_param,
 	 struct dovi_setting_s *output);
-
-struct tv_dovi_setting_s {
-	u64 core1_reg_lut[3754];
-	/* current process */
-	enum signal_format_enum src_format;
-	enum signal_format_enum dst_format;
-	/* enhanced layer */
-	bool el_flag;
-	bool el_halfsize_flag;
-	/* frame width & height */
-	u32 video_width;
-	u32 video_height;
-	enum input_mode_enum input_mode;
-	u16 backlight;
-};
-
-int tv_control_path
-	(enum signal_format_enum in_format,
-	 enum input_mode_enum in_mode,
-	 char *in_comp, int in_comp_size,
-	 char *in_md, int in_md_size,
-	 int set_bit_depth, int set_chroma_format, int set_yuv_range,
-	 struct pq_config *pq_config,
-	 struct ui_menu_params *menu_param,
-	 int set_no_el,
-	 struct hdr10_parameter *hdr10_param,
-	 struct tv_dovi_setting_s *output,
-	 char *vsem_if, int vsem_if_size,
-	 struct ambient_cfg_s *ambient_cfg,
-	 struct tv_input_info_s *input_info);
 
 void *metadata_parser_init(int flag);
 int metadata_parser_reset(int flag);
@@ -616,20 +539,6 @@ struct dolby_vision_func_s {
 		 int set_no_el,
 		 struct hdr10_parameter *hdr10_param,
 		 struct dovi_setting_s *output);
-	int (*tv_control_path)
-		(enum signal_format_enum in_format,
-		 enum input_mode_enum in_mode,
-		 char *in_comp, int in_comp_size,
-		 char *in_md, int in_md_size,
-		 int set_bit_depth, int set_chroma_format, int set_yuv_range,
-		 struct pq_config *pq_config,
-		 struct ui_menu_params *menu_param,
-		 int set_no_el,
-		 struct hdr10_parameter *hdr10_param,
-		 struct tv_dovi_setting_s *output,
-		 char *vsem_if, int vsem_if_size,
-		 struct ambient_cfg_s *ambient_cfg,
-		 struct tv_input_info_s *input_info);
 };
 
 int register_dv_functions(const struct dolby_vision_func_s *func);
