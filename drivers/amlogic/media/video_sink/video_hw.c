@@ -481,14 +481,6 @@ bool for_dolby_vision_certification(void)
 {
 	return false;
 }
-
-void dv_vf_light_reg_provider(void)
-{
-}
-
-void dv_vf_light_unreg_provider(void)
-{
-}
 #endif
 
 bool is_dovi_tv_on(void)

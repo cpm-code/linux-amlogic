@@ -200,10 +200,6 @@ static uint dolby_vision_reset_delay =
 module_param(dolby_vision_reset_delay, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_reset_delay, "\n dolby_vision_reset_delay\n");
 
-static unsigned int dolby_vision_tuning_mode;
-module_param(dolby_vision_tuning_mode, uint, 0664);
-MODULE_PARM_DESC(dolby_vision_tuning_mode, "\n dolby_vision_tuning_mode\n");
-
 static unsigned int dv_ll_output_mode = DOLBY_VISION_OUTPUT_MODE_HDR10;
 module_param(dv_ll_output_mode, uint, 0664);
 MODULE_PARM_DESC(dv_ll_output_mode, "\n dv_ll_output_mode\n");
@@ -223,11 +219,6 @@ MODULE_PARM_DESC(dolby_vision_src_format, "\n dolby_vision_src_format\n");
 static unsigned int force_mel;
 module_param(force_mel, uint, 0664);
 MODULE_PARM_DESC(force_mel, "\n force_mel\n");
-
-/* by default, both std and ll use same cfg: cfg_id=1 */
-static unsigned int cfg_id = 1;/*dv cert need cfg_id=0*/
-module_param(cfg_id, uint, 0664);
-MODULE_PARM_DESC(cfg_id, "\n cfg_id\n");
 
 /*bit0: 0-> efuse, 1->no efuse; */
 /*bit1: 1->ko loaded*/
@@ -344,6 +335,7 @@ static u32 crc_count;
 static u32 crc_bypass_count;
 static u32 setting_update_count;
 static s32 crc_read_delay;
+
 static u32 core1_disp_hsize;
 static u32 core1_disp_vsize;
 static u32 vsync_count;
@@ -454,44 +446,6 @@ MODULE_PARM_DESC(atsc_sei, "\n atsc_sei\n");
 
 static struct dv_atsc p_atsc_md;
 
-static int content_fps = 24;
-static int gd_rf_adjust;
-static int enable_vf_check;
-
-#define MAX_DV_PICTUREMODES 40
-struct pq_config *bin_to_cfg;
-
-static struct dv_cfg_info_s cfg_info[MAX_DV_PICTUREMODES];
-
-static s16 pq_center[MAX_DV_PICTUREMODES][4];
-struct dv_pq_range_s pq_range[4];
-u8 current_vsvdb[7];
-
-int num_picture_mode;
-static int default_pic_mode = 1;/*bright(standard) mode as default*/
-static int cur_pic_mode;/*current picture mode id*/
-static bool load_bin_config;
-static bool need_update_cfg;
-
-static const s16 EXTER_MIN_PQ = -256;
-static const s16 EXTER_MAX_PQ = 256;
-static const s16 INTER_MIN_PQ = -4096;
-static const s16 INTER_MAX_PQ = 4095;
-
-const char *pq_item_str[] = {"brightness",
-			     "contrast",
-			     "colorshift",
-			     "saturation"};
-
-const char *eotf_str[] = {"bt1886", "pq", "power"};
-
-static u32 cur_debug_tprimary[3][2];
-static int debug_tprimary;
-
-/*0: set exter pq [-256,256]. 1:set inter pq [-4096,4095]*/
-static int set_inter_pq;
-static DEFINE_SPINLOCK(cfg_lock);
-
 unsigned int debug_dolby;
 module_param(debug_dolby, uint, 0664);
 MODULE_PARM_DESC(debug_dolby, "\n debug_dolby\n");
@@ -531,7 +485,6 @@ static bool dolby_vision_on_in_uboot;
 static bool dolby_vision_wait_init;
 static unsigned int frame_count;
 static struct hdr10_parameter hdr10_param;
-static struct hdr10_parameter last_hdr10_param;
 static struct master_display_info_s hdr10_data;
 
 static char *md_buf[2];
@@ -546,13 +499,10 @@ static int backup_md_size;
 static struct dovi_setting_s dovi_setting;
 static struct dovi_setting_s new_dovi_setting;
 
-void *pq_config_fake;
-
 static bool tv_dovi_setting_update_flag;
 static bool dovi_setting_video_flag;
 static struct platform_device *dovi_pdev;
 static bool vsvdb_config_set_flag;
-static bool vfm_path_on;
 
 #define CP_FLAG_CHANGE_TC       0x000010
 #define CP_FLAG_CHANGE_TC2      0x000020
@@ -570,7 +520,6 @@ static bool mel_mode;
 static bool osd_update;
 static bool enable_fel;
 static bool bypass_all_vpp_pq;
-static int use_target_lum_from_cfg;
 
 /*0: not debug mode; 1:force bypass vpp pq; 2:force enable vpp pq*/
 /*3: force do nothing*/
@@ -631,14 +580,6 @@ static bool is_meson_tm2(void)
 {
 	if (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TM2 ||
 		dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TM2_REVB)
-		return true;
-	else
-		return false;
-}
-
-static bool is_meson_tm2_revb(void)
-{
-	if (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TM2_REVB)
 		return true;
 	else
 		return false;
@@ -771,18 +712,6 @@ static void dump_buffer(const char *prefix, const unsigned char *buffer, size_t 
       		pr_info("%s\n", line);
     	}
   	}
-}
-
-void dolby_vision_update_pq_config(char *pq_config_buf)
-{
-	memcpy((struct pq_config *)pq_config_fake,
-		pq_config_buf, sizeof(struct pq_config));
-	pr_info("update_pq_config[%zu] %x %x %x %x\n",
-		sizeof(struct pq_config),
-		pq_config_buf[1],
-		pq_config_buf[2],
-		pq_config_buf[3],
-		pq_config_buf[4]);
 }
 
 void dolby_vision_update_vsvdb_config(char *vsvdb_buf, u32 tbl_size)
@@ -1078,38 +1007,6 @@ static int stb_dolby_core1_set
 
 	tv_dovi_setting_update_flag = true;
 	return 0;
-}
-
-static u32 tv_run_mode(int vsize, bool hdmi, bool hdr10, int el_41_mode)
-{
-	u32 run_mode = 1;
-
-	if (hdmi) {
-		if (vsize > 1080)
-			run_mode =
-				0x00000043;
-		else
-			run_mode =
-				0x00000042;
-	} else {
-		if (hdr10) {
-			run_mode =
-				0x0000004c;
-		} else {
-			if (el_41_mode)
-				run_mode =
-					0x0000004c;
-			else
-				run_mode =
-					0x00000044;
-		}
-	}
-	if (dolby_vision_flags & FLAG_BYPASS_CSC)
-		run_mode |= 1 << 12; /* bypass CSC */
-	if ((dolby_vision_flags & FLAG_BYPASS_CVM) &&
-	    !(dolby_vision_flags & FLAG_FORCE_CVM))
-		run_mode |= 1 << 13; /* bypass CVM */
-	return run_mode;
 }
 
 static void adjust_vpotch(void)
@@ -2673,7 +2570,6 @@ void enable_dolby_vision(int enable)
 {
 	u32 size = 0;
 	u32 core_flag = 0;
-	int gd_en = 0;
 	if (enable) {
 		if (!dolby_vision_on) {
 			dolby_vision_wait_on = true;
@@ -3369,59 +3265,6 @@ static struct vframe_s *dv_vf[16][2];
 static void *metadata_parser;
 static bool metadata_parser_reset_flag;
 static char meta_buf[1024];
-void dv_vf_light_unreg_provider(void)
-{
-	int i;
-	unsigned long flags;
-
-	spin_lock_irqsave(&dovi_lock, flags);
-	if (vfm_path_on) {
-		for (i = 0; i < 16; i++) {
-			if (dv_vf[i][0]) {
-				if (dv_vf[i][1])
-					dvel_vf_put(dv_vf[i][1]);
-				dv_vf[i][1] = NULL;
-			}
-			dv_vf[i][0] = NULL;
-		}
-
-		memset(&hdr10_data, 0, sizeof(hdr10_data));
-		memset(&hdr10_param, 0, sizeof(hdr10_param));
-		memset(&last_hdr10_param, 0, sizeof(last_hdr10_param));
-		frame_count = 0;
-		setting_update_count = 0;
-		crc_count = 0;
-		crc_bypass_count = 0;
-		dolby_vision_el_disable = 0;
-	}
-	vfm_path_on = false;
-	spin_unlock_irqrestore(&dovi_lock, flags);
-}
-EXPORT_SYMBOL(dv_vf_light_unreg_provider);
-void dv_vf_light_reg_provider(void)
-{
-	int i;
-	unsigned long flags;
-
-	spin_lock_irqsave(&dovi_lock, flags);
-	if (!vfm_path_on) {
-		for (i = 0; i < 16; i++) {
-			dv_vf[i][0] = NULL;
-			dv_vf[i][1] = NULL;
-		}
-		memset(&hdr10_data, 0, sizeof(hdr10_data));
-		memset(&hdr10_param, 0, sizeof(hdr10_param));
-		memset(&last_hdr10_param, 0, sizeof(last_hdr10_param));
-		frame_count = 0;
-		setting_update_count = 0;
-		crc_count = 0;
-		crc_bypass_count = 0;
-		dolby_vision_el_disable = 0;
-	}
-	vfm_path_on = true;
-	spin_unlock_irqrestore(&dovi_lock, flags);
-}
-EXPORT_SYMBOL(dv_vf_light_reg_provider);
 
 static int dvel_receiver_event_fun(int type, void *data, void *arg)
 {
@@ -5074,9 +4917,7 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 
 	if (get_primary_policy() == PRIMARIES_NATIVE ||
 		primary_debug == 1 ||
-		(dolby_vision_flags & FLAG_CERTIFICAION) ||
-		!strcasecmp(cfg_info[cur_pic_mode].pic_mode_name,
-		"hdr10_dark")) {
+		(dolby_vision_flags & FLAG_CERTIFICAION)) {
 		p_hdr10_param->min_display_mastering_lum =
 			min_lum;
 		p_hdr10_param->max_display_mastering_lum =
@@ -6047,10 +5888,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	u32 h = 0xffff;
 	int meta_flag_bl = 1;
 	int meta_flag_el = 1;
-	int src_chroma_format = 0;
 	int src_bdp = 12;
 	bool video_frame = false;
-	int i;
 	struct vframe_master_display_colour_s *p_mdc;
 	unsigned int current_mode = dolby_vision_mode;
 	u32 target_lumin_max = 0;
@@ -6181,6 +6020,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			}
 			if (ret_flags == 1)
 				mel_flag = true;
+
+			// Logic for Profile 4 - which at the moememnt is not set (dolby_vision_profile) - this is only usage of the module param.
 			if (!is_dv_standard_es(req.dv_enhance_exist,
 					       ret_flags, w)) {
 				src_format = FORMAT_SDR;
@@ -7278,10 +7119,7 @@ int dolby_vision_process(struct vframe_s *vf,
 	int policy_changed = 0;
 	int sink_changed = 0;
 	int format_changed = 0;
-	bool src_is_42210bit = false;
 	u8 core_mask = 0x7;
-	static bool reverse_status;
-	bool reverse = false;
 	bool reverse_changed = false;
 	static u8 last_toggle_mode;
 	struct vout_device_s *p_vout = NULL;
@@ -7423,7 +7261,7 @@ int dolby_vision_process(struct vframe_s *vf,
 	    (video_status == 1 && !(dolby_vision_flags & FLAG_CERTIFICAION)) ||
 	    (graphic_status & 2) ||
 	    (dolby_vision_flags & FLAG_FORCE_HDMI_PKT) ||
-	    need_update_cfg || reverse_changed) {
+	    reverse_changed) {
 		if (debug_dolby & 1)
 			pr_dolby_dbg("sink %s,cap 0x%x,video %s,osd %s,vf %p,toggle %d\n",
 				     current_sink_available ? "on" : "off",
@@ -7445,7 +7283,6 @@ int dolby_vision_process(struct vframe_s *vf,
 
 			dolby_vision_set_toggle_flag(1);
 		}
-		need_update_cfg = false;
 	}
 
 	if (debug_dolby & 8)
@@ -7932,1074 +7769,6 @@ static void parse_param_amdolby_vision(char *buf_orig, char **parm)
 	}
 }
 
-static inline s16 clamps(s16 value, s16 v_min, s16 v_max)
-{
-	if (value > v_max)
-		return v_max;
-	if (value < v_min)
-		return v_min;
-	return value;
-}
-
-/*to do*/
-static void update_vsvdb_to_rx(void)
-{
-	u8 *p = cfg_info[cur_pic_mode].vsvdb;
-
-	if (memcmp(&current_vsvdb[0], p, sizeof(current_vsvdb))) {
-		memcpy(&current_vsvdb[0], p, sizeof(current_vsvdb));
-		pr_info("%s: %d %d %d %d %d %d %d\n",
-			__func__, p[0], p[1], p[2], p[3], p[4], p[5], p[6]);
-	}
-}
-
-static void update_cp_cfg(void)
-{
-	unsigned long lockflags;
-	struct target_config *tdc;
-
-	if (cur_pic_mode >= num_picture_mode || num_picture_mode == 0 ||
-	    !bin_to_cfg) {
-		pr_info("%s, invalid para %d/%d, bin_to_cfg %p",
-			__func__, cur_pic_mode, num_picture_mode, bin_to_cfg);
-		return;
-	}
-
-	memcpy(pq_config_fake,
-	       &bin_to_cfg[cur_pic_mode],
-	       sizeof(struct pq_config));
-	tdc = &(((struct pq_config *)pq_config_fake)->tdc);
-	tdc->d_brightness = cfg_info[cur_pic_mode].brightness;
-	tdc->d_contrast = cfg_info[cur_pic_mode].contrast;
-	tdc->d_color_shift = cfg_info[cur_pic_mode].colorshift;
-	tdc->d_saturation = cfg_info[cur_pic_mode].saturation;
-
-	if (debug_tprimary) {
-		tdc->t_primaries[0] = cur_debug_tprimary[0][0]; /*rx*/
-		tdc->t_primaries[1] = cur_debug_tprimary[0][1]; /*ry*/
-		tdc->t_primaries[2] = cur_debug_tprimary[1][0]; /*gx*/
-		tdc->t_primaries[3] = cur_debug_tprimary[1][1]; /*gy*/
-		tdc->t_primaries[4] = cur_debug_tprimary[2][0]; /*bx*/
-		tdc->t_primaries[5] = cur_debug_tprimary[2][1]; /*by*/
-	}
-
-	spin_lock_irqsave(&cfg_lock, lockflags);
-	need_update_cfg = true;
-	spin_unlock_irqrestore(&cfg_lock, lockflags);
-}
-
-/*0: reset picture mode and reset pq for all picture mode*/
-/*1: reset pq for all picture mode*/
-/*2: reset pq for current picture mode */
-static void restore_dv_pq_setting(enum pq_reset_e pq_reset)
-{
-	int mode = 0;
-
-	if (pq_reset == RESET_ALL)
-		cur_pic_mode = default_pic_mode;
-
-	for (mode = 0; mode < num_picture_mode; mode++) {
-		if (pq_reset == RESET_PQ_FOR_CUR && mode != cur_pic_mode)
-			continue;
-		cfg_info[mode].brightness =
-			bin_to_cfg[mode].tdc.d_brightness;
-		cfg_info[mode].contrast =
-			bin_to_cfg[mode].tdc.d_contrast;
-		cfg_info[mode].colorshift =
-			bin_to_cfg[mode].tdc.d_color_shift;
-		cfg_info[mode].saturation =
-			bin_to_cfg[mode].tdc.d_saturation;
-		memcpy(cfg_info[mode].vsvdb,
-		       bin_to_cfg[mode].tdc.vsvdb,
-		       sizeof(cfg_info[mode].vsvdb));
-	}
-	cur_debug_tprimary[0][0] =
-		bin_to_cfg[0].tdc.t_primaries[0];
-	cur_debug_tprimary[0][1] =
-		bin_to_cfg[0].tdc.t_primaries[1];
-	cur_debug_tprimary[1][0] =
-		bin_to_cfg[0].tdc.t_primaries[2];
-	cur_debug_tprimary[1][1] =
-		bin_to_cfg[0].tdc.t_primaries[3];
-	cur_debug_tprimary[2][0] =
-		bin_to_cfg[0].tdc.t_primaries[4];
-	cur_debug_tprimary[2][1] =
-		bin_to_cfg[0].tdc.t_primaries[5];
-
-	update_cp_cfg();
-	if (debug_dolby & 0x200)
-		pr_info("reset pq %d\n", pq_reset);
-}
-
-static void remove_comments(char *p_buf)
-{
-	if (!p_buf)
-		return;
-	while (*p_buf && *p_buf != '#' && *p_buf != '%')
-		p_buf++;
-
-	*p_buf = 0;
-}
-
-#define MAX_READ_SIZE 256
-static char cur_line[MAX_READ_SIZE];
-
-/*read one line from cfg, return eof flag*/
-static bool get_one_line(char **cfg_buf, char *line_buf)
-{
-	char *line_end;
-	size_t line_len = 0;
-	bool eof_flag = false;
-
-	if (!cfg_buf || !(*cfg_buf) || !line_buf)
-		return true;
-
-	line_buf[0] = '\0';
-	while (*line_buf == '\0') {
-		line_end = memchr(*cfg_buf, '\n', MAX_READ_SIZE);
-		if (!line_end)
-			line_end = memchr(*cfg_buf, '\r', MAX_READ_SIZE);
-		if (!line_end) {
-			line_len = strlen(*cfg_buf);
-			eof_flag = true;
-		} else {
-			line_len = (size_t)(line_end - *cfg_buf);
-		}
-		memcpy(line_buf, *cfg_buf, line_len);
-		line_buf[line_len] = '\0';
-		if (line_len > 0 && line_buf[line_len - 1] == '\r')
-			line_buf[line_len - 1] = '\0';
-
-		*cfg_buf = *cfg_buf + line_len + 1;
-		remove_comments(line_buf);
-		while (isspace(*line_buf))
-			line_buf++;
-
-		if (**cfg_buf == '\0')
-			eof_flag = true;
-
-		if (eof_flag)
-			break;
-	}
-	if (debug_dolby & 0x200)
-		pr_info("get line %s\n", line_buf);
-	return eof_flag;
-}
-
-static void get_picture_mode_info(char *cfg_buf)
-{
-	char *ptr_line;
-	char name[32];
-	int picmode_count = 0;
-	int ret = 0;
-	bool eof_flag = false;
-
-	while (!eof_flag) {
-		eof_flag = get_one_line(&cfg_buf, (char *)&cur_line);
-		ptr_line = cur_line;
-		if (eof_flag && (strlen(cur_line) == 0))
-			break;
-		if ((strncmp(ptr_line, "PictureModeName",
-			strlen("PictureModeName")) == 0)) {
-			ret = sscanf(ptr_line, "PictureModeName = %s", name);
-			if (ret == 1) {
-				cfg_info[picmode_count].id =
-					picmode_count;
-				strcpy(cfg_info[picmode_count].pic_mode_name,
-					name);
-				if (debug_dolby & 0x200)
-					pr_info("update cfg_info[%d]: %s\n",
-					picmode_count, name);
-				picmode_count++;
-				if (picmode_count >= num_picture_mode)
-					break;
-			}
-		}
-	}
-}
-
-/*internal range -> external range*/
-static s16 map_pq_inter_to_exter
-	(enum pq_item_e pq_item,
-	 s16 inter_value)
-{
-	s16 inter_pq_min;
-	s16 inter_pq_max;
-	s16 exter_pq_min;
-	s16 exter_pq_max;
-	s16 exter_value;
-	s16 inter_range;
-	s16 exter_range;
-	s16 tmp;
-	s16 left_range = pq_range[pq_item].left;
-	s16 right_range = pq_range[pq_item].right;
-	s16 center = pq_center[cur_pic_mode][pq_item];
-
-	if (inter_value >= center) {
-		exter_pq_min = 0;
-		exter_pq_max = EXTER_MAX_PQ;
-		inter_pq_min = center;
-		inter_pq_max = right_range;
-	} else {
-		exter_pq_min = EXTER_MIN_PQ;
-		exter_pq_max = 0;
-		inter_pq_min = left_range;
-		inter_pq_max = center;
-	}
-	inter_pq_min = clamps(inter_pq_min, INTER_MIN_PQ, INTER_MAX_PQ);
-	inter_pq_max = clamps(inter_pq_max, INTER_MIN_PQ, INTER_MAX_PQ);
-	tmp = clamps(inter_value, inter_pq_min, inter_pq_max);
-
-	inter_range = inter_pq_max - inter_pq_min;
-	exter_range = exter_pq_max - exter_pq_min;
-
-	if (inter_range == 0) {
-		inter_range = INTER_MAX_PQ;
-		pr_info("invalid inter_range, set to INTER_MAX_PQ\n");
-	}
-
-	exter_value = exter_pq_min +
-		(tmp - inter_pq_min) * exter_range / inter_range;
-
-	if (debug_dolby & 0x200)
-		pr_info("%s: %s [%d]->[%d]\n",
-			__func__, pq_item_str[pq_item],
-			inter_value, exter_value);
-	return exter_value;
-}
-
-/*external range -> internal range*/
-static s16 map_pq_exter_to_inter
-	(enum pq_item_e pq_item,
-	 s16 exter_value)
-{
-	s16 inter_pq_min;
-	s16 inter_pq_max;
-	s16 exter_pq_min;
-	s16 exter_pq_max;
-	s16 inter_value;
-	s16 inter_range;
-	s16 exter_range;
-	s16 tmp;
-	s16 left_range = pq_range[pq_item].left;
-	s16 right_range = pq_range[pq_item].right;
-	s16 center = pq_center[cur_pic_mode][pq_item];
-
-	if (exter_value >= 0) {
-		exter_pq_min = 0;
-		exter_pq_max = EXTER_MAX_PQ;
-		inter_pq_min = center;
-		inter_pq_max = right_range;
-	} else {
-		exter_pq_min = EXTER_MIN_PQ;
-		exter_pq_max = 0;
-		inter_pq_min = left_range;
-		inter_pq_max = center;
-	}
-
-	inter_pq_min = clamps(inter_pq_min, INTER_MIN_PQ, INTER_MAX_PQ);
-	inter_pq_max = clamps(inter_pq_max, INTER_MIN_PQ, INTER_MAX_PQ);
-	tmp = clamps(exter_value, exter_pq_min, exter_pq_max);
-
-	inter_range = inter_pq_max - inter_pq_min;
-	exter_range = exter_pq_max - exter_pq_min;
-
-	inter_value = inter_pq_min +
-		(tmp - exter_pq_min) * inter_range / exter_range;
-
-	if (debug_dolby & 0x200)
-		pr_info("%s: %s [%d]->[%d]\n",
-			__func__, pq_item_str[pq_item],
-			exter_value, inter_value);
-	return inter_value;
-}
-
-static bool is_valid_pic_mode(int mode)
-{
-	if (mode < num_picture_mode && mode >= 0)
-		return true;
-	else
-		return false;
-}
-
-static bool is_valid_pq_exter_value(s16 exter_value)
-{
-	if (exter_value <= EXTER_MAX_PQ && exter_value >= EXTER_MIN_PQ)
-		return true;
-
-	pr_info("pq %d is out of range[%d, %d]\n",
-		exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-		return false;
-}
-
-static bool is_valid_pq_inter_value(s16 exter_value)
-{
-	if (exter_value <= INTER_MAX_PQ && exter_value >= INTER_MIN_PQ)
-		return true;
-
-	pr_info("pq %d is out of range[%d, %d]\n",
-		exter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-	return false;
-}
-
-static void set_pic_mode(int mode)
-{
-	if (cur_pic_mode != mode) {
-		cur_pic_mode = mode;
-		update_cp_cfg();
-		update_vsvdb_to_rx();
-	}
-}
-
-static int get_pic_mode_num(void)
-{
-	return num_picture_mode;
-}
-
-static int get_pic_mode(void)
-{
-	return cur_pic_mode;
-}
-
-static char *get_pic_mode_name(int mode)
-{
-	if (!is_valid_pic_mode(mode))
-		return "errmode";
-
-	return cfg_info[mode].pic_mode_name;
-}
-
-static s16 get_single_pq_value(int mode, enum pq_item_e item)
-{
-	s16 exter_value = 0;
-	s16 inter_value = 0;
-
-	if (!is_valid_pic_mode(mode)) {
-		pr_err("err picture mode %d\n", mode);
-		return exter_value;
-	}
-	switch (item) {
-	case PQ_BRIGHTNESS:
-		inter_value = cfg_info[mode].brightness;
-		break;
-	case PQ_CONTRAST:
-		inter_value = cfg_info[mode].contrast;
-		break;
-	case PQ_COLORSHIFT:
-		inter_value = cfg_info[mode].colorshift;
-		break;
-	case PQ_SATURATION:
-		inter_value = cfg_info[mode].saturation;
-		break;
-	default:
-		pr_err("err pq_item %d\n", item);
-		break;
-	}
-
-	exter_value = map_pq_inter_to_exter(item, inter_value);
-
-	if (debug_dolby & 0x200)
-		pr_info("%s: mode:%d, item:%s, [inter: %d, exter: %d]\n",
-			__func__, mode, pq_item_str[item],
-			inter_value, exter_value);
-	return exter_value;
-}
-
-static struct dv_full_pq_info_s get_full_pq_value(int mode)
-{
-	s16 exter_value = 0;
-	struct dv_full_pq_info_s full_pq_info = {mode, 0, 0, 0, 0};
-
-	if (!is_valid_pic_mode(mode)) {
-		pr_err("err picture mode %d\n", mode);
-		return full_pq_info;
-	}
-
-	exter_value = map_pq_inter_to_exter(PQ_BRIGHTNESS,
-					    cfg_info[mode].brightness);
-	full_pq_info.brightness = exter_value;
-
-	exter_value = map_pq_inter_to_exter(PQ_CONTRAST,
-					    cfg_info[mode].contrast);
-	full_pq_info.contrast = exter_value;
-
-	exter_value = map_pq_inter_to_exter(PQ_COLORSHIFT,
-					    cfg_info[mode].colorshift);
-	full_pq_info.colorshift = exter_value;
-
-	exter_value = map_pq_inter_to_exter(PQ_SATURATION,
-					    cfg_info[mode].saturation);
-	full_pq_info.saturation = exter_value;
-
-	if (debug_dolby & 0x200) {
-		pr_info("----------%s: mode:%d-----------\n", __func__, mode);
-		pr_info("%s: value[inter: %d, exter: %d]\n",
-			pq_item_str[PQ_BRIGHTNESS],
-			cfg_info[mode].brightness,
-			full_pq_info.brightness);
-		pr_info("%s: value[inter: %d, exter: %d]\n",
-			pq_item_str[PQ_CONTRAST],
-			cfg_info[mode].contrast,
-			full_pq_info.contrast);
-		pr_info("%s: value[inter: %d, exter: %d]\n",
-			pq_item_str[PQ_COLORSHIFT],
-			cfg_info[mode].colorshift,
-			full_pq_info.colorshift);
-		pr_info("%s: value[inter: %d, exter: %d]\n",
-			pq_item_str[PQ_SATURATION],
-			cfg_info[mode].saturation,
-			full_pq_info.saturation);
-	}
-
-	return full_pq_info;
-}
-
-static void set_single_pq_value(int mode, enum pq_item_e item, s16 value)
-{
-	s16 inter_value = 0;
-	s16 exter_value = value;
-	bool pq_changed = false;
-
-	if (!is_valid_pic_mode(mode)) {
-		pr_err("err picture mode %d\n", mode);
-		return;
-	}
-	if (!set_inter_pq) {
-		if (!is_valid_pq_exter_value(exter_value)) {
-			exter_value =
-				clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-			pr_info("clamps %s to %d\n",
-				pq_item_str[item], exter_value);
-		}
-		inter_value = map_pq_exter_to_inter(item, exter_value);
-		if (debug_dolby & 0x200) {
-			pr_info("%s: mode:%d, item:%s, [inter:%d, exter:%d]\n",
-				__func__, mode, pq_item_str[item],
-				inter_value, exter_value);
-		}
-	} else {
-		inter_value = value;
-		if (!is_valid_pq_inter_value(inter_value)) {
-			inter_value =
-				clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-			pr_info("clamps %s to %d\n",
-				pq_item_str[item], inter_value);
-		}
-		if (debug_dolby & 0x200) {
-			exter_value = map_pq_inter_to_exter(item, inter_value);
-			pr_info("%s: mode:%d, item:%s, [inter:%d, exter:%d]\n",
-				__func__, mode, pq_item_str[item],
-				inter_value, exter_value);
-		}
-	}
-	switch (item) {
-	case PQ_BRIGHTNESS:
-		if (cfg_info[cur_pic_mode].brightness != inter_value) {
-			cfg_info[cur_pic_mode].brightness = inter_value;
-			pq_changed = true;
-		}
-		break;
-	case PQ_CONTRAST:
-		if (cfg_info[cur_pic_mode].contrast != inter_value) {
-			cfg_info[cur_pic_mode].contrast = inter_value;
-			pq_changed = true;
-		}
-		break;
-	case PQ_COLORSHIFT:
-		if (cfg_info[cur_pic_mode].colorshift != inter_value) {
-			cfg_info[cur_pic_mode].colorshift = inter_value;
-			pq_changed = true;
-		}
-		break;
-	case PQ_SATURATION:
-		if (cfg_info[cur_pic_mode].saturation != inter_value) {
-			cfg_info[cur_pic_mode].saturation = inter_value;
-			pq_changed = true;
-		}
-		break;
-	default:
-		pr_err("err pq_item %d\n", item);
-		break;
-	}
-	if (pq_changed)
-		update_cp_cfg();
-}
-
-static void set_full_pq_value(struct dv_full_pq_info_s full_pq_info)
-{
-	s16 inter_value = 0;
-	s16 exter_value = 0;
-	int mode = full_pq_info.pic_mode_id;
-
-	if (!is_valid_pic_mode(mode)) {
-		pr_err("err picture mode %d\n", mode);
-		return;
-	}
-	/*------------set brightness----------*/
-	if (!set_inter_pq) {
-		exter_value = full_pq_info.brightness;
-		if (!is_valid_pq_exter_value(exter_value)) {
-			exter_value =
-				clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-			pr_info("clamps brightness from %d to %d\n",
-				full_pq_info.brightness, exter_value);
-		}
-		inter_value = map_pq_exter_to_inter(PQ_BRIGHTNESS, exter_value);
-	} else {
-		inter_value = full_pq_info.brightness;
-		if (!is_valid_pq_inter_value(inter_value)) {
-			inter_value =
-				clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-			pr_info("clamps brightness from %d to %d\n",
-				full_pq_info.brightness, inter_value);
-		}
-	}
-	cfg_info[cur_pic_mode].brightness = inter_value;
-
-	/*-------------set contrast-----------*/
-	if (!set_inter_pq) {
-		exter_value = full_pq_info.contrast;
-		if (!is_valid_pq_exter_value(exter_value)) {
-			exter_value =
-				clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-			pr_info("clamps contrast from %d to %d\n",
-				full_pq_info.contrast, exter_value);
-		}
-		inter_value = map_pq_exter_to_inter(PQ_CONTRAST, exter_value);
-	} else {
-		inter_value = full_pq_info.contrast;
-		if (!is_valid_pq_inter_value(inter_value)) {
-			inter_value =
-				clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-			pr_info("clamps contrast from %d to %d\n",
-				full_pq_info.contrast, inter_value);
-		}
-	}
-	cfg_info[cur_pic_mode].contrast = inter_value;
-
-	/*-------------set colorshift-----------*/
-	if (!set_inter_pq) {
-		exter_value = full_pq_info.colorshift;
-		if (!is_valid_pq_exter_value(exter_value)) {
-			exter_value =
-				clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-			pr_info("clamps colorshift from %d to %d\n",
-				full_pq_info.colorshift, exter_value);
-		}
-		inter_value = map_pq_exter_to_inter(PQ_COLORSHIFT, exter_value);
-	} else {
-		inter_value = full_pq_info.colorshift;
-		if (!is_valid_pq_inter_value(inter_value)) {
-			inter_value =
-				clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-			pr_info("clamps colorshift from %d to %d\n",
-				full_pq_info.colorshift, inter_value);
-		}
-	}
-	cfg_info[cur_pic_mode].colorshift = inter_value;
-
-	/*-------------set colorshift-----------*/
-	if (!set_inter_pq) {
-		exter_value = full_pq_info.saturation;
-		if (!is_valid_pq_exter_value(exter_value)) {
-			exter_value =
-				clamps(exter_value, EXTER_MIN_PQ, EXTER_MAX_PQ);
-			pr_info("clamps saturation from %d to %d\n",
-				full_pq_info.saturation, exter_value);
-		}
-		inter_value = map_pq_exter_to_inter(PQ_SATURATION, exter_value);
-	} else {
-		inter_value = full_pq_info.saturation;
-		if (!is_valid_pq_inter_value(inter_value)) {
-			inter_value =
-				clamps(inter_value, INTER_MIN_PQ, INTER_MAX_PQ);
-			pr_info("clamps saturation from %d to %d\n",
-				full_pq_info.saturation, inter_value);
-		}
-	}
-	cfg_info[cur_pic_mode].saturation = inter_value;
-
-	update_cp_cfg();
-
-	if (debug_dolby & 0x200) {
-		pr_info("----------%s: mode:%d----------\n", __func__, mode);
-		exter_value = map_pq_inter_to_exter(PQ_BRIGHTNESS,
-						    cfg_info[mode].brightness);
-		pr_info("%s: [inter:%d, exter:%d]\n",
-			pq_item_str[PQ_BRIGHTNESS],
-			cfg_info[mode].brightness,
-			exter_value);
-
-		exter_value = map_pq_inter_to_exter(PQ_CONTRAST,
-						    cfg_info[mode].contrast);
-		pr_info("%s: [inter:%d, exter:%d]\n",
-			pq_item_str[PQ_CONTRAST],
-			cfg_info[mode].contrast,
-			exter_value);
-
-		exter_value = map_pq_inter_to_exter(PQ_COLORSHIFT,
-						    cfg_info[mode].colorshift);
-		pr_info("%s: [inter:%d, exter:%d]\n",
-			pq_item_str[PQ_COLORSHIFT],
-			cfg_info[mode].colorshift,
-			exter_value);
-
-		exter_value = map_pq_inter_to_exter(PQ_SATURATION,
-						    cfg_info[mode].saturation);
-		pr_info("%s: [inter:%d, exter:%d]\n",
-			pq_item_str[PQ_SATURATION],
-			cfg_info[mode].saturation,
-			exter_value);
-	}
-}
-
-static ssize_t amdolby_vision_set_inter_pq_show
-		(struct class *cla,
-		 struct class_attribute *attr,
-		 char *buf)
-{
-	return snprintf(buf, 40, "%d\n",
-		set_inter_pq);
-}
-
-static ssize_t amdolby_vision_set_inter_pq_store
-		(struct class *cla,
-		 struct class_attribute *attr,
-		 const char *buf, size_t count)
-
-{
-	size_t r;
-
-	pr_info("cmd: %s\n", buf);
-	r = kstrtoint(buf, 0, &set_inter_pq);
-	if (r != 0)
-		return -EINVAL;
-	return count;
-}
-
-static ssize_t amdolby_vision_load_cfg_status_show
-		(struct class *cla,
-		 struct class_attribute *attr,
-		 char *buf)
-{
-	return snprintf(buf, 40, "%d\n",
-		load_bin_config);
-}
-
-static ssize_t amdolby_vision_load_cfg_status_store
-		(struct class *cla,
-		 struct class_attribute *attr,
-		 const char *buf, size_t count)
-{
-	size_t r;
-	int value = 0;
-
-	pr_info("%s: cmd: %s\n", __func__, buf);
-	r = kstrtoint(buf, 0, &value);
-	if (r != 0)
-		return -EINVAL;
-	load_bin_config = value;
-	if (load_bin_config)
-		update_cp_cfg();
-	return count;
-}
-
-static ssize_t  amdolby_vision_pq_info_show
-		(struct class *cla,
-		 struct class_attribute *attr, char *buf)
-{
-	int pos = 0;
-	int exter_value = 0;
-	int inter_value = 0;
-	int i = 0;
-	const char *pq_usage_str = {
-	"\n"
-	"------------------------- set pq usage ------------------------\n"
-	"echo picture_mode value > /sys/class/amdolby_vision/dv_pq_info;\n"
-	"echo brightness value   > /sys/class/amdolby_vision/dv_pq_info;\n"
-	"echo contrast value     > /sys/class/amdolby_vision/dv_pq_info;\n"
-	"echo colorshift value   > /sys/class/amdolby_vision/dv_pq_info;\n"
-	"echo saturation value   > /sys/class/amdolby_vision/dv_pq_info;\n"
-	"echo all v1 v2 v3 v4 v5 > /sys/class/amdolby_vision/dv_pq_info;\n"
-	"echo reset value        > /sys/class/amdolby_vision/dv_pq_info;\n"
-	"\n"
-	"picture_mode range: [0, num_picture_mode-1]\n"
-	"brightness   range: [-256, 256]\n"
-	"contrast     range: [-256, 256]\n"
-	"colorshift   range: [-256, 256]\n"
-	"saturation   range: [-256, 256]\n"
-	"reset            0: reset pict mode/all pq for all pict mode]\n"
-	"                 1: reset pq for all picture mode]\n"
-	"                 2: reset pq for current picture mode]\n"
-	"---------------------------------------------------------------\n"
-	};
-
-	if (!load_bin_config) {
-		pr_info("no load_bin_config\n");
-		return 0;
-	}
-
-	pos += sprintf(buf + pos,
-		       "\n==== show current picture mode info ====\n");
-
-	pos += sprintf(buf + pos,
-		       "num_picture_mode:          [%d]\n", num_picture_mode);
-	for (i = 0; i < num_picture_mode; i++) {
-		pos += sprintf(buf + pos,
-			       "picture_mode   %d:          [%s]\n",
-			       cfg_info[i].id, cfg_info[i].pic_mode_name);
-	}
-	pos += sprintf(buf + pos, "\n\n");
-	pos += sprintf(buf + pos,
-		       "current picture mode:      [%d]\n", cur_pic_mode);
-
-	pos += sprintf(buf + pos,
-		       "current picture mode name: [%s]\n",
-		       cfg_info[cur_pic_mode].pic_mode_name);
-
-	inter_value = cfg_info[cur_pic_mode].brightness;
-	exter_value = map_pq_inter_to_exter(PQ_BRIGHTNESS, inter_value);
-	pos += sprintf(buf + pos,
-		       "current brightness:        [inter:%d][exter:%d]\n",
-		       inter_value, exter_value);
-
-	inter_value = cfg_info[cur_pic_mode].contrast;
-	exter_value = map_pq_inter_to_exter(PQ_CONTRAST, inter_value);
-	pos += sprintf(buf + pos,
-		       "current contrast:          [inter:%d][exter:%d]\n",
-		       inter_value, exter_value);
-
-	inter_value = cfg_info[cur_pic_mode].colorshift;
-	exter_value = map_pq_inter_to_exter(PQ_COLORSHIFT, inter_value);
-	pos += sprintf(buf + pos,
-		       "current colorshift:        [inter:%d][exter:%d]\n",
-		       inter_value, exter_value);
-
-	inter_value = cfg_info[cur_pic_mode].saturation;
-	exter_value = map_pq_inter_to_exter(PQ_SATURATION, inter_value);
-	pos += sprintf(buf + pos,
-		       "current saturation:        [inter:%d][exter:%d]\n",
-		       inter_value, exter_value);
-	pos += sprintf(buf + pos, "========================================\n");
-
-	pos += sprintf(buf + pos, "%s\n", pq_usage_str);
-
-	return pos;
-}
-
-static ssize_t amdolby_vision_pq_info_store
-		(struct class *cla,
-		 struct class_attribute *attr,
-		 const char *buf, size_t count)
-{
-	char *buf_orig;
-	char *parm[MAX_PARAM] = {NULL};
-	struct dv_full_pq_info_s full_pq_info;
-	enum pq_reset_e pq_reset;
-	int val = 0;
-	int val1 = 0;
-	int val2 = 0;
-	int val3 = 0;
-	int val4 = 0;
-	int val5 = 0;
-	int item = -1;
-
-	if (!load_bin_config)
-		return count;
-	if (!buf)
-		return count;
-	buf_orig = kstrdup(buf, GFP_KERNEL);
-
-	pr_info("%s: cmd: %s\n", __func__, buf_orig);
-	parse_param_amdolby_vision(buf_orig, (char **)&parm);
-	if (!parm[0] || !parm[1])
-		goto ERR;
-
-	if (!strcmp(parm[0], "picture_mode")) {
-		if (kstrtoint(parm[1], 10, &val) != 0)
-			goto ERR;
-		if (is_valid_pic_mode(val))
-			set_pic_mode(val);
-		else
-			pr_info("err picture_mode\n");
-	} else if (!strcmp(parm[0], "brightness")) {
-		if (kstrtoint(parm[1], 10, &val) != 0)
-			goto ERR;
-
-		item = PQ_BRIGHTNESS;
-	} else if (!strcmp(parm[0], "contrast")) {
-		if (kstrtoint(parm[1], 10, &val) != 0)
-			goto ERR;
-
-		item = PQ_CONTRAST;
-	} else if (!strcmp(parm[0], "colorshift")) {
-		if (kstrtoint(parm[1], 10, &val) != 0)
-			goto ERR;
-
-		item = PQ_COLORSHIFT;
-	} else if (!strcmp(parm[0], "saturation")) {
-		if (kstrtoint(parm[1], 10, &val) != 0)
-			goto ERR;
-		item = PQ_SATURATION;
-	} else if (!strcmp(parm[0], "all")) {
-		if (kstrtoint(parm[1], 10, &val1) != 0 ||
-		    kstrtoint(parm[2], 10, &val2) != 0 ||
-		    kstrtoint(parm[3], 10, &val3) != 0 ||
-		    kstrtoint(parm[4], 10, &val4) != 0 ||
-		    kstrtoint(parm[5], 10, &val5) != 0)
-			goto ERR;
-		full_pq_info.pic_mode_id = val1;
-		full_pq_info.brightness = val2;
-		full_pq_info.contrast = val3;
-		full_pq_info.colorshift = val4;
-		full_pq_info.saturation = val5;
-		set_full_pq_value(full_pq_info);
-	} else if (!strcmp(parm[0], "reset")) {
-		if (kstrtoint(parm[1], 10, &val) != 0)
-			goto ERR;
-		pq_reset = val;
-		restore_dv_pq_setting(pq_reset);
-	} else {
-		pr_info("unsupport cmd\n");
-	}
-	if (item != -1)
-		set_single_pq_value(cur_pic_mode, item, val);
-ERR:
-	kfree(buf_orig);
-	return count;
-}
-
-static ssize_t amdolby_vision_bin_config_show
-	(struct class *cla,
-	 struct class_attribute *attr,
-	 char *buf)
-{
-	int mode = 0;
-	struct pq_config *pq_config = NULL;
-	struct target_config *config = NULL;
-
-	if (!load_bin_config) {
-		pr_info("no load_bin_config\n");
-		return 0;
-	}
-
-	pr_info("There are %d picture modes\n", num_picture_mode);
-	for (mode = 0; mode < num_picture_mode; mode++) {
-		pr_info("================ Picture Mode: %s =================\n",
-			cfg_info[mode].pic_mode_name);
-		pq_config = &bin_to_cfg[mode];
-		config = &pq_config->tdc;
-		pr_info("gamma:                %d\n",
-			config->gamma);
-		pr_info("eotf:                 %d-%s\n",
-			config->eotf,
-			eotf_str[config->eotf]);
-		pr_info("range_spec:           %d\n",
-			config->range_spec);
-		pr_info("max_pq:               %d\n",
-			config->max_pq);
-		pr_info("min_pq:               %d\n",
-			config->min_pq);
-		pr_info("max_pq_dm3:           %d\n",
-			config->max_pq_dm3);
-		pr_info("min_lin:              %d\n",
-			config->min_lin);
-		pr_info("max_lin:              %d\n",
-			config->max_lin);
-		pr_info("max_lin_dm3:          %d\n",
-			config->max_lin_dm3);
-		pr_info("tPrimaries:           %d,%d,%d,%d,%d,%d,%d,%d\n",
-			config->t_primaries[0],
-			config->t_primaries[1],
-			config->t_primaries[2],
-			config->t_primaries[3],
-			config->t_primaries[4],
-			config->t_primaries[5],
-			config->t_primaries[6],
-			config->t_primaries[7]);
-		pr_info("m_sweight:             %d\n",
-			config->m_sweight);
-		pr_info("trim_slope_bias:       %d\n",
-			config->trim_slope_bias);
-		pr_info("trim_offset_bias:      %d\n",
-			config->trim_offset_bias);
-		pr_info("trim_power_bias:       %d\n",
-			config->trim_power_bias);
-		pr_info("ms_weight_bias:        %d\n",
-			config->ms_weight_bias);
-		pr_info("chroma_weight_bias:    %d\n",
-			config->chroma_weight_bias);
-		pr_info("saturation_gain_bias:  %d\n",
-			config->saturation_gain_bias);
-		pr_info("d_brightness:          %d\n",
-			config->d_brightness);
-		pr_info("d_contrast:            %d\n",
-			config->d_contrast);
-		pr_info("d_color_shift:         %d\n",
-			config->d_color_shift);
-		pr_info("d_saturation:          %d\n",
-			config->d_saturation);
-		pr_info("d_backlight:           %d\n",
-			config->d_backlight);
-		pr_info("dbg_exec_paramsprint:  %d\n",
-			config->dbg_exec_params_print_period);
-		pr_info("dbg_dm_md_print_period:%d\n",
-			config->dbg_dm_md_print_period);
-		pr_info("dbg_dmcfg_print_period:%d\n",
-			config->dbg_dm_cfg_print_period);
-		pr_info("\n");
-		pr_info("------ Global Dimming configuration ------\n");
-		pr_info("gd_enable:            %d\n",
-			config->gd_config.gd_enable);
-		pr_info("gd_wmin:              %d\n",
-			config->gd_config.gd_wmin);
-		pr_info("gd_wmax:              %d\n",
-			config->gd_config.gd_wmax);
-		pr_info("gd_wmm:               %d\n",
-			config->gd_config.gd_wmm);
-		pr_info("gd_wdyn_rng_sqrt:     %d\n",
-			config->gd_config.gd_wdyn_rng_sqrt);
-		pr_info("gd_weight_mean:       %d\n",
-			config->gd_config.gd_weight_mean);
-		pr_info("gd_weight_std:        %d\n",
-			config->gd_config.gd_weight_std);
-		pr_info("gd_delay_ms_hdmi:     %d\n",
-			config->gd_config.gd_delay_msec_hdmi);
-		pr_info("gd_rgb2yuv_ext:       %d\n",
-			config->gd_config.gd_rgb2yuv_ext);
-		pr_info("gd_wdyn_rng_sqrt:     %d\n",
-			config->gd_config.gd_wdyn_rng_sqrt);
-		pr_info("gd_m33_rgb2yuv:       %d,%d,%d\n",
-			config->gd_config.gd_m33_rgb2yuv[0][0],
-			config->gd_config.gd_m33_rgb2yuv[0][1],
-			config->gd_config.gd_m33_rgb2yuv[0][2]);
-		pr_info("                      %d,%d,%d\n",
-			config->gd_config.gd_m33_rgb2yuv[1][0],
-			config->gd_config.gd_m33_rgb2yuv[1][1],
-			config->gd_config.gd_m33_rgb2yuv[1][2]);
-		pr_info("                      %d,%d,%d\n",
-			config->gd_config.gd_m33_rgb2yuv[2][0],
-			config->gd_config.gd_m33_rgb2yuv[2][1],
-			config->gd_config.gd_m33_rgb2yuv[2][2]);
-		pr_info("gd_m33_rgb2yuv_scale2p:%d\n",
-			config->gd_config.gd_m33_rgb2yuv_scale2p);
-		pr_info("gd_rgb2yuv_off_ext:    %d\n",
-			config->gd_config.gd_rgb2yuv_off_ext);
-		pr_info("gd_rgb2yuv_off:        %d,%d,%d\n",
-			config->gd_config.gd_rgb2yuv_off[0],
-			config->gd_config.gd_rgb2yuv_off[1],
-			config->gd_config.gd_rgb2yuv_off[2]);
-		pr_info("gd_up_bound:           %d\n",
-			config->gd_config.gd_up_bound);
-		pr_info("gd_low_bound:          %d\n",
-			config->gd_config.gd_low_bound);
-		pr_info("last_max_pq:           %d\n",
-			config->gd_config.last_max_pq);
-		pr_info("gd_wmin_pq:            %d\n",
-			config->gd_config.gd_wmin_pq);
-		pr_info("gd_wmax_pq:            %d\n",
-			config->gd_config.gd_wmax_pq);
-		pr_info("gd_wm_pq:              %d\n",
-			config->gd_config.gd_wm_pq);
-		pr_info("gd_trigger_period:     %d\n",
-			config->gd_config.gd_trigger_period);
-		pr_info("gd_trigger_lin_thresh: %d\n",
-			config->gd_config.gd_trigger_lin_thresh);
-		pr_info("gdDelayMilliSec_ott:   %d\n",
-			config->gd_config.gd_delay_msec_ott);
-		pr_info("gd_rise_weight:        %d\n",
-			config->gd_config.gd_rise_weight);
-		pr_info("gd_fall_weight:        %d\n",
-			config->gd_config.gd_fall_weight);
-		pr_info("gd_delay_msec_ll:      %d\n",
-			config->gd_config.gd_delay_msec_ll);
-		pr_info("gd_contrast:           %d\n",
-			config->gd_config.gd_contrast);
-		pr_info("\n");
-
-		pr_info("------ Adaptive boost configuration ------\n");
-		pr_info("ab_enable:             %d\n",
-			config->ab_config.ab_enable);
-		pr_info("ab_highest_tmax:       %d\n",
-			config->ab_config.ab_highest_tmax);
-		pr_info("ab_lowest_tmax:        %d\n",
-			config->ab_config.ab_lowest_tmax);
-		pr_info("ab_rise_weight:        %d\n",
-			config->ab_config.ab_rise_weight);
-		pr_info("ab_fall_weight:        %d\n",
-			config->ab_config.ab_fall_weight);
-		pr_info("ab_delay_msec_hdmi:    %d\n",
-			config->ab_config.ab_delay_msec_hdmi);
-		pr_info("ab_delay_msec_ott:     %d\n",
-			config->ab_config.ab_delay_msec_ott);
-		pr_info("ab_delay_msec_ll:      %d\n",
-			config->ab_config.ab_delay_msec_ll);
-		pr_info("\n");
-
-		pr_info("------- Ambient light configuration ------\n");
-		pr_info("ambient:            %d\n",
-			config->ambient_config.ambient);
-		pr_info("t_front_lux:        %d\n",
-			config->ambient_config.t_front_lux);
-		pr_info("t_front_lux_scale:  %d\n",
-			config->ambient_config.t_front_lux_scale);
-		pr_info("t_rear_lum:         %d\n",
-			config->ambient_config.t_rear_lum);
-		pr_info("t_rear_lum_scale:   %d\n",
-			config->ambient_config.t_rear_lum_scale);
-		pr_info("t_whitexy:          %d, %d\n",
-			config->ambient_config.t_whitexy[0],
-			config->ambient_config.t_whitexy[1]);
-		pr_info("t_surround_reflecti:%d\n",
-			config->ambient_config.t_surround_reflection);
-		pr_info("t_screen_reflection:%d\n",
-			config->ambient_config.t_screen_reflection);
-		pr_info("al_delay:           %d\n",
-			config->ambient_config.al_delay);
-		pr_info("al_rise:            %d\n",
-			config->ambient_config.al_rise);
-		pr_info("al_fall:            %d\n",
-			config->ambient_config.al_fall);
-
-		pr_info("vsvdb:              %x,%x,%x,%x,%x,%x,%x\n",
-			config->vsvdb[0],
-			config->vsvdb[1],
-			config->vsvdb[2],
-			config->vsvdb[3],
-			config->vsvdb[4],
-			config->vsvdb[5],
-			config->vsvdb[6]);
-		pr_info("\n");
-		pr_info("---------------- ocsc_config --------------\n");
-		pr_info("lms2rgb_mat:        %d,%d,%d\n",
-			config->ocsc_config.lms2rgb_mat[0][0],
-			config->ocsc_config.lms2rgb_mat[0][1],
-			config->ocsc_config.lms2rgb_mat[0][2]);
-		pr_info("                    %d,%d,%d\n",
-			config->ocsc_config.lms2rgb_mat[1][0],
-			config->ocsc_config.lms2rgb_mat[1][1],
-			config->ocsc_config.lms2rgb_mat[1][2]);
-		pr_info("                    %d,%d,%d\n",
-			config->ocsc_config.lms2rgb_mat[2][0],
-			config->ocsc_config.lms2rgb_mat[2][1],
-			config->ocsc_config.lms2rgb_mat[2][2]);
-		pr_info("lms2rgb_mat_scale:  %d\n",
-			config->ocsc_config.lms2rgb_mat_scale);
-		pr_info("\n");
-
-		pr_info("dm31_avail:         %d\n",
-			config->dm31_avail);
-		pr_info("bright_preservation:%d\n",
-			config->bright_preservation);
-		pr_info("total_viewing_modes:%d\n",
-			config->total_viewing_modes_num);
-		pr_info("viewing_mode_valid: %d\n",
-			config->viewing_mode_valid);
-		pr_info("\n");
-	}
-	return 0;
-}
-
 bool chip_support_dv(void)
 {
 	if (is_meson_txlx() || is_meson_gxm() ||
@@ -9015,7 +7784,6 @@ int register_dv_functions(const struct dolby_vision_func_s *func)
 	int ret = -1;
 	unsigned int reg_clk;
 	unsigned int reg_value;
-	struct pq_config *pq_cfg;
 	const struct vinfo_s *vinfo = get_current_vinfo();
 	unsigned int ko_info_len = 0;
 
@@ -9122,14 +7890,6 @@ int unregister_dv_functions(void)
 
 	if (p_funcs_stb) {
 		pr_info("*** %s ***\n", __func__);
-		if (pq_config_fake) {
-			vfree(pq_config_fake);
-			pq_config_fake = NULL;
-		}
-		if (bin_to_cfg) {
-			vfree(bin_to_cfg);
-			bin_to_cfg = NULL;
-		}
 		if (ko_info) {
 			vfree(ko_info);
 			ko_info = NULL;
@@ -9237,41 +7997,27 @@ static int amdolby_vision_open(struct inode *inode, struct file *file)
 
 }
 
-static char *pq_config_buf;
-static u32 pq_config_level;
+static char *vsvdb_buf;
 static ssize_t amdolby_vision_write
 	(struct file *file,
 	const char __user *buf,
 	size_t len,
 	loff_t *off)
 {
-	int max_len, w_len;
+	int w_len = len > 31 ? 31 : len;
 
-	if (!pq_config_buf) {
-		pq_config_buf = vmalloc(108 * 1024);
-		pq_config_level = 0;
-		if (!pq_config_buf)
+	if (!vsvdb_buf) {
+		vsvdb_buf = vmalloc(31);
+		if (!vsvdb_buf)
 			return -ENOSPC;
 	}
-	max_len = sizeof(struct pq_config) - pq_config_level;
-	w_len = len < max_len ? len : max_len;
-
-	pr_info("write len %d, w_len %d, level %d\n",
-		(int)len, w_len, pq_config_level);
-	if (copy_from_user(pq_config_buf + pq_config_level, buf, w_len))
+	
+	if (copy_from_user(vsvdb_buf, buf, w_len))
 		return -EFAULT;
+	
+	dolby_vision_update_vsvdb_config(vsvdb_buf, w_len);
 
-	pq_config_level += w_len;
-	if (pq_config_level == sizeof(struct pq_config)) {
-		dolby_vision_update_pq_config(pq_config_buf);
-		pq_config_level = 0;
-	}
-
-	if (len <= 0x1f) {
-		dolby_vision_update_vsvdb_config(pq_config_buf, len);
-		pq_config_level = 0;
-	}
-	return len;
+	return w_len;
 }
 
 static ssize_t amdolby_vision_read
@@ -9309,184 +8055,12 @@ static int amdolby_vision_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static long amdolby_vision_ioctl(struct file *file,
-		unsigned int cmd, unsigned long arg)
-{
-#define MAX_BYTES (256)
-	int ret = 0;
-	int mode_num = 0;
-	int mode_id = 0;
-	s16 pq_value = 0;
-	enum pq_item_e pq_item;
-	enum pq_reset_e pq_reset;
-
-	struct pic_mode_info_s pic_info;
-	struct dv_pq_info_s pq_info;
-	struct dv_full_pq_info_s pq_full_info;
-	struct dv_config_file_s config_file;
-	void __user *argp = (void __user *)arg;
-	unsigned char bin_name[MAX_BYTES] = "";
-	unsigned char cfg_name[MAX_BYTES] = "";
-
-	if (debug_dolby & 0x200)
-		pr_info("[DV]: %s: cmd_nr = 0x%x\n",
-			__func__, _IOC_NR(cmd));
-
-	if (!module_installed) {
-		pr_info("[DV] module not install\n");
-		return ret;
-	}
-
-	if (!load_bin_config && cmd != DV_IOC_SET_DV_CONFIG_FILE) {
-		pr_info("[DV] no config file, pq ioctl disable!\n");
-		return ret;
-	}
-	switch (cmd) {
-	case DV_IOC_GET_DV_PIC_MODE_NUM:
-		mode_num = get_pic_mode_num();
-		put_user(mode_num, (u32 __user *)argp);
-		break;
-	case DV_IOC_GET_DV_PIC_MODE_NAME:
-		if (copy_from_user(&pic_info, argp,
-				   sizeof(struct pic_mode_info_s)) == 0) {
-			mode_id = pic_info.pic_mode_id;
-			strcpy(pic_info.name, get_pic_mode_name(mode_id));
-			if (debug_dolby & 0x200)
-				pr_info("[DV]: get mode %d, name %s\n",
-					pic_info.pic_mode_id, pic_info.name);
-			if (copy_to_user(argp,
-					 &pic_info,
-					 sizeof(struct pic_mode_info_s)))
-				ret = -EFAULT;
-		} else {
-			ret = -EFAULT;
-		}
-		break;
-	case DV_IOC_GET_DV_PIC_MODE_ID:
-		mode_id = get_pic_mode();
-		put_user(mode_id, (u32 __user *)argp);
-		break;
-	case DV_IOC_SET_DV_PIC_MODE_ID:
-		if (copy_from_user(&mode_id, argp, sizeof(s32)) == 0) {
-			if (debug_dolby & 0x200)
-				pr_info("[DV]: set mode %d\n", mode_id);
-			set_pic_mode(mode_id);
-		} else {
-			ret = -EFAULT;
-		}
-		break;
-	case DV_IOC_GET_DV_SINGLE_PQ_VALUE:
-		if (copy_from_user(&pq_info, argp,
-				   sizeof(struct dv_pq_info_s)) == 0) {
-			mode_id = pq_info.pic_mode_id;
-			pq_item = pq_info.item;
-			pq_info.value = get_single_pq_value(mode_id, pq_item);
-
-			if (debug_dolby & 0x200)
-				pr_info("[DV]: get mode %d, pq %s, value %d\n",
-					mode_id,
-					pq_item_str[pq_item],
-					pq_info.value);
-
-			if (copy_to_user(argp,
-					 &pq_info,
-					 sizeof(struct dv_pq_info_s)))
-				ret = -EFAULT;
-		} else {
-			ret = -EFAULT;
-		}
-		break;
-	case DV_IOC_GET_DV_FULL_PQ_VALUE:
-		if (copy_from_user(&pq_full_info, argp,
-				   sizeof(struct dv_full_pq_info_s)) == 0) {
-			mode_id = pq_full_info.pic_mode_id;
-			pq_full_info = get_full_pq_value(mode_id);
-
-			if (copy_to_user(argp,
-					 &pq_full_info,
-					 sizeof(struct dv_full_pq_info_s)))
-				ret = -EFAULT;
-		} else {
-			ret = -EFAULT;
-		}
-		break;
-	case DV_IOC_SET_DV_SINGLE_PQ_VALUE:
-		if (copy_from_user(&pq_info, argp,
-				   sizeof(struct dv_pq_info_s)) == 0) {
-			mode_id = pq_info.pic_mode_id;
-			pq_item = pq_info.item;
-			pq_value = pq_info.value;
-			set_single_pq_value(mode_id, pq_item, pq_value);
-
-			if (debug_dolby & 0x200)
-				pr_info("[DV]: set mode %d, pq %s, value %d\n",
-					mode_id,
-					pq_item_str[pq_item],
-					pq_value);
-
-		} else {
-			ret = -EFAULT;
-		}
-		break;
-	case DV_IOC_SET_DV_FULL_PQ_VALUE:
-		if (copy_from_user(&pq_full_info, argp,
-				   sizeof(struct dv_full_pq_info_s)) == 0) {
-			set_full_pq_value(pq_full_info);
-		} else {
-			ret = -EFAULT;
-		}
-		break;
-	case DV_IOC_SET_DV_PQ_RESET:
-		if (copy_from_user(&pq_reset, argp,
-				   sizeof(enum pq_reset_e)) == 0) {
-			restore_dv_pq_setting(pq_reset);
-			if (debug_dolby & 0x200)
-				pr_info("[DV]: reset mode %d\n", pq_reset);
-		} else {
-			ret = -EFAULT;
-		}
-		break;
-	case DV_IOC_SET_DV_CONFIG_FILE:
-		if (copy_from_user(&config_file, argp,
-				   sizeof(struct dv_config_file_s)) == 0) {
-
-			if (debug_dolby & 0x200)
-				pr_info("[DV]: config_file %s, %s\n",
-					config_file.bin_name,
-					config_file.cfg_name);
-		} else {
-			ret = -EFAULT;
-		}
-		break;
-	default:
-		ret = -EINVAL;
-		break;
-	}
-	return ret;
-}
-
-#ifdef CONFIG_COMPAT
-static long amdolby_vision_compat_ioctl(struct file *file, unsigned int cmd,
-	unsigned long arg)
-{
-	unsigned long ret;
-
-	arg = (unsigned long)compat_ptr(arg);
-	ret = amdolby_vision_ioctl(file, cmd, arg);
-	return ret;
-}
-#endif
-
 static const struct file_operations amdolby_vision_fops = {
 	.owner   = THIS_MODULE,
 	.open    = amdolby_vision_open,
 	.write   = amdolby_vision_write,
 	.read = amdolby_vision_read,
 	.release = amdolby_vision_release,
-	.unlocked_ioctl   = amdolby_vision_ioctl,
-#ifdef CONFIG_COMPAT
-	.compat_ioctl = amdolby_vision_compat_ioctl,
-#endif
 	.poll = amdolby_vision_poll,
 };
 
@@ -9506,24 +8080,19 @@ static const char *amdolby_vision_debug_usage_str = {
 	"echo dolby_dma index(D) value(H) > /sys/class/amdolby_vision/debug; dolby dma table modify\n"
 	"echo dv_efuse > /sys/class/amdolby_vision/debug; get dv efuse info\n"
 	"echo dv_el > /sys/class/amdolby_vision/debug; get dv enhanced layer info\n"
-	"echo enable_vpu_probe 1 > /sys/class/amdolby_vision/debug; enable vpu probe\n"
 	"echo debug_bypass_vpp_pq 0 > /sys/class/amdolby_vision/debug; not debug mode\n"
 	"echo debug_bypass_vpp_pq 1 > /sys/class/amdolby_vision/debug; force disable vpp pq\n"
 	"echo debug_bypass_vpp_pq 2 > /sys/class/amdolby_vision/debug; force enable vpp pq\n"
 	"echo bypass_all_vpp_pq 1 > /sys/class/amdolby_vision/debug; force bypass vpp pq in cert mode\n"
-	"echo enable_vpu_probe 1 > /sys/class/amdolby_vision/debug; enable vpu probe\n"
 	"echo ko_info > /sys/class/amdolby_vision/debug; query ko info\n"
-	"echo enable_vf_check 1 > /sys/class/amdolby_vision/debug;\n"
-	"echo enable_vf_check 0 > /sys/class/amdolby_vision/debug;\n"
 	"echo force_hdmin_fmt value > /sys/class/amdolby_vision/debug; 1:HDR10 2:HLG 3:DV LL\n"
-
 };
 
 static ssize_t  amdolby_vision_debug_show
 		(struct class *cla,
 		 struct class_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\n",  amdolby_vision_debug_usage_str);
+	return sprintf(buf, "%s\n", amdolby_vision_debug_usage_str);
 }
 
 static ssize_t amdolby_vision_debug_store
@@ -9603,15 +8172,6 @@ static ssize_t amdolby_vision_debug_store
 	} else if (!strcmp(parm[0], "ko_info")) {
 		if (ko_info)
 			pr_info("ko info: %s\n", ko_info);
-	} else if (!strcmp(parm[0], "enable_vf_check")) {
-		if (kstrtoul(parm[1], 10, &val) < 0)
-			return -EINVAL;
-		if (val == 0)
-			enable_vf_check = 0;
-		else
-			enable_vf_check = 1;
-		pr_info("set enable_vf_check %d\n",
-			enable_vf_check);
 	} else if (!strcmp(parm[0], "force_hdmin_fmt")) {
 		if (kstrtoul(parm[1], 10, &val) < 0)
 			return -EINVAL;
@@ -9622,175 +8182,6 @@ static ssize_t amdolby_vision_debug_store
 	}
 
 	kfree(buf_orig);
-	return count;
-}
-
-static ssize_t	amdolby_vision_primary_show
-	(struct class *cla,
-	struct class_attribute *attr, char *buf)
-{
-	return snprintf(buf, 100, "debug %d, tprimary %d %d %d %d %d %d\n",
-			debug_tprimary,
-			cur_debug_tprimary[0][0], cur_debug_tprimary[0][1],
-			cur_debug_tprimary[1][0], cur_debug_tprimary[1][1],
-			cur_debug_tprimary[2][0], cur_debug_tprimary[2][1]);
-}
-
-static ssize_t amdolby_vision_primary_store
-	(struct class *cla,
-	struct class_attribute *attr,
-	const char *buf, size_t count)
-{
-	char *buf_orig, *parm[MAX_PARAM] = {NULL};
-
-	if (!buf)
-		return count;
-
-	buf_orig = kstrdup(buf, GFP_KERNEL);
-	parse_param_amdolby_vision(buf_orig, (char **)&parm);
-	if (!strcmp(parm[0], "primary_r")) {
-		if (kstrtoint(parm[1], 10, &cur_debug_tprimary[0][0]) < 0) {
-			kfree(buf_orig);
-			return -EINVAL;
-		}
-		if (kstrtoint(parm[2], 10, &cur_debug_tprimary[0][1]) < 0) {
-			kfree(buf_orig);
-			return -EINVAL;
-		}
-	} else if (!strcmp(parm[0], "primary_g")) {
-		if (kstrtoint(parm[1], 10, &cur_debug_tprimary[1][0]) < 0) {
-			kfree(buf_orig);
-			return -EINVAL;
-		}
-		if (kstrtoint(parm[2], 10, &cur_debug_tprimary[1][1]) < 0) {
-			kfree(buf_orig);
-			return -EINVAL;
-		}
-	} else if (!strcmp(parm[0], "primary_b")) {
-		if (kstrtoint(parm[1], 10, &cur_debug_tprimary[2][0]) < 0) {
-			kfree(buf_orig);
-			return -EINVAL;
-		}
-		if (kstrtoint(parm[2], 10, &cur_debug_tprimary[2][1]) < 0) {
-			kfree(buf_orig);
-			return -EINVAL;
-		}
-	} else if (!strcmp(parm[0], "debug_tprimary")) {
-		if (kstrtoint(parm[1], 10, &debug_tprimary) < 0) {
-			kfree(buf_orig);
-			return -EINVAL;
-		}
-	}
-	kfree(buf_orig);
-	update_cp_cfg();
-	return count;
-}
-
-static ssize_t	amdolby_vision_config_file_show
-	(struct class *cla,
-	struct class_attribute *attr, char *buf)
-{
-	const char *str =
-		"echo bin cfg > /sys/class/amdolby_vision/config_file";
-	return sprintf(buf, "%s\n", str);
-}
-
-static ssize_t amdolby_vision_config_file_store
-	(struct class *cla,
-	struct class_attribute *attr,
-	const char *buf, size_t count)
-{
-	char *buf_orig, *parm[MAX_PARAM] = {NULL};
-
-	if (!buf)
-		return count;
-
-	buf_orig = kstrdup(buf, GFP_KERNEL);
-	parse_param_amdolby_vision(buf_orig, (char **)&parm);
-	if (!parm[0] || !parm[1]) {
-		pr_info("missing parameter... param1:bin param2:cfg\n");
-		kfree(buf_orig);
-		return -EINVAL;
-	}
-	pr_info("parm[0]: %s, parm[1]: %s\n", parm[0], parm[1]);
-
-	kfree(buf_orig);
-	return count;
-}
-
-static ssize_t	amdolby_vision_content_fps_show
-	(struct class *cla,
-	struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "content_fps: %d\n", content_fps);
-}
-
-static ssize_t amdolby_vision_content_fps_store
-	(struct class *cla,
-	struct class_attribute *attr,
-	const char *buf, size_t count)
-{
-	size_t r;
-
-	if (!buf)
-		return count;
-
-	r = kstrtoint(buf, 0, &content_fps);
-	if (r != 0)
-		return -EINVAL;
-
-	return count;
-}
-
-static ssize_t	amdolby_vision_gd_rf_adjust_show
-	(struct class *cla,
-	struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "gd_rf_adjust: %d\n", gd_rf_adjust);
-}
-
-static ssize_t amdolby_vision_gd_rf_adjust_store
-	(struct class *cla,
-	struct class_attribute *attr,
-	const char *buf, size_t count)
-{
-	size_t r;
-
-	if (!buf)
-		return count;
-
-	r = kstrtoint(buf, 0, &gd_rf_adjust);
-	if (r != 0)
-		return -EINVAL;
-
-	return count;
-}
-
-static ssize_t	amdolby_vision_use_cfg_target_lum_show
-	(struct class *cla,
-	 struct class_attribute *attr, char *buf)
-{
-	return sprintf(buf, "use_target_lum_from_cfg: %d\n",
-		       use_target_lum_from_cfg);
-}
-
-static ssize_t amdolby_vision_use_cfg_target_lum_store
-	(struct class *cla,
-	 struct class_attribute *attr,
-	 const char *buf, size_t count)
-{
-	size_t r;
-
-	if (!buf)
-		return count;
-
-	r = kstrtoint(buf, 0, &use_target_lum_from_cfg);
-	if (r != 0)
-		return -EINVAL;
-
-	pr_info("update use_target_lum_from_cfg to %d\n",
-		use_target_lum_from_cfg);
-
 	return count;
 }
 
@@ -10235,34 +8626,8 @@ static struct class_attribute amdolby_vision_class_attrs[] = {
 	amdolby_vision_core1_switch_show, amdolby_vision_core1_switch_store),
 	__ATTR(core3_switch, 0644,
 	amdolby_vision_core3_switch_show, amdolby_vision_core3_switch_store),
-	__ATTR(dv_bin_config, 0644,
-	       amdolby_vision_bin_config_show, NULL),
-	__ATTR(dv_pq_info, 0644,
-	       amdolby_vision_pq_info_show,
-	       amdolby_vision_pq_info_store),
-	__ATTR(dv_set_inter_pq, 0644,
-	       amdolby_vision_set_inter_pq_show,
-	       amdolby_vision_set_inter_pq_store),
-	__ATTR(dv_load_cfg_status, 0644,
-	       amdolby_vision_load_cfg_status_show,
-	       amdolby_vision_load_cfg_status_store),
 	__ATTR(support_info, 0444,
 	       amdolby_vision_dv_support_info_show, NULL),
-	__ATTR(tprimary, 0644,
-	       amdolby_vision_primary_show,
-	       amdolby_vision_primary_store),
-	__ATTR(config_file, 0644,
-	       amdolby_vision_config_file_show,
-	       amdolby_vision_config_file_store),
-	__ATTR(content_fps, 0644,
-	       amdolby_vision_content_fps_show,
-	       amdolby_vision_content_fps_store),
-	__ATTR(gd_rf_adjust, 0644,
-	       amdolby_vision_gd_rf_adjust_show,
-	       amdolby_vision_gd_rf_adjust_store),
-	__ATTR(use_target_lum_from_cfg, 0644,
-	       amdolby_vision_use_cfg_target_lum_show,
-	       amdolby_vision_use_cfg_target_lum_store),
 	__ATTR(dv_video_on, 0444,
 	       dv_video_on_show, NULL),
 	__ATTR_NULL
@@ -10435,9 +8800,9 @@ static int __exit amdolby_vision_remove(struct platform_device *pdev)
 	struct amdolby_vision_dev_s *devp = &amdolby_vision_dev;
 	int i;
 
-	if (pq_config_buf) {
-		vfree(pq_config_buf);
-		pq_config_buf = NULL;
+	if (vsvdb_buf) {
+		vfree(vsvdb_buf);
+		vsvdb_buf = NULL;
 	}
 	for (i = 0; i < 2; i++) {
 		if (md_buf[i]) {

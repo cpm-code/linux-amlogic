@@ -7200,9 +7200,6 @@ static int video_receiver_event_fun(int type, void *data, void *private_data)
 		mutex_unlock(&omx_mutex);
 #ifdef CONFIG_AMLOGIC_MEDIA_ENHANCEMENT_DOLBYVISION
 		if (is_dolby_vision_enable()) {
-#ifdef BUILD_ERR
-			dv_vf_light_unreg_provider();
-#endif
 #ifdef CONFIG_AMLOGIC_SET_MINFREQ_SUPPORT
 			set_scaling_min_freq(min_cpufreq, 0);
 #endif
@@ -7258,9 +7255,6 @@ static int video_receiver_event_fun(int type, void *data, void *private_data)
 		memset(time_info, 0, sizeof(struct time_info_t) * 20);
 #ifdef CONFIG_AMLOGIC_MEDIA_ENHANCEMENT_DOLBYVISION
 		if (is_dolby_vision_enable()) {
-#ifdef BUILD_ERR
-			dv_vf_light_reg_provider();
-#endif
 #ifdef CONFIG_AMLOGIC_SET_MINFREQ_SUPPORT
 			set_scaling_min_freq(min_cpufreq, 1);
 #endif
