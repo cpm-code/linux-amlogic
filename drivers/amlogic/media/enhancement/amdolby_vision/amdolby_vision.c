@@ -304,6 +304,17 @@ static unsigned int dolby_vision_keep_source_meta_level_6 = 0;
 module_param(dolby_vision_keep_source_meta_level_6, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_6, "\n dolby_vision_keep_source_meta_level_6\n");
 
+static unsigned int dolby_vision_chroma = 0;
+module_param(dolby_vision_chroma, uint, 0664);
+MODULE_PARM_DESC(dolby_vision_chroma, "\n dolby_vision_chroma\n");
+
+// SIGNAL_RANGE_SMPTE = 0
+// SIGNAL_RANGE_FULL  = 1
+// SIGNAL_RANGE_SDI   = 2
+static unsigned int dolby_vision_signal_range = 0;
+module_param(dolby_vision_signal_range, uint, 0664);
+MODULE_PARM_DESC(dolby_vision_signal_range, "\n dolby_vision_signal_range\n");
+
 /*bit0:reset core1 reg; bit1:reset core2 reg;bit2:reset core3 reg*/
 /*bit3: reset core1 lut; bit4: reset core2 lut*/
 static unsigned int force_update_reg;
@@ -6674,7 +6685,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		md_buf[current_id],
 		(src_format == FORMAT_DOVI) ? total_md_size : 0,
 		pri_mode,
-		src_bdp, 0, SIGNAL_RANGE_SMPTE, /* bit/chroma/range */
+		src_bdp, dolby_vision_chroma, dolby_vision_signal_range, /* bit/chroma/range */
 		graphic_min,
 		graphic_max * 10000,
 		dolby_vision_target_min,
