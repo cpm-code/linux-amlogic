@@ -291,13 +291,18 @@ static bool dolby_vision_use_source_meta_levels = true;
 module_param(dolby_vision_use_source_meta_levels, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_use_source_meta_levels, "\n dolby_vision_use_source_meta_levels\n");
 
-static bool dolby_vision_keep_source_meta_level_5 = false;
-module_param(dolby_vision_keep_source_meta_level_5, bool, 0664);
+// 0 - discard if present
+// 1 - keep with source values or inject with zero values if missing
+// 2 - keep with zero values or inject with zero values if missing
+static unsigned int dolby_vision_keep_source_meta_level_5 = 2;
+module_param(dolby_vision_keep_source_meta_level_5, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_5, "\n dolby_vision_keep_source_meta_level_5\n");
 
-static bool dolby_vision_keep_source_meta_level_6 = false;
-module_param(dolby_vision_keep_source_meta_level_6, bool, 0664);
-MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_5, "\n dolby_vision_keep_source_meta_level_6\n");
+// 0 - discard if present
+// 1 - keep with source values
+static unsigned int dolby_vision_keep_source_meta_level_6 = 0;
+module_param(dolby_vision_keep_source_meta_level_6, uint, 0664);
+MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_6, "\n dolby_vision_keep_source_meta_level_6\n");
 
 /*bit0:reset core1 reg; bit1:reset core2 reg;bit2:reset core3 reg*/
 /*bit3: reset core1 lut; bit4: reset core2 lut*/
@@ -5743,13 +5748,20 @@ static void inject_dolby_vsvdb(void)
 
 #define ETSI_META_OFFSET 71
 #define CORE_META_LENGTH 512
+#define LEVEL_5_LENGTH 13
 
 static unsigned char reversed_meta_buffer[CORE_META_LENGTH];
 static unsigned char combo_meta_buffer[CORE_META_LENGTH];
 
+static unsigned char level_5_zero[LEVEL_5_LENGTH] = {
+	0x00, 0x00, 0x00, 0x08,							// size
+	0x05,											// Level
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00	// Data
+};
+
 static inline size_t reverse_dv_meta(
-    unsigned char *metadata, 
-    const struct md_reg_ipcore3 *in) 
+    unsigned char *metadata,
+    const struct md_reg_ipcore3 *in)
 {
 	// Get original metadata size in bytes from first double word
 	size_t byte_size = (in->raw_metadata[0] & 0xffff00) >> 8;/*raw_metadata[0] bit 23:8 =>size*/
@@ -5798,10 +5810,10 @@ static inline void source_meta_copy(
 	// reverse the metadata foramtting from register format back to ETSI format.
   	size_t reversed_meta_size = reverse_dv_meta(reversed_meta_buffer, core_meta);
   	if (reversed_meta_size == 0) {
-   		pr_err("source_meta_copy: Could not reverse dv metadata.\n");
+		pr_err("source_meta_copy: Could not reverse dv metadata.\n");
 		return;
-  	}  	
-	
+  	}
+
 	if ((debug_dolby & 4) && dump_enable) {
 		dump_buffer("DOLBY: original ETSI display management metadata", orig_meta_buffer, orig_meta_size);
 		dump_buffer("DOLBY: reversed ETSI display management metadata", reversed_meta_buffer, reversed_meta_size);
@@ -5811,7 +5823,7 @@ static inline void source_meta_copy(
 	// 71 Bytes in the main block (including number of ext blocks byte)
 
 	// Copy base ETSI metadata from reversed
-	memcpy(combo_meta_buffer, reversed_meta_buffer, ETSI_META_OFFSET); 
+	memcpy(combo_meta_buffer, reversed_meta_buffer, ETSI_META_OFFSET);
 
   	size_t combo_meta_size = ETSI_META_OFFSET;
 	unsigned char* combo_index = combo_meta_buffer + ETSI_META_OFFSET;
@@ -5823,33 +5835,58 @@ static inline void source_meta_copy(
 	size_t remaining_input = orig_meta_size - ETSI_META_OFFSET;
 
 	uint8_t num_levels = 0;
+	bool level5_present = false;
 
-    while ((orig_index < orig_end_index) && 
-	       (remaining_input >= 5) && 
-		   (remaining_space >= 5)) { 
-	
-		size_t level_size = be32_to_cpup((__be32 *)orig_index); 
-		uint8_t level = orig_index[4];	
+    while ((orig_index < orig_end_index) &&
+	       (remaining_input >= 5) &&
+		   (remaining_space >= 5)) {
+
+		size_t level_size = be32_to_cpup((__be32 *)orig_index);
+		uint8_t level = orig_index[4];
 		level_size += 5; // complete level size includes the space for the size information itself (4) and level (1)
 
-        if (level_size > remaining_space || level_size > remaining_input) { 
+        if (level_size > remaining_space || level_size > remaining_input) {
             pr_err("Invalid metadata: Level size exceeds remaining space or input\n");
             break;
         }
-	
+
+		if (level == 5) level5_present = true;
+
 		// Choose what to copy
-		if ((level != 5 && level != 6) ||
-			(level == 5 && dolby_vision_keep_source_meta_level_5) ||
-			(level == 6 && dolby_vision_keep_source_meta_level_6))
+		if (((level != 5) && (level != 6)) ||
+			((level == 5) && (dolby_vision_keep_source_meta_level_5 == 1)) ||
+			((level == 6) && (dolby_vision_keep_source_meta_level_6 == 1))
 		{
-			memcpy(combo_index, orig_index, level_size); 
+			// If Level is 6 and did not see a level 5 then inject one first.
+			if ((level == 6) && !level5_present)
+			{
+				memcpy(combo_index, level_5_zero, LEVEL_5_LENGTH);
+				combo_index += LEVEL_5_LENGTH;
+				combo_meta_size += LEVEL_5_LENGTH;
+				remaining_space -= LEVEL_5_LENGTH;
+				num_levels++;
+			}
+
+			memcpy(combo_index, orig_index, level_size);
+			combo_index += level_size;
+			combo_meta_size += level_size;
+			remaining_space -= level_size;
+			num_levels++;
+		} 
+		else if ((level == 5) && (dolby_vision_keep_source_meta_level_5 == 2))
+		{
+			if (level_size != LEVEL_5_LENGTH) {
+				pr_err("Invalid metadata: Level 5 size mismatch (%zu)\n", level_size);
+				break;
+			}
+			memcpy(combo_index, level_5_zero, level_size); 
 			combo_index += level_size; 
-			combo_meta_size += level_size; 
+			combo_meta_size += level_size;
 			remaining_space -= level_size;
 			num_levels++;
 		}
-		
-		orig_index += level_size; 
+
+		orig_index += level_size;
     	remaining_input -= level_size;
 	}
 
