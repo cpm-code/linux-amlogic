@@ -291,6 +291,9 @@ MODULE_PARM_DESC(dolby_vision_use_source_meta_levels, "\n dolby_vision_use_sourc
 // 0 - discard if present
 // 1 - keep with source values or inject with zero values if missing
 // 2 - keep with zero values or inject with zero values if missing
+// 3 - subtitles off: keep with source values or inject with zero values if missing
+//     subtitles on:  keep with zero values or inject with zero values if missing
+
 static unsigned int dolby_vision_keep_source_meta_level_5 = 2;
 module_param(dolby_vision_keep_source_meta_level_5, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_5, "\n dolby_vision_keep_source_meta_level_5\n");
@@ -300,6 +303,12 @@ MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_5, "\n dolby_vision_keep_so
 static unsigned int dolby_vision_keep_source_meta_level_6 = 0;
 module_param(dolby_vision_keep_source_meta_level_6, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_6, "\n dolby_vision_keep_source_meta_level_6\n");
+
+// 0 (integer value for false) - subtitles OFF
+// 1 (integer value for true) - subtitles ON
+static unsigned int dolby_vision_subtitles = 0;
+module_param(dolby_vision_subtitles, uint, 0664);
+MODULE_PARM_DESC(dolby_vision_subtitles, "\n dolby_vision_subtitles\n");
 
 static unsigned int dolby_vision_chroma = 0;
 module_param(dolby_vision_chroma, uint, 0664);
@@ -5836,8 +5845,9 @@ static inline void source_meta_copy(
 
 		// Choose what to copy
 		if (((level != 5) && (level != 6)) ||
-			((level == 5) && (dolby_vision_keep_source_meta_level_5 == 1)) ||
-			((level == 6) && (dolby_vision_keep_source_meta_level_6 == 1))
+		    ((level == 5) && ((dolby_vision_keep_source_meta_level_5 == 1) ||
+			 			      ((dolby_vision_keep_source_meta_level_5 == 3) && !dolby_vision_subtitles))) ||
+		    ((level == 6) && (dolby_vision_keep_source_meta_level_6 == 1)))
 		{
 			// If Level is 6 and did not see a level 5 then inject one first.
 			if ((level == 6) && !level5_present)
@@ -5854,8 +5864,9 @@ static inline void source_meta_copy(
 			combo_meta_size += level_size;
 			remaining_space -= level_size;
 			num_levels++;
-		} 
-		else if ((level == 5) && (dolby_vision_keep_source_meta_level_5 == 2))
+		}
+		else if ((level == 5) && ((dolby_vision_keep_source_meta_level_5 == 2) ||
+				 				  ((dolby_vision_keep_source_meta_level_5 == 3) && dolby_vision_subtitles)))
 		{
 			if (level_size != LEVEL_5_LENGTH) {
 				pr_err("Invalid metadata: Level 5 size mismatch (%zu)\n", level_size);
@@ -5869,7 +5880,7 @@ static inline void source_meta_copy(
 		}
 
 		orig_index += level_size;
-    	remaining_input -= level_size;
+		remaining_input -= level_size;
 	}
 
 	combo_meta_buffer[ETSI_META_OFFSET-1] = num_levels; // update number of levels.
