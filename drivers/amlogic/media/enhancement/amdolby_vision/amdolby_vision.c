@@ -141,9 +141,6 @@ module_param(dolby_vision_hdr10_policy, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_hdr10_policy, "\n dolby_vision_hdr10_policy\n");
 static unsigned int last_dolby_vision_hdr10_policy;
 
-/* enable hdmi dv std to stb core */
-static uint hdmi_to_stb_policy = 1;
-
 static bool dolby_vision_enable;
 module_param(dolby_vision_enable, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_enable, "\n dolby_vision_enable\n");
@@ -337,8 +334,8 @@ static unsigned int g_vwidth = 0x18;
 static unsigned int g_hwidth = 0x10;
 static unsigned int g_vpotch = 0x10;
 static unsigned int g_hpotch = 0x10;
-/*dma size:1877x2x64 bit = 30032 byte*/
 
+/*dma size:1877x2x64 bit = 30032 byte*/
 static unsigned int dma_size = 30032;
 static dma_addr_t dma_paddr;
 static void *dma_vaddr;
@@ -4035,33 +4032,7 @@ int is_dovi_frame(struct vframe_s *vf)
 	req.dv_enhance_exist = 0;
 	req.low_latency = 0;
 
-	if (vf->source_type == VFRAME_SOURCE_TYPE_HDMI &&
-	    ((is_meson_tm2_stbmode()) &&  hdmi_to_stb_policy)) {
-		vf_notify_provider_by_name
-			("dv_vdin",
-			 VFRAME_EVENT_RECEIVER_GET_AUX_DATA,
-			 (void *)&req);
-		if (debug_dolby & 2)
-			pr_dolby_dbg("is_dovi: vf %p, emp.size %d, aux_size %d\n",
-				     vf, vf->emp.size,
-				     req.aux_size);
-		if ((req.aux_buf && req.aux_size) ||
-			(dolby_vision_flags & FLAG_FORCE_DOVI_LL))
-			return 1;
-		if (req.low_latency)
-			return 2;
-		p = vf->emp.addr;
-		if (p && vf->emp.size > 0 &&
-		    p[0] == 0x7f &&
-		    p[10] == 0x46 &&
-		    p[11] == 0xd0) {
-			if (p[13] == 0)
-				return 1;
-			else
-				return 2;
-		}
-		return 0;
-	} else if (vf->source_type == VFRAME_SOURCE_TYPE_OTHERS) {
+	if (vf->source_type == VFRAME_SOURCE_TYPE_OTHERS) {
 		if (!strcmp(dv_provider, "dvbldec"))
 			vf_notify_provider_by_name
 				(dv_provider,
@@ -6258,67 +6229,6 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			pr_dolby_dbg("no meta or meta err!\n");
 			return -1;
 		}
-	} else if (vf && (vf->source_type == VFRAME_SOURCE_TYPE_HDMI) &&
-		is_meson_tm2_stbmode() && hdmi_to_stb_policy) {
-		req.vf = vf;
-		req.bot_flag = 0;
-		req.aux_buf = NULL;
-		req.aux_size = 0;
-		req.dv_enhance_exist = 0;
-		req.low_latency = 0;
-		if (!strcmp(dv_provider, "dv_vdin"))
-			vf_notify_provider_by_name(dv_provider,
-			VFRAME_EVENT_RECEIVER_GET_AUX_DATA,
-			(void *)&req);
-		if (req.low_latency == 1) {
-			src_format = FORMAT_HDR10;
-			if (!vf_is_hdr10(vf)) {
-				vf->signal_type &= 0xff0000ff;
-				vf->signal_type |= 0x00091000;
-			}
-			p_mdc =	&vf->prop.master_display_colour;
-			prepare_hdr10_param(p_mdc, &hdr10_param);
-			src_bdp = 10;
-			req.aux_size = 0;
-			req.aux_buf = NULL;
-		} else if (req.aux_size) {
-			if (req.aux_buf) {
-				current_id = current_id ^ 1;
-				memcpy(md_buf[current_id],
-				       req.aux_buf, req.aux_size);
-			}
-			src_format = FORMAT_DOVI;
-			input_mode = IN_MODE_HDMI;
-			src_bdp = 12;
-			meta_flag_bl = 0;
-			el_flag = 0;
-			mel_flag = 0;
-			if ((debug_dolby & 4) && dump_enable) {
-				pr_dolby_dbg("metadata(%d):\n", req.aux_size);
-				dump_buffer("DOLBY: ETSI display management metadata", md_buf[current_id], req.aux_size);
-			}
-		} else {
-			if (toggle_mode == 2)
-				src_format = dovi_setting.src_format;
-
-			if (is_hdr10_frame(vf) || force_hdmin_fmt == 1) {
-				src_format = FORMAT_HDR10;
-				p_mdc =	&vf->prop.master_display_colour;
-				if (p_mdc->present_flag)
-					p_mdc->luminance[0] *= 10000;
-				prepare_hdr10_param(p_mdc, &hdr10_param);
-			}
-
-			if (is_hlg_frame(vf) || force_hdmin_fmt == 2)
-				src_format = FORMAT_HLG;
-
-			if (is_hdr10plus_frame(vf))
-				src_format = FORMAT_HDR10PLUS;
-
-			src_bdp = 10;
-		}
-		total_md_size = req.aux_size;
-		total_comp_size = 0;
 	}
 
 	if (src_format == FORMAT_DOVI && meta_flag_bl && meta_flag_el) {
@@ -6918,13 +6828,7 @@ int dolby_vision_wait_metadata(struct vframe_s *vf)
 	if (!dolby_vision_wait_init && !dolby_vision_core1_on) {
 		ret = is_dovi_frame(vf);
 		if (ret) {
-			/* STB hdmi LL input as HDR */
-			if (vf->source_type == VFRAME_SOURCE_TYPE_HDMI &&
-			    ret == 2 && hdmi_to_stb_policy &&
-			    is_meson_tm2_stbmode())
-				check_format = FORMAT_HDR10;
-			else
-				check_format = FORMAT_DOVI;
+			check_format = FORMAT_DOVI;
 			ret = 0;
 		} else if (is_hdr10_frame(vf)) {
 			check_format = FORMAT_HDR10;
@@ -7039,7 +6943,6 @@ int dolby_vision_update_src_format(struct vframe_s *vf, u8 toggle_mode)
 {
 	unsigned int mode = dolby_vision_mode;
 	enum signal_format_enum check_format;
-	int ret = 0;
 
 	if (!dolby_vision_enable || !vf)
 		return -1;
@@ -7052,15 +6955,8 @@ int dolby_vision_update_src_format(struct vframe_s *vf, u8 toggle_mode)
 	if (dolby_vision_vf_check(vf))
 		return 0;
 
-	ret = is_dovi_frame(vf);
-	if (ret) {
-		/* STB hdmi LL input as HDR */
-		if (vf->source_type == VFRAME_SOURCE_TYPE_HDMI &&
-		    is_meson_tm2_stbmode() &&
-		    hdmi_to_stb_policy && ret == 2)
-			check_format = FORMAT_HDR10;
-		else
-			check_format = FORMAT_DOVI;
+	if (is_dovi_frame(vf)) {
+		check_format = FORMAT_DOVI;
 	} else if (is_hdr10_frame(vf)) {
 		check_format = FORMAT_HDR10;
 	} else if (is_hlg_frame(vf)) {
