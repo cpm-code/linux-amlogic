@@ -294,9 +294,17 @@ MODULE_PARM_DESC(dolby_vision_use_source_meta_levels, "\n dolby_vision_use_sourc
 // 0 - discard if present
 // 1 - keep with source values or inject with zero values if missing
 // 2 - keep with zero values or inject with zero values if missing
-static unsigned int dolby_vision_keep_source_meta_level_5 = 2;
+// 3 - auto feature - source values or inject with zero values if missing when
+//     both OSD and subtitles are OFF - OR - inject with zero values when OSD or subtitles are ON (when either is ON)
+static unsigned int dolby_vision_keep_source_meta_level_5 = 3;
 module_param(dolby_vision_keep_source_meta_level_5, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_5, "\n dolby_vision_keep_source_meta_level_5\n");
+
+// 0 (integer value for false) - subtitles ON
+// 1 (integer value for true) - subtitles OFF
+static unsigned int dv_keep_source_md_level_5_subtitles_off = 1;
+module_param(dv_keep_source_md_level_5_subtitles_off, uint, 0664);
+MODULE_PARM_DESC(dv_keep_source_md_level_5_subtitles_off, "\n dv_keep_source_md_level_5_subtitles_off\n");
 
 // 0 - discard if present
 // 1 - keep with source values
@@ -5866,7 +5874,8 @@ static inline void source_meta_copy(
 		// Choose what to copy
 		if (((level != 5) && (level != 6)) ||
 			((level == 5) && (dolby_vision_keep_source_meta_level_5 == 1)) ||
-			((level == 6) && (dolby_vision_keep_source_meta_level_6 == 1))
+			((level == 5) && (dolby_vision_keep_source_meta_level_5 == 3) && is_graphics_output_off() && (dv_keep_source_md_level_5_subtitles_off == 1)) ||
+			((level == 6) && (dolby_vision_keep_source_meta_level_6 == 1)))
 		{
 			// If Level is 6 and did not see a level 5 then inject one first.
 			if ((level == 6) && !level5_present)
@@ -5884,7 +5893,8 @@ static inline void source_meta_copy(
 			remaining_space -= level_size;
 			num_levels++;
 		} 
-		else if ((level == 5) && (dolby_vision_keep_source_meta_level_5 == 2))
+		else if (((level == 5) && (dolby_vision_keep_source_meta_level_5 == 2)) ||
+				 (((level == 5) && (dolby_vision_keep_source_meta_level_5 == 3)) && (!is_graphics_output_off() || !(dv_keep_source_md_level_5_subtitles_off == 1))))
 		{
 			if (level_size != LEVEL_5_LENGTH) {
 				pr_err("Invalid metadata: Level 5 size mismatch (%zu)\n", level_size);
