@@ -431,29 +431,28 @@ int gamut_convert_process(
 
 	if (source_type[vd_path] == HDRTYPE_SDR) {
 		for (i = 0; i < 3; i++)
-			for (j = 0; j < 2; j++) {
+			for (j = 0; j < 2; j++)
 				src_prmy[i][j] = std_bt709_prmy[(i + 2) % 3][j];
+		for (j = 0; j < 2; j++)
 				src_prmy[3][j] = std_bt709_white_point[j];
-			}
 	} else if ((source_type[vd_path] == HDRTYPE_HDR10) ||
 		(source_type[vd_path] == HDRTYPE_HLG) ||
 		(source_type[vd_path] == HDRTYPE_HDR10PLUS) ||
-		(source_type[vd_path] == CUVA_HDR_SOURCE) ||
-		(source_type[vd_path] == CUVA_HLG_SOURCE)) {
+		(source_type[vd_path] == HDRTYPE_CUVA_HDR) ||
+		(source_type[vd_path] == HDRTYPE_CUVA_HLG) ||
+		(source_type[vd_path] == HDRTYPE_SDR2020)) {
 		if (get_primary_policy() == PRIMARIES_AUTO) {
 			for (i = 0; i < 3; i++)
-				for (j = 0; j < 2; j++) {
-					src_prmy[i][j] =
-						std_p3_primaries[(i + 2) % 3][j];
-					src_prmy[3][j] = std_p3_white_point[j];
-				}
+				for (j = 0; j < 2; j++)
+					src_prmy[i][j] = std_p3_primaries[(i + 2) % 3][j];
+			for (j = 0; j < 2; j++)
+				src_prmy[3][j] = std_p3_white_point[j];
 		} else {
 			for (i = 0; i < 3; i++)
-				for (j = 0; j < 2; j++) {
-					src_prmy[i][j] =
-						std_bt2020_prmy[(i + 2) % 3][j];
-					src_prmy[3][j] = std_bt2020_white_point[j];
-				}
+				for (j = 0; j < 2; j++)
+					src_prmy[i][j] = std_bt2020_prmy[(i + 2) % 3][j];
+			for (j = 0; j < 2; j++)
+				src_prmy[3][j] = std_bt2020_white_point[j];
 		}
 	}
 
@@ -461,30 +460,27 @@ int gamut_convert_process(
 		(get_primary_policy() == PRIMARIES_SOURCE)) {
 		p = &vinfo->master_display_info;
 		for (i = 0; i < 3; i++)
-			for (j = 0; j < 2; j++) {
+			for (j = 0; j < 2; j++) 
 				dest_prmy[i][j] = p->primaries[(i + 2) % 3][j];
+		for (j = 0; j < 2; j++)
 				dest_prmy[3][j] = p->white_point[j];
-			}
 	} else {
 		for (i = 0; i < 3; i++)
-			for (j = 0; j < 2; j++) {
-				dest_prmy[i][j] =
-					std_bt709_prmy[(i + 2) % 3][j];
+			for (j = 0; j < 2; j++)
+				dest_prmy[i][j] = std_bt709_prmy[(i + 2) % 3][j];
+		for (j = 0; j < 2; j++)
 				dest_prmy[3][j] = std_bt709_white_point[j];
-			}
 	}
 
 	if (force_primay) {
 		for (i = 0; i < 4; i++)
 			for (j = 0; j < 2; j++) {
-				src_prmy[i][j] =
-					force_src_primary[i * 2 + j];
+				src_prmy[i][j] = force_src_primary[i * 2 + j];
 			}
 
 		for (i = 0; i < 4; i++)
 			for (j = 0; j < 2; j++) {
-				dest_prmy[i][j] =
-					force_dst_primary[i * 2 + j];
+				dest_prmy[i][j] = force_dst_primary[i * 2 + j];
 			}
 	}
 	gamut_proc(src_prmy, dest_prmy, out, NORM, BL);

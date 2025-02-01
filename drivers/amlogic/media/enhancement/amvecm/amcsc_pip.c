@@ -249,7 +249,6 @@ int hdr_policy_process(
 			hdr10_plus_process_mode[vd_path] = PROC_BYPASS;
 			cuva_hdr_process_mode[vd_path] = PROC_BYPASS;
 			target_format[vd_path] = BT709;
-			// OSMC sets this ON - likely to allow DV via HDR 
 			set_hdr_module_status(vd_path, HDR_MODULE_OFF);
 			dolby_vision_set_toggle_flag(1);
 		} else if ((vd_path == VD1_PATH) &&
@@ -390,7 +389,10 @@ int hdr_policy_process(
 			else
 				target_format[vd_path] = BT709;
 #else
-			target_format[vd_path] = BT709;
+			if (source_format[vd_path] == HDRTYPE_SDR2020)
+				target_format[vd_path] = BT2020;
+			else
+				target_format[vd_path] = BT709;
 #endif
 		}
 	} else if (cur_hdr_policy == 1) {
@@ -458,6 +460,7 @@ int hdr_policy_process(
 			}
 			switch (source_format[vd_path]) {
 			case HDRTYPE_SDR:
+			case HDRTYPE_SDR2020:
 				if (is_video_layer_on(oth_path)) {
 					if ((target_format[oth_path] ==
 					BT2020_PQ) ||
@@ -491,9 +494,11 @@ int hdr_policy_process(
 					}
 				} else {
 					/* sdr->sdr */
-					sdr_process_mode[vd_path] =
-						PROC_BYPASS;
-					target_format[vd_path] = BT709;
+					sdr_process_mode[vd_path] = PROC_BYPASS;
+					if (source_format[vd_path] == HDRTYPE_SDR2020)
+						target_format[vd_path] = BT2020;
+					else
+						target_format[vd_path] = BT709;
 				}
 				break;
 			case HDRTYPE_HLG:
@@ -547,17 +552,7 @@ int hdr_policy_process(
 				}
 				break;
 			case HDRTYPE_HDR10:
-			// TODO: Is the below better for True DV.
-			//case HDRTYPE_DOVI:
-			//	if (source_format[vd_path] == HDRTYPE_DOVI
-			//		&& (sink_support_dolby_vision(vinfo) & 1)
-			//		&& get_force_output() == UNKNOWN_FMT
-			//		&& get_hdr_mode() == 2) {
-			//			hdr_process_mode[vd_path] = PROC_BYPASS; // will be overridden later
-			//			target_format[vd_path] = BT2100_IPT;
-			//			break;
-			//	}
-				/* source HDR10 or treated as such */
+				/* source HDR10 */
 				if ((sink_hdr_support(vinfo)
 				& HDR_SUPPORT) && (get_force_output() == UNKNOWN_FMT
 				|| get_force_output() == BT2020_PQ)) {
@@ -693,6 +688,7 @@ int hdr_policy_process(
 				oth_path = VD1_PATH;
 				switch (source_format[vd_path]) {
 				case HDRTYPE_SDR:
+				case HDRTYPE_SDR2020:
 					/* VD2 source SDR */
 					if ((target_format[oth_path] ==
 					BT2020_PQ)
@@ -722,9 +718,11 @@ int hdr_policy_process(
 						BT2020YUV_BT2020RGB_CUVA;
 					} else {
 						/* sdr->sdr */
-						sdr_process_mode[vd_path] =
-							PROC_BYPASS;
-						target_format[vd_path] = BT709;
+						sdr_process_mode[vd_path] = PROC_BYPASS;
+						if (source_format[vd_path] == HDRTYPE_SDR2020)
+							target_format[vd_path] = BT2020;
+						else
+							target_format[vd_path] = BT709;
 					}
 					break;
 				case HDRTYPE_HLG:
@@ -954,6 +952,7 @@ int hdr_policy_process(
 				oth_path = VD1_PATH;
 				switch (source_format[vd_path]) {
 				case HDRTYPE_SDR:
+				case HDRTYPE_SDR2020:
 					/* VD2 source SDR */
 					if ((target_format[oth_path] ==
 					BT2020) ||
@@ -985,9 +984,11 @@ int hdr_policy_process(
 						BT2020YUV_BT2020RGB_CUVA;
 					} else {
 						/* sdr->sdr */
-						sdr_process_mode[vd_path] =
-							PROC_BYPASS;
-						target_format[vd_path] = BT709;
+						sdr_process_mode[vd_path] = PROC_BYPASS;
+						if (source_format[vd_path] == HDRTYPE_SDR2020)
+							target_format[vd_path] = BT2020;
+						else
+							target_format[vd_path] = BT709;
 					}
 					break;
 				case HDRTYPE_HLG:
@@ -1577,6 +1578,7 @@ void video_post_process(
 
 	switch (src_format) {
 	case HDRTYPE_SDR:
+	case HDRTYPE_SDR2020:
 		if (vd_path == VD2_PATH && is_dolby_vision_on()) {
 			hdr_proc(vf, VD2_HDR, SDR_IPT, vinfo, NULL);
 		} else if (sdr_process_mode[vd_path] == PROC_BYPASS) {
@@ -1613,14 +1615,6 @@ void video_post_process(
 		}
 		break;
 	case HDRTYPE_HDR10:
-	// TODO: Is the below better for True DV.
-	//case HDRTYPE_DOVI:
-	//	if (vd_path == VD1_PATH && is_dolby_vision_on() && 
-	//		(sink_support_dolby_vision(vinfo) & 1)) {
-	//		hdr_proc(vf, VD1_HDR, HDR_IPT, vinfo, NULL);
-	//		hdr_proc(vf, OSD1_HDR, SDR_IPT | RGB_OSD, vinfo, NULL);
-	//		break;
-	//	}
 		if (vd_path == VD2_PATH && is_dolby_vision_on()) {
 			hdr_proc(vf, VD2_HDR, HDR_IPT, vinfo, NULL);
 		} else if (hdr_process_mode[vd_path] == PROC_BYPASS) {

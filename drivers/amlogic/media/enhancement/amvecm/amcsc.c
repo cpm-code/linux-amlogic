@@ -4512,15 +4512,12 @@ enum vpp_matrix_csc_e get_csc_type(int print)
 					pr_csc(1, "\tWARNING: non-standard HDR!!!\n");
 				csc_type = VPP_MATRIX_BT2020YUV_BT2020RGB;
 			}
-		} else if ((signal_transfer_characteristic == 14) ||
-				(signal_transfer_characteristic == 18)) {
-			/* bt2020-10 */
+		} else if (signal_transfer_characteristic == 18) {
+			/* HLG */
 			if (signal_cuva)
 				csc_type = VPP_MATRIX_BT2020YUV_BT2020RGB_CUVA;
 			else
 				csc_type = VPP_MATRIX_BT2020YUV_BT2020RGB;
-			if (signal_transfer_characteristic == 18)
-				pr_csc(print, "\tHLG!!!\n");
 		} else if (signal_transfer_characteristic == 15) {
 			/* bt2020-12 */
 			pr_csc(print, "\tWARNING: bt2020-12 HDR!!!\n");
@@ -4528,10 +4525,6 @@ enum vpp_matrix_csc_e get_csc_type(int print)
 				csc_type = VPP_MATRIX_YUV709_RGB;
 			else
 				csc_type = VPP_MATRIX_YUV709F_RGB;
-		} else if (signal_transfer_characteristic == 18) {
-			/* bt2020-12 */
-			pr_csc(print, "\tHLG!!!\n");
-			csc_type = VPP_MATRIX_BT2020YUV_BT2020RGB;
 		} else if (signal_transfer_characteristic == 0x30) {
 			if (signal_color_primaries == 9) {
 				pr_csc(print, "\tHDR10+!!!\n");
@@ -4546,6 +4539,20 @@ enum vpp_matrix_csc_e get_csc_type(int print)
 					"\tWARNING: non-standard HDR10+!!!\n");
 				csc_type = VPP_MATRIX_BT2020YUV_BT2020RGB;
 			}
+		} else if (signal_transfer_characteristic == 14) {
+			/* bt2020-10 */
+			if (signal_color_primaries == 9) {
+				csc_type = VPP_MATRIX_BT2020YUV_BT2020RGB_SDR;
+			} else {
+				if (signal_range == 0)
+					csc_type = VPP_MATRIX_YUV709_RGB;
+				else
+					csc_type = VPP_MATRIX_YUV709F_RGB;
+			}
+		} else if (signal_color_primaries == 9 &&
+			signal_transfer_characteristic == 1) {
+			csc_type = VPP_MATRIX_BT2020YUV_BT2020RGB_SDR;
+			pr_csc(1, "\tWARNING: SDR2020!!!\n");
 		} else {
 			/* unknown transfer characteristic */
 			pr_csc(print, "\tWARNING: unknown HDR!!!\n");
@@ -4594,8 +4601,15 @@ enum hdr_type_e get_hdr_source_type(void)
 			hdr_source_type = CUVA_HDR_SOURCE;
 		else
 			hdr_source_type = HDR10_SOURCE;
-	} else
+	} else if (signal_transfer_characteristic == 14 ||
+			signal_transfer_characteristic == 1) {
+		if (signal_color_primaries == 9)
+			hdr_source_type = SDR_BT2020_SOURCE;
+		else
+			hdr_source_type = SDR_SOURCE;
+	} else {
 		hdr_source_type = SDR_SOURCE;
+	}
 
 	hdr_type = hdr_source_type;
 
@@ -7238,8 +7252,7 @@ static enum hdr_type_e get_source_type(enum vd_path_e vd_path)
 	    == HDRTYPE_DOVI)
 		return HDRTYPE_DOVI;
 
-	if (((signal_transfer_characteristic == 14) ||
-	     (signal_transfer_characteristic == 18)) &&
+	if ((signal_transfer_characteristic == 18) &&
 	    (signal_color_primaries == 9)) {
 		if (signal_cuva)
 			return HDRTYPE_CUVA_HLG;
@@ -7261,7 +7274,13 @@ static enum hdr_type_e get_source_type(enum vd_path_e vd_path)
 			return HDRTYPE_CUVA_HDR;
 		else
 			return HDRTYPE_HDR10;
-	} else
+	} else if (signal_transfer_characteristic == 14 ||
+		signal_transfer_characteristic == 1) {
+		if (signal_color_primaries == 9)
+			return HDRTYPE_SDR2020;
+		else
+			return HDRTYPE_SDR;
+	} else 
 		return HDRTYPE_SDR;
 }
 

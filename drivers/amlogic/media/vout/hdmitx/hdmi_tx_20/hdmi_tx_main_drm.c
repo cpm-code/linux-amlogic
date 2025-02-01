@@ -1753,13 +1753,17 @@ static void hdmitx_set_drm_pkt(struct master_display_info_s *data)
 			hdev->hdmi_current_hdr_mode = 2;
 	}
 
-	/*HLG and BT2020*/
+	/* HLG */
 	if (hdev->rxcap.hdr_info2.hdr_support & 0x8) {
 		if (hdev->hdr_color_feature == C_BT2020 &&
-		    (hdev->hdr_transfer_feature == T_BT2020_10 ||
-		     hdev->hdr_transfer_feature == T_HLG))
+			hdev->hdr_transfer_feature == T_HLG)
 			hdev->hdmi_current_hdr_mode = 3;
 	}
+
+	/* BT2020-10 */
+	if (hdev->hdr_color_feature == C_BT2020 &&
+		hdev->hdr_transfer_feature == T_BT2020_10)
+		hdev->hdmi_current_hdr_mode = 4;
 
 	switch (hdev->hdmi_current_hdr_mode) {
 	case 1:
@@ -1783,6 +1787,12 @@ static void hdmitx_set_drm_pkt(struct master_display_info_s *data)
 		DRM_DB[0] = 0x03;/* HLG is 0x03 */
 		hdmitx_device.hwop.setpacket(HDMI_PACKET_DRM,
 			DRM_DB, DRM_HB);
+		hdmitx_device.hwop.cntlconfig(&hdmitx_device,
+			CONF_AVI_BT2020, SET_AVI_BT2020);
+		break;
+	case 4:
+		/*BT2020-10*/
+		hdmitx_device.hwop.setpacket(HDMI_PACKET_DRM, NULL, NULL);
 		hdmitx_device.hwop.cntlconfig(&hdmitx_device,
 			CONF_AVI_BT2020, SET_AVI_BT2020);
 		break;
@@ -2770,16 +2780,19 @@ static ssize_t show_hdmi_hdr_status(struct device *dev,
 			return pos;
 		}
 		if ((hdev->hdr_color_feature == C_BT2020) &&
-		    ((hdev->hdr_transfer_feature == T_BT2020_10) ||
-		    (hdev->hdr_transfer_feature == T_HLG))) {
+		    (hdev->hdr_transfer_feature == T_HLG)) {
 			pos += snprintf(buf + pos, PAGE_SIZE,
 				"HDR10-GAMMA_HLG");
 			return pos;
 		}
 	}
 
-	/* default is SDR */
-	pos += snprintf(buf + pos, PAGE_SIZE, "SDR");
+	if ((hdev->hdr_color_feature == C_BT2020) &&
+		(hdev->hdr_transfer_feature == T_BT2020_10))
+		pos += snprintf(buf + pos, PAGE_SIZE, "SDR BT2020-10");
+	else
+		/* default is SDR */
+		pos += snprintf(buf + pos, PAGE_SIZE, "SDR");
 
 	return pos;
 }
