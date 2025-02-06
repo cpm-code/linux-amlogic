@@ -291,10 +291,11 @@ MODULE_PARM_DESC(dolby_vision_use_source_meta_levels, "\n dolby_vision_use_sourc
 // 0 - discard if present
 // 1 - keep with source values or inject with zero values if missing
 // 2 - keep with zero values or inject with zero values if missing
-// 3 - subtitles off: keep with source values or inject with zero values if missing
-//     subtitles on:  keep with zero values or inject with zero values if missing
-
-static unsigned int dolby_vision_keep_source_meta_level_5 = 2;
+// 3 - OSD and subtitles off: keep with source values or inject with zero values if missing
+//     OSD or subtitles on:  keep with zero values or inject with zero values if missing
+// 4 - OSD off: keep with source values or inject with zero values if missing
+//     OSD on:  keep with zero values or inject with zero values if missing
+static unsigned int dolby_vision_keep_source_meta_level_5 = 3;
 module_param(dolby_vision_keep_source_meta_level_5, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_5, "\n dolby_vision_keep_source_meta_level_5\n");
 
@@ -303,6 +304,18 @@ MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_5, "\n dolby_vision_keep_so
 static unsigned int dolby_vision_keep_source_meta_level_6 = 0;
 module_param(dolby_vision_keep_source_meta_level_6, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_keep_source_meta_level_6, "\n dolby_vision_keep_source_meta_level_6\n");
+
+// 0 (integer value for false) - xbmc OSD OFF
+// 1 (integer value for true) - xbmc OSD ON
+static unsigned int aml_dv_keep_source_md_level_5_xbmc_osd_status = 0;
+module_param(aml_dv_keep_source_md_level_5_xbmc_osd_status, uint, 0664);
+MODULE_PARM_DESC(aml_dv_keep_source_md_level_5_xbmc_osd_status, "\n aml_dv_keep_source_md_level_5_xbmc_osd_status\n");
+
+// 0 (integer value for false) - xbmc Video Player Debug OFF
+// 1 (integer value for true) - xbmc Video Player Debug ON
+static unsigned int aml_dv_keep_source_md_level_5_xbmc_playdebug_status = 0;
+module_param(aml_dv_keep_source_md_level_5_xbmc_playdebug_status, uint, 0664);
+MODULE_PARM_DESC(aml_dv_keep_source_md_level_5_xbmc_playdebug_status, "\n aml_dv_keep_source_md_level_5_xbmc_playdebug_status\n");
 
 // 0 (integer value for false) - subtitles OFF
 // 1 (integer value for true) - subtitles ON
@@ -5845,8 +5858,9 @@ static inline void source_meta_copy(
 
 		// Choose what to copy
 		if (((level != 5) && (level != 6)) ||
-		    ((level == 5) && ((dolby_vision_keep_source_meta_level_5 == 1) ||
-			 			      ((dolby_vision_keep_source_meta_level_5 == 3) && !dolby_vision_subtitles))) ||
+		    ((level == 5) && (dolby_vision_keep_source_meta_level_5 == 1)) ||
+			((level == 5) && (dolby_vision_keep_source_meta_level_5 == 3) && !aml_dv_keep_source_md_level_5_xbmc_osd_status && !dolby_vision_subtitles) ||
+			((level == 5) && (dolby_vision_keep_source_meta_level_5 == 4) && !aml_dv_keep_source_md_level_5_xbmc_osd_status) ||
 		    ((level == 6) && (dolby_vision_keep_source_meta_level_6 == 1)))
 		{
 			// If Level is 6 and did not see a level 5 then inject one first.
@@ -5865,8 +5879,9 @@ static inline void source_meta_copy(
 			remaining_space -= level_size;
 			num_levels++;
 		}
-		else if ((level == 5) && ((dolby_vision_keep_source_meta_level_5 == 2) ||
-				 				  ((dolby_vision_keep_source_meta_level_5 == 3) && dolby_vision_subtitles)))
+		else if (((level == 5) && (dolby_vision_keep_source_meta_level_5 == 2)) ||
+				 ((level == 5) && (dolby_vision_keep_source_meta_level_5 == 3) && (aml_dv_keep_source_md_level_5_xbmc_osd_status || dolby_vision_subtitles)) ||
+				 ((level == 5) && (dolby_vision_keep_source_meta_level_5 == 4) && aml_dv_keep_source_md_level_5_xbmc_osd_status))
 		{
 			if (level_size != LEVEL_5_LENGTH) {
 				pr_err("Invalid metadata: Level 5 size mismatch (%zu)\n", level_size);
