@@ -559,59 +559,37 @@ static bool module_installed;
 #define MAX_PARAM   8
 static bool is_meson_gxm(void)
 {
-	if (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_GXM)
-		return true;
-	else
-		return false;
+	return (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_GXM);
 }
 
 static bool is_meson_g12(void)
 {
-	if (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_G12)
-		return true;
-	else
-		return false;
+	return (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_G12);
 }
 
 static bool is_meson_sc2(void)
 {
-	if (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_SC2)
-		return true;
-	else
-		return false;
+	return (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_SC2);
 }
 
 static bool is_meson_box(void)
 {
-	if (is_meson_gxm() || is_meson_g12() || is_meson_sc2())
-		return true;
-	else
-		return false;
+	return (is_meson_gxm() || is_meson_g12() || is_meson_sc2());
 }
 
 static bool is_meson_txlx(void)
 {
-	if (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TXLX)
-		return true;
-	else
-		return false;
+	return (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TXLX);
 }
 
 static bool is_meson_txlx_stbmode(void)
 {
-	if (is_meson_txlx())
-		return true;
-	else
-		return false;
+	return is_meson_txlx();
 }
 
 static bool is_meson_tm2(void)
 {
-	if (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TM2 ||
-		dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TM2_REVB)
-		return true;
-	else
-		return false;
+	return ((dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TM2) || (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TM2_REVB));
 }
 
 static bool is_meson_tm2_stbmode(void)
@@ -7648,9 +7626,7 @@ EXPORT_SYMBOL(is_dolby_vision_enable);
 
 bool is_dolby_vision_stb_mode(void)
 {
-	return is_meson_txlx_stbmode() ||
-		is_meson_tm2_stbmode() ||
-		is_meson_box();
+	return is_meson_txlx_stbmode() || is_meson_tm2_stbmode() || is_meson_box();
 }
 EXPORT_SYMBOL(is_dolby_vision_stb_mode);
 
