@@ -465,9 +465,6 @@ static unsigned int dolby_vision_graphics_priority;
 module_param(dolby_vision_graphics_priority, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_graphics_priority, "\n dolby_vision_graphics_priority\n");
 
-/*1:HDR10, 2:HLG, 3: DV LL*/
-static int force_hdmin_fmt;
-
 static unsigned int atsc_sei = 1;
 
 module_param(atsc_sei, uint, 0664);
@@ -8016,7 +8013,6 @@ static const char *amdolby_vision_debug_usage_str = {
 	"echo debug_bypass_vpp_pq 2 > /sys/class/amdolby_vision/debug; force enable vpp pq\n"
 	"echo bypass_all_vpp_pq 1 > /sys/class/amdolby_vision/debug; force bypass vpp pq in cert mode\n"
 	"echo ko_info > /sys/class/amdolby_vision/debug; query ko info\n"
-	"echo force_hdmin_fmt value > /sys/class/amdolby_vision/debug; 1:HDR10 2:HLG 3:DV LL\n"
 };
 
 static ssize_t  amdolby_vision_debug_show
@@ -8103,11 +8099,6 @@ static ssize_t amdolby_vision_debug_store
 	} else if (!strcmp(parm[0], "ko_info")) {
 		if (ko_info)
 			pr_info("ko info: %s\n", ko_info);
-	} else if (!strcmp(parm[0], "force_hdmin_fmt")) {
-		if (kstrtoul(parm[1], 10, &val) < 0)
-			return -EINVAL;
-		force_hdmin_fmt = val;
-		pr_info("set force_hdmin_fmt %d\n", force_hdmin_fmt);
 	} else {
 		pr_info("unsupport cmd\n");
 	}
