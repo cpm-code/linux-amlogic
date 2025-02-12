@@ -826,17 +826,13 @@ static bool skip_cvm_tbl[2][2][4][4] = {
 
 static bool need_skip_cvm(unsigned int is_graphic)
 {
-	if (dolby_vision_flags & FLAG_CERTIFICAION)
-		return false;
-	if (dolby_vision_flags & FLAG_FORCE_CVM)
-		return false;
+	if (dolby_vision_flags & FLAG_CERTIFICAION) return false;
+	if (dolby_vision_flags & FLAG_FORCE_CVM) return false;
 
 	return skip_cvm_tbl[is_graphic]
 		[dolby_vision_graphics_priority]
-		[new_dovi_setting.src_format == FORMAT_INVALID ?
-			FORMAT_SDR : new_dovi_setting.src_format]
-		[new_dovi_setting.dovi_ll_enable ?
-			FORMAT_DOVI_LL : new_dovi_setting.dst_format];
+		[new_dovi_setting.src_format == FORMAT_INVALID ? FORMAT_SDR : new_dovi_setting.src_format]
+		[new_dovi_setting.dovi_ll_enable ? FORMAT_DOVI_LL : new_dovi_setting.dst_format];
 }
 
 static int stb_dolby_core1_set
