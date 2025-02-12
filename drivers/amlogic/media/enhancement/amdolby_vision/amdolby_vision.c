@@ -4886,8 +4886,7 @@ static u32 p3_white_point[2] = {
 void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 			 struct hdr10_parameter *p_hdr10_param)
 {
-	struct vframe_content_light_level_s *p_cll =
-		&p_mdc->content_light_level;
+	struct vframe_content_light_level_s *p_cll = &p_mdc->content_light_level;
 	u8 flag = 0;
 	u32 max_lum = 1000 * 10000;
 	u32 min_lum = 50;
@@ -4896,10 +4895,8 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 	if (get_primary_policy() == PRIMARIES_NATIVE ||
 		primary_debug == 1 ||
 		(dolby_vision_flags & FLAG_CERTIFICAION)) {
-		p_hdr10_param->min_display_mastering_lum =
-			min_lum;
-		p_hdr10_param->max_display_mastering_lum =
-			max_lum;
+		p_hdr10_param->min_display_mastering_lum = min_lum;
+		p_hdr10_param->max_display_mastering_lum = max_lum;
 		p_hdr10_param->r_x = bt2020_primaries[2][0];
 		p_hdr10_param->r_y = bt2020_primaries[2][1];
 		p_hdr10_param->g_x = bt2020_primaries[0][0];
@@ -4930,13 +4927,9 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 
 	primaries_type = get_primaries_type(p_mdc);
 	if (primaries_type == 2) {
-		/* GBR -> RGB as dolby will swap back to GBR
-		 * in send_hdmi_pkt
-		 */
-		if (p_hdr10_param->max_display_mastering_lum !=
-		    p_mdc->luminance[0] ||
-		    p_hdr10_param->min_display_mastering_lum !=
-		    p_mdc->luminance[1] ||
+		// GBR -> RGB as dolby will swap back to GBR in send_hdmi_pkt
+		if (p_hdr10_param->max_display_mastering_lum != p_mdc->luminance[0] ||
+		    p_hdr10_param->min_display_mastering_lum != p_mdc->luminance[1] ||
 		    p_hdr10_param->r_x != p_mdc->primaries[2][0] ||
 		    p_hdr10_param->r_y != p_mdc->primaries[2][1] ||
 		    p_hdr10_param->g_x != p_mdc->primaries[0][0] ||
@@ -4946,10 +4939,8 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 		    p_hdr10_param->w_x != p_mdc->white_point[0] ||
 		    p_hdr10_param->w_y != p_mdc->white_point[1]) {
 			flag |= 1;
-			p_hdr10_param->max_display_mastering_lum =
-				p_mdc->luminance[0];
-			p_hdr10_param->min_display_mastering_lum =
-				p_mdc->luminance[1];
+			p_hdr10_param->max_display_mastering_lum = p_mdc->luminance[0];
+			p_hdr10_param->min_display_mastering_lum = p_mdc->luminance[1];
 			p_hdr10_param->r_x = p_mdc->primaries[2][0];
 			p_hdr10_param->r_y = p_mdc->primaries[2][1];
 			p_hdr10_param->g_x = p_mdc->primaries[0][0];
@@ -4960,13 +4951,9 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 			p_hdr10_param->w_y = p_mdc->white_point[1];
 		}
 	} else if (primaries_type == 1) {
-		/* RGB -> RGB and dolby will swap to send as GBR
-		 * in send_hdmi_pkt
-		 */
-		if (p_hdr10_param->max_display_mastering_lum !=
-		    p_mdc->luminance[0] ||
-		    p_hdr10_param->min_display_mastering_lum !=
-		    p_mdc->luminance[1] ||
+		// RGB -> RGB and dolby will swap to send as GBR in send_hdmi_pkt
+		if (p_hdr10_param->max_display_mastering_lum != p_mdc->luminance[0] ||
+		    p_hdr10_param->min_display_mastering_lum != p_mdc->luminance[1] ||
 		    p_hdr10_param->r_x != p_mdc->primaries[0][0] ||
 		    p_hdr10_param->r_y != p_mdc->primaries[0][1] ||
 		    p_hdr10_param->g_x != p_mdc->primaries[1][0] ||
@@ -4976,10 +4963,8 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 		    p_hdr10_param->w_x != p_mdc->white_point[0] ||
 		    p_hdr10_param->w_y != p_mdc->white_point[1]) {
 			flag |= 1;
-			p_hdr10_param->max_display_mastering_lum =
-				p_mdc->luminance[0];
-			p_hdr10_param->min_display_mastering_lum =
-				p_mdc->luminance[1];
+			p_hdr10_param->max_display_mastering_lum = p_mdc->luminance[0];
+			p_hdr10_param->min_display_mastering_lum = p_mdc->luminance[1];
 			p_hdr10_param->r_x = p_mdc->primaries[0][0];
 			p_hdr10_param->r_y = p_mdc->primaries[0][1];
 			p_hdr10_param->g_x = p_mdc->primaries[1][0];
@@ -4990,13 +4975,9 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 			p_hdr10_param->w_y = p_mdc->white_point[1];
 		}
 	} else {
-		/* GBR -> RGB as dolby will swap back to GBR
-		 * in send_hdmi_pkt
-		 */
-		if (p_hdr10_param->min_display_mastering_lum !=
-		    min_lum ||
-		    p_hdr10_param->max_display_mastering_lum !=
-		    max_lum ||
+		// GBR -> RGB as dolby will swap back to GBR in send_hdmi_pkt
+		if (p_hdr10_param->min_display_mastering_lum != min_lum ||
+		    p_hdr10_param->max_display_mastering_lum != max_lum ||
 		    p_hdr10_param->r_x != bt2020_primaries[2][0] ||
 		    p_hdr10_param->r_y != bt2020_primaries[2][1] ||
 		    p_hdr10_param->g_x != bt2020_primaries[0][0] ||
@@ -5006,10 +4987,8 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 		    p_hdr10_param->w_x != bt2020_white_point[0] ||
 		    p_hdr10_param->w_y != bt2020_white_point[1]) {
 			flag |= 2;
-			p_hdr10_param->min_display_mastering_lum =
-				min_lum;
-			p_hdr10_param->max_display_mastering_lum =
-				max_lum;
+			p_hdr10_param->min_display_mastering_lum = min_lum;
+			p_hdr10_param->max_display_mastering_lum = max_lum;
 			p_hdr10_param->r_x = bt2020_primaries[2][0];
 			p_hdr10_param->r_y = bt2020_primaries[2][1];
 			p_hdr10_param->g_x = bt2020_primaries[0][0];
@@ -5022,16 +5001,12 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 	}
 
 	if (p_cll->present_flag) {
-		if (p_hdr10_param->max_content_light_level
-		    != p_cll->max_content ||
-		    p_hdr10_param->max_frame_avg_light_level
-			!= p_cll->max_pic_average)
+		if (p_hdr10_param->max_content_light_level != p_cll->max_content ||
+		    p_hdr10_param->max_frame_avg_light_level != p_cll->max_pic_average)
 			flag |= 4;
 		if (flag & 4) {
-			p_hdr10_param->max_content_light_level =
-				p_cll->max_content;
-			p_hdr10_param->max_frame_avg_light_level =
-				p_cll->max_pic_average;
+			p_hdr10_param->max_content_light_level = p_cll->max_content;
+			p_hdr10_param->max_frame_avg_light_level = p_cll->max_pic_average;
 		}
 	} else {
 		if (p_hdr10_param->max_content_light_level != 0 ||
@@ -5043,34 +5018,15 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 	}
 
 	if (debug_dolby & 1) {
-		pr_dolby_dbg
-			("HDR10: present %d, %d, %d, %d\n",
-			 p_mdc->present_flag, p_cll->max_content,
-			 flag, primaries_type);
-		pr_dolby_dbg
-			("\tR = %04x, %04x\n",
-			 p_hdr10_param->r_x, p_hdr10_param->r_y);
-		pr_dolby_dbg
-			("\tG = %04x, %04x\n",
-			 p_hdr10_param->g_x, p_hdr10_param->g_y);
-		pr_dolby_dbg
-			("\tB = %04x, %04x\n",
-			 p_hdr10_param->b_x, p_hdr10_param->b_y);
-		pr_dolby_dbg
-			("\tW = %04x, %04x\n",
-			 p_hdr10_param->w_x, p_hdr10_param->w_y);
-		pr_dolby_dbg
-			("\tMax = %d\n",
-			 p_hdr10_param->max_display_mastering_lum);
-		pr_dolby_dbg
-			("\tMin = %d\n",
-			 p_hdr10_param->min_display_mastering_lum);
-		pr_dolby_dbg
-			("\tMCLL = %d\n",
-			 p_hdr10_param->max_content_light_level);
-		pr_dolby_dbg
-			("\tMPALL = %d\n\n",
-			 p_hdr10_param->max_frame_avg_light_level);
+		pr_dolby_dbg("HDR10: present %d, %d, %d, %d\n", p_mdc->present_flag, p_cll->max_content, flag, primaries_type);
+		pr_dolby_dbg("\tR = %04x, %04x\n", p_hdr10_param->r_x, p_hdr10_param->r_y);
+		pr_dolby_dbg("\tG = %04x, %04x\n", p_hdr10_param->g_x, p_hdr10_param->g_y);
+		pr_dolby_dbg("\tB = %04x, %04x\n", p_hdr10_param->b_x, p_hdr10_param->b_y);
+		pr_dolby_dbg("\tW = %04x, %04x\n", p_hdr10_param->w_x, p_hdr10_param->w_y);
+		pr_dolby_dbg("\tMax = %d\n", p_hdr10_param->max_display_mastering_lum);
+		pr_dolby_dbg("\tMin = %d\n", p_hdr10_param->min_display_mastering_lum);
+		pr_dolby_dbg("\tMCLL = %d\n", p_hdr10_param->max_content_light_level);
+		pr_dolby_dbg("\tMPALL = %d\n\n", p_hdr10_param->max_frame_avg_light_level);
 	}
 }
 
