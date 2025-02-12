@@ -783,16 +783,12 @@ static void prepare_stb_dolby_core1_lut(u32 base, u32 *p_core1_lut)
 	p_lut = &p_core1_lut[256 * 4]; /* g2l */
 	for (i = 0; i < 128; i++) {
 		stb_core1_lut[base + i] =
-		stb_core1_lut[base + i + 128] =
-			((u64)p_lut[1] << 32) |
-			((u64)p_lut[0] & 0xffffffff);
+		stb_core1_lut[base + i + 128] = ((u64)p_lut[1] << 32) | ((u64)p_lut[0] & 0xffffffff);
 		p_lut += 2;
 	}
 	p_lut = &p_core1_lut[0]; /* 4 lut */
 	for (i = 256; i < 768; i++) {
-		stb_core1_lut[base + i] =
-			((u64)p_lut[1] << 32) |
-			((u64)p_lut[0] & 0xffffffff);
+		stb_core1_lut[base + i] = ((u64)p_lut[1] << 32) | ((u64)p_lut[0] & 0xffffffff);
 		p_lut += 2;
 	}
 }
