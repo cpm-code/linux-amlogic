@@ -724,25 +724,16 @@ void dolby_vision_update_vsvdb_config(char *vsvdb_buf, u32 tbl_size)
 		pr_info("update_vsvdb_config tbl size overflow %d\n", tbl_size);
 		return;
 	}
-	memset(&new_dovi_setting.vsvdb_tbl[0],
-		0, sizeof(new_dovi_setting.vsvdb_tbl));
-	memcpy(&new_dovi_setting.vsvdb_tbl[0],
-		vsvdb_buf, tbl_size);
+	memset(&new_dovi_setting.vsvdb_tbl[0], 0, sizeof(new_dovi_setting.vsvdb_tbl));
+	memcpy(&new_dovi_setting.vsvdb_tbl[0], vsvdb_buf, tbl_size);
 	new_dovi_setting.vsvdb_len = tbl_size;
 	new_dovi_setting.vsvdb_changed = 1;
 	dolby_vision_set_toggle_flag(1);
 	if (tbl_size >= 8)
-		pr_info
-		("update_vsvdb_config[%d] %x %x %x %x %x %x %x %x\n",
-		 tbl_size,
-		 vsvdb_buf[0],
-		 vsvdb_buf[1],
-		 vsvdb_buf[2],
-		 vsvdb_buf[3],
-		 vsvdb_buf[4],
-		 vsvdb_buf[5],
-		 vsvdb_buf[6],
-		 vsvdb_buf[7]);
+    pr_info("update_vsvdb_config[%d] %x %x %x %x  %x %x %x %x\n",
+		   tbl_size,
+		   vsvdb_buf[0], vsvdb_buf[1], vsvdb_buf[2], vsvdb_buf[3],
+		   vsvdb_buf[4], vsvdb_buf[5], vsvdb_buf[6], vsvdb_buf[7]);
 	vsvdb_config_set_flag = true;
 }
 
