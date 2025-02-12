@@ -1059,18 +1059,16 @@ static void adjust_vpotch(void)
 
 static void adjust_vpotch_tv(void)
 {
-	const struct vinfo_s *vinfo = get_current_vinfo();
+  const struct vinfo_s *vinfo = get_current_vinfo();
 
-	if (is_meson_tm2()) {
-		if (vinfo) {
-			if (vinfo && vinfo->width >= 1920 &&
-			vinfo->height >= 1080 &&
-			vinfo->field_height >= 1080)
-				dma_start_line = 0x400;
-			else
-				dma_start_line = 0x180;
-		}
-	}
+  if (is_meson_tm2()) {
+    if (vinfo) {
+      if (vinfo && vinfo->width >= 1920 && vinfo->height >= 1080 && vinfo->field_height >= 1080)
+        dma_start_line = 0x400;
+      else
+        dma_start_line = 0x180;
+    }
+  }
 }
 
 static void dolby_core_reset(enum core_type type)
