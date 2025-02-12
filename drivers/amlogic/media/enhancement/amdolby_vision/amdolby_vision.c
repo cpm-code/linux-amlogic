@@ -753,21 +753,19 @@ static int prepare_stb_dolby_core1_reg
 
 	/* 1 + 14 + 10 + 1 */
 	stb_core1_lut[index++] = ((u64)1 << 32) | run_mode;
+  
 	for (i = 0; i < 14; i++)
-		stb_core1_lut[index++] =
-			((u64)(6 + i) << 32)
-			| p_core1_dm_regs[i];
+		stb_core1_lut[index++] = ((u64)(6 + i) << 32) | p_core1_dm_regs[i];
+  
 	for (i = 17; i < 27; i++)
-		stb_core1_lut[index++] =
-			((u64)(6 + i) << 32)
-			| p_core1_dm_regs[i - 3];
+		stb_core1_lut[index++] = ((u64)(6 + i) << 32) | p_core1_dm_regs[i - 3];
+  
 	stb_core1_lut[index++] = ((u64)(6 + 27) << 32) | 0;
 
 	/* 173 + 1 */
 	for (i = 0; i < 173; i++)
-		stb_core1_lut[index++] =
-			((u64)(6 + 44 + i) << 32)
-			| p_core1_comp_regs[i];
+		stb_core1_lut[index++] = ((u64)(6 + 44 + i) << 32) | p_core1_comp_regs[i];
+  
 	stb_core1_lut[index++] = ((u64)3 << 32) | 1;
 
 	if (index & 1) {
