@@ -1820,29 +1820,28 @@ static int is_graphic_changed(void)
   return ret;
 }
 
-
 static int cur_mute_type;
 static char mute_type_str[4][4] = {
-	"NON",
-	"YUV",
-	"RGB",
-	"IPT"
+  "NON",
+  "YUV",
+  "RGB",
+  "IPT"
 };
 
 int get_mute_type(void)
 {
-	if (dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444)
-		return MUTE_TYPE_RGB;
-	else if ((dolby_vision_ll_policy == DOLBY_VISION_LL_YUV422) ||
-		 (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_SDR8) ||
-		 (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_SDR10) ||
-		 (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_HDR10))
-		return MUTE_TYPE_YUV;
-	else if ((dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT) ||
-		 (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL))
-		return MUTE_TYPE_IPT;
-	else
-		return MUTE_TYPE_NONE;
+  if (dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444)
+    return MUTE_TYPE_RGB;
+  else if ((dolby_vision_ll_policy == DOLBY_VISION_LL_YUV422) ||
+           (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_SDR8) ||
+           (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_SDR10) ||
+           (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_HDR10))
+    return MUTE_TYPE_YUV;
+  else if ((dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT) ||
+           (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL))
+    return MUTE_TYPE_IPT;
+  else
+    return MUTE_TYPE_NONE;
 }
 
 static void apply_stb_core_settings
