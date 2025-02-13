@@ -849,7 +849,6 @@ static int stb_dolby_core1_set
 	 int el_41_mode,
 	 int scramble_en,
 	 bool dovi_src,
-	 int lut_endian,
 	 bool reset)
 {
   u32 bypass_flag = 0;
@@ -1984,16 +1983,12 @@ static void apply_stb_core_settings
 				 (u32 *)&new_dovi_setting.comp_reg,
 				 (u32 *)&new_dovi_setting.dm_lut1,
 				 h_size,
-				 v_size,
-				 /* BL enable */
-				 enable,
-				 /* EL enable */
-				 enable && new_dovi_setting.el_flag,
+				 v_size,				 
+				 enable, /* BL enable */
+				 enable && new_dovi_setting.el_flag, /* EL enable */
 				 new_dovi_setting.el_halfsize_flag,
-				 dolby_vision_mode ==
-				 DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
+				 dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
 				 new_dovi_setting.src_format == FORMAT_DOVI,
-				 1,
 				 reset);
 		} else {
 			dolby_core1_set
