@@ -1845,142 +1845,123 @@ int get_mute_type(void)
 }
 
 static void apply_stb_core_settings
-	(int enable, unsigned int mask,
-	 bool reset, u32 frame_size, u8 pps_state)
+  (int enable,
+   unsigned int mask,
+   bool reset,
+   u32 frame_size,
+   u8 pps_state)
 {
-	const struct vinfo_s *vinfo = get_current_vinfo();
-	u32 h_size = (frame_size >> 16) & 0xffff;
-	u32 v_size = frame_size & 0xffff;
-	u32 graphics_w = osd_graphic_width;
-	u32 graphics_h = osd_graphic_height;
-	u32 update_bk = stb_core_setting_update_flag;
-	static u32 update_flag_more;
-	int mute_type;
+  const struct vinfo_s *vinfo = get_current_vinfo();
+  u32 h_size = (frame_size >> 16) & 0xffff;
+  u32 v_size = frame_size & 0xffff;
+  u32 graphics_w = osd_graphic_width;
+  u32 graphics_h = osd_graphic_height;
+  u32 update_bk = stb_core_setting_update_flag;
+  static u32 update_flag_more;
+  int mute_type;
 
-	if (h_size == 0xffff)
-		h_size = 0;
-	if (v_size == 0xffff)
-		v_size = 0;
+  if (h_size == 0xffff) h_size = 0;
+  if (v_size == 0xffff) v_size = 0;
 
-	if (stb_core_setting_update_flag != update_flag_more &&
-	    (debug_dolby & 2))
-		pr_dolby_dbg
-		("%s update setting again %x->%x\n",
-		 __func__, stb_core_setting_update_flag,
-		 update_flag_more);
+  if (stb_core_setting_update_flag != update_flag_more && (debug_dolby & 2))
+    pr_dolby_dbg("%s update setting again %x->%x\n", __func__, stb_core_setting_update_flag, update_flag_more);
 
-	stb_core_setting_update_flag |= update_flag_more;
+  stb_core_setting_update_flag |= update_flag_more;
 
-	if (is_dolby_vision_stb_mode() &&
-		(dolby_vision_flags & FLAG_CERTIFICAION)) {
-		graphics_w = dv_cert_graphic_width;
-		graphics_h = dv_cert_graphic_height;
-	}
-	adjust_vpotch();
-	if (mask & 1) {
-		if (is_meson_txlx_stbmode()) {
-			stb_dolby_core1_set
-				((u32 *)&new_dovi_setting.dm_reg1,
-				 (u32 *)&new_dovi_setting.comp_reg,
-				 (u32 *)&new_dovi_setting.dm_lut1,
-				 h_size,
-				 v_size,				 
-				 enable, /* BL enable */
-				 enable && new_dovi_setting.el_flag, /* EL enable */
-				 new_dovi_setting.el_halfsize_flag,
-				 new_dovi_setting.src_format == FORMAT_DOVI,
-				 reset);
-		} else {
-			dolby_core1_set
-				((u32 *)&new_dovi_setting.dm_reg1,
-				 (u32 *)&new_dovi_setting.comp_reg,
-				 (u32 *)&new_dovi_setting.dm_lut1,
-				 h_size,
-				 v_size,				 
-				 enable, /* BL enable */				 
-				 enable && new_dovi_setting.el_flag, /* EL enable */
-				 new_dovi_setting.el_halfsize_flag,
-				 new_dovi_setting.src_format == FORMAT_DOVI,
-				 reset);
-		}
-	}
+  if (is_dolby_vision_stb_mode() && (dolby_vision_flags & FLAG_CERTIFICAION)) {
+    graphics_w = dv_cert_graphic_width;
+    graphics_h = dv_cert_graphic_height;
+  }
 
-	if (mask & 2) {
-		if (stb_core_setting_update_flag != CP_FLAG_CHANGE_ALL) {
-			/* when CP_FLAG_CONST_TC2 is set, */
-			/* set the stb_core_setting_update_flag */
-			/* until only meeting the CP_FLAG_CONST_TC2 */
-			if (stb_core_setting_update_flag &
-				CP_FLAG_CONST_TC2)
-				stb_core2_const_flag = true;
-			else if (stb_core_setting_update_flag &
-				CP_FLAG_CHANGE_TC2)
-				stb_core2_const_flag = false;
-		}
-		/* revert the core2 lut as last corret one when const case */
-		if (stb_core2_const_flag)
-			memcpy(&new_dovi_setting.dm_lut2,
-			       &dovi_setting.dm_lut2,
-			       sizeof(struct dm_lut_ipcore));
+  adjust_vpotch();
+  if (mask & 1) {  // Core 1
+    if (is_meson_txlx_stbmode()) {
+      stb_dolby_core1_set(
+          (u32 *)&new_dovi_setting.dm_reg1,
+          (  u32 *)&new_dovi_setting.comp_reg,
+          (u32 *)&new_dovi_setting.dm_lut1,
+          h_size,
+          v_size,
+          enable, /* BL enable */
+          enable && new_dovi_setting.el_flag, /* EL enable */
+          new_dovi_setting.el_halfsize_flag,
+          new_dovi_setting.src_format == FORMAT_DOVI,
+          reset);
+    } else {
+      dolby_core1_set(
+          (u32 *)&new_dovi_setting.dm_reg1,
+          (u32 *)&new_dovi_setting.comp_reg,
+          (u32 *)&new_dovi_setting.dm_lut1,
+          h_size,
+          v_size,
+          enable, /* BL enable */
+          enable && new_dovi_setting.el_flag, /* EL enable */
+          new_dovi_setting.el_halfsize_flag,
+          new_dovi_setting.src_format == FORMAT_DOVI,
+          reset);
+    }
+  }
 
-		dolby_core2_set(
-			(u32 *)&new_dovi_setting.dm_reg2,
-			(u32 *)&new_dovi_setting.dm_lut2,
-			graphics_w, graphics_h);
-	}
+  if (mask & 2) {  // Core 2
+    if (stb_core_setting_update_flag != CP_FLAG_CHANGE_ALL) {
+      // when CP_FLAG_CONST_TC2 is set,
+      // set the stb_core_setting_update_flag
+      // until only meeting the CP_FLAG_CONST_TC2
+      if (stb_core_setting_update_flag & CP_FLAG_CONST_TC2)
+        stb_core2_const_flag = true;
+      else if (stb_core_setting_update_flag & CP_FLAG_CHANGE_TC2)
+        stb_core2_const_flag = false;
+    }
+    /* revert the core2 lut as last corret one when const case */
+    if (stb_core2_const_flag)
+      memcpy(&new_dovi_setting.dm_lut2, &dovi_setting.dm_lut2, sizeof(struct dm_lut_ipcore));
 
-	if (mask & 4) {
-		v_size = vinfo->height;
-		if ((vinfo->width == 720 &&
-		     vinfo->height == 480 &&
-		    vinfo->height != vinfo->field_height) ||
-		    (vinfo->width == 720 &&
-		    vinfo->height == 576 &&
-		    vinfo->height != vinfo->field_height) ||
-		    (vinfo->width == 1920 &&
-		    vinfo->height == 1080 &&
-		    vinfo->height != vinfo->field_height) ||
-		    (vinfo->width == 1920 &&
-		    vinfo->height == 1080 &&
-		    vinfo->height != vinfo->field_height &&
-		    vinfo->sync_duration_num
-		    / vinfo->sync_duration_den == 50))
-			v_size = v_size / 2;
-		mute_type = get_mute_type();
-		if ((get_video_mute() == VIDEO_MUTE_ON_DV) &&
-		    (!(dolby_vision_flags & FLAG_MUTE) ||
-		    cur_mute_type != mute_type)) {
-			pr_dolby_dbg("mute %s\n", mute_type_str[mute_type]);
-			/* unmute vpp and mute by core3 */
-			VSYNC_WR_MPEG_REG(VPP_CLIP_MISC0,
-					  (0x3ff << 20) |
-					  (0x3ff << 10) |
-					  0x3ff);
-			VSYNC_WR_MPEG_REG(VPP_CLIP_MISC1,
-					  (0x0 << 20) |
-					  (0x0 << 10) | 0x0);
-			cur_mute_type = mute_type;
-			dolby_vision_flags |= FLAG_MUTE;
-		} else if ((get_video_mute() == VIDEO_MUTE_OFF) &&
-			(dolby_vision_flags & FLAG_MUTE)) {
-			/* vpp unmuted when dv mute */
-			/* clean flag to unmute core3 here*/
-			pr_dolby_dbg("unmute %s\n",
-				     mute_type_str[cur_mute_type]);
-			cur_mute_type = MUTE_TYPE_NONE;
-			dolby_vision_flags &= ~FLAG_MUTE;
-		}
-		dolby_core3_set
-			(new_dovi_setting.md_reg3.size,
-			 (u32 *)&new_dovi_setting.dm_reg3,
-			 new_dovi_setting.md_reg3.raw_metadata,
-			 vinfo->width, 
-			 v_size,			 
-			 dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
-			 pps_state);
-	}
-	stb_core_setting_update_flag = 0;
-	update_flag_more = update_bk;
+    dolby_core2_set(
+        (u32 *)&new_dovi_setting.dm_reg2,
+        (u32 *)&new_dovi_setting.dm_lut2,
+        graphics_w,
+        graphics_h);
+  }
+
+  if (mask & 4) { // Core 3
+
+    // TODO: needs deeper review - check later kernel - looking for interlace?
+    v_size = vinfo->height;
+    if ((vinfo->width == 720  && vinfo->height == 480  && vinfo->height != vinfo->field_height) ||
+        (vinfo->width == 720  && vinfo->height == 576  && vinfo->height != vinfo->field_height) ||
+        (vinfo->width == 1920 && vinfo->height == 1080 && vinfo->height != vinfo->field_height) ||
+        (vinfo->width == 1920 && vinfo->height == 1080 && vinfo->height != vinfo->field_height &&
+         vinfo->sync_duration_num / vinfo->sync_duration_den == 50))
+      v_size = v_size / 2;
+
+    mute_type = get_mute_type();
+    if ((get_video_mute() == VIDEO_MUTE_ON_DV) && (!(dolby_vision_flags & FLAG_MUTE) || cur_mute_type != mute_type)) {
+      /* unmute vpp and mute by core3 */
+      pr_dolby_dbg("mute %s\n", mute_type_str[mute_type]);
+      VSYNC_WR_MPEG_REG(VPP_CLIP_MISC0, (0x3ff << 20) | (0x3ff << 10) | 0x3ff);
+      VSYNC_WR_MPEG_REG(VPP_CLIP_MISC1, (0x0 << 20) | (0x0 << 10) | 0x0);
+      cur_mute_type = mute_type;
+      dolby_vision_flags |= FLAG_MUTE;
+    } else if ((get_video_mute() == VIDEO_MUTE_OFF) && (dolby_vision_flags & FLAG_MUTE)) {
+      /* vpp unmuted when dv mute */
+      /* clean flag to unmute core3 here*/
+      pr_dolby_dbg("unmute %s\n", mute_type_str[cur_mute_type]);
+      cur_mute_type = MUTE_TYPE_NONE;
+      dolby_vision_flags &= ~FLAG_MUTE;
+    }
+
+    dolby_core3_set(
+        new_dovi_setting.md_reg3.size,
+        (u32 *)&new_dovi_setting.dm_reg3,
+        new_dovi_setting.md_reg3.raw_metadata,
+        vinfo->width, 
+        v_size, 
+        dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
+        pps_state);
+  }
+
+  stb_core_setting_update_flag = 0;
+  update_flag_more = update_bk;
 }
 
 static void osd_bypass(int bypass)
