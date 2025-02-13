@@ -1170,7 +1170,6 @@ static int dolby_core1_set
    int bl_enable,
    int el_enable,
    int el_41_mode,
-   int scramble_en,
    bool dovi_src,
    bool reset)
 {
@@ -1962,7 +1961,6 @@ static void apply_stb_core_settings
 				 enable, /* BL enable */				 
 				 enable && new_dovi_setting.el_flag, /* EL enable */
 				 new_dovi_setting.el_halfsize_flag,
-				 dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
 				 new_dovi_setting.src_format == FORMAT_DOVI,
 				 reset);
 		}
