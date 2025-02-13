@@ -1179,7 +1179,6 @@ static int dolby_core1_set
    int el_41_mode,
    int scramble_en,
    bool dovi_src,
-   int lut_endian,
    bool reset)
 {
   u32 count;
@@ -1359,27 +1358,16 @@ static int dolby_core1_set
     if (dolby_copy_core1s0)
       VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_CTRL, 0x1401);
       
-    if (lut_endian)
-      for (i = 0; i < count; i += 4) {
-        VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i+3]);
-        VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i+2]);
-        VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i+1]);
-        VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i]);
-        if (dolby_copy_core1s0) {
-          VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_PORT, p_core1_lut[i+3]);
-          VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_PORT, p_core1_lut[i+2]);
-          VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_PORT, p_core1_lut[i+1]);
-          VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_PORT, p_core1_lut[i]);
-        }
-      }      
-    else 
-    {
-      for (i = 0; i < count; i++)
-        VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i]);
-
+    for (i = 0; i < count; i += 4) {
+      VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i+3]);
+      VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i+2]);
+      VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i+1]);
+      VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i]);
       if (dolby_copy_core1s0) {
-        for (i = 0; i < count; i++)
-          VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_PORT, p_core1_lut[i]);
+        VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_PORT, p_core1_lut[i+3]);
+        VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_PORT, p_core1_lut[i+2]);
+        VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_PORT, p_core1_lut[i+1]);
+        VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_PORT, p_core1_lut[i]);
       }
     }
 
@@ -2006,7 +1994,6 @@ static void apply_stb_core_settings
 				 dolby_vision_mode ==
 				 DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
 				 new_dovi_setting.src_format == FORMAT_DOVI,
-				 1,
 				 reset);
 		}
 	}
