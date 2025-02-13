@@ -836,10 +836,7 @@ static bool need_skip_cvm(unsigned int is_graphic)
 }
 
 static int stb_dolby_core1_set
-	(u32 dm_count,
-	 u32 comp_count,
-	 u32 lut_count,
-	 u32 *p_core1_dm_regs,
+	(u32 *p_core1_dm_regs,
 	 u32 *p_core1_comp_regs,
 	 u32 *p_core1_lut,
 	 int hsize,
@@ -847,7 +844,6 @@ static int stb_dolby_core1_set
 	 int bl_enable,
 	 int el_enable,
 	 int el_41_mode,
-	 int scramble_en,
 	 bool dovi_src,
 	 bool reset)
 {
@@ -1966,8 +1962,7 @@ static void apply_stb_core_settings
 	if (mask & 1) {
 		if (is_meson_txlx_stbmode()) {
 			stb_dolby_core1_set
-				(27, 173, 256 * 5,
-				 (u32 *)&new_dovi_setting.dm_reg1,
+				((u32 *)&new_dovi_setting.dm_reg1,
 				 (u32 *)&new_dovi_setting.comp_reg,
 				 (u32 *)&new_dovi_setting.dm_lut1,
 				 h_size,
@@ -1975,7 +1970,6 @@ static void apply_stb_core_settings
 				 enable, /* BL enable */
 				 enable && new_dovi_setting.el_flag, /* EL enable */
 				 new_dovi_setting.el_halfsize_flag,
-				 dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
 				 new_dovi_setting.src_format == FORMAT_DOVI,
 				 reset);
 		} else {
