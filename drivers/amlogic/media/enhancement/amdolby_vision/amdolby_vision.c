@@ -1569,9 +1569,9 @@ static int dolby_core2_set
 
 bool is_core3_mute_reg(int index)
 {
-	return (index == 12) || /* ipt_scale for ipt*/
-	(index >= 16 && index <= 17) || /* rgb2yuv scale for yuv */
-	(index >= 5 && index <= 9); /* lms2rgb coeff for rgb */
+  return (index == 12) ||                  // ipt_scale for ipt
+         (index >= 16 && index <= 17) ||   // rgb2yuv scale for yuv 
+         (index >= 5 && index <= 9);       // lms2rgb coeff for rgb 
 }
 
 static int dolby_core3_set
