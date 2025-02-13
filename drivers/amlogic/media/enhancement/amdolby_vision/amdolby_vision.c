@@ -1073,48 +1073,56 @@ static void adjust_vpotch_tv(void)
 
 static void dolby_core_reset(enum core_type type)
 {
-	switch (type) {
-	case DOLBY_TVCORE:
-		if (is_meson_txlx())
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 9);
-		else if (is_meson_tm2())
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 1);
-		VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
-		break;
-	case DOLBY_CORE1A:
-		if (is_meson_txlx())
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 10);
-		else if (is_meson_g12())
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 2);
-		else if (is_meson_tm2() || is_meson_sc2())
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 30);
-		VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
-		break;
-	case DOLBY_CORE1B:
-		if (is_meson_txlx())
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 10);
-		else if (is_meson_g12())
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 3);
-		else if (is_meson_tm2() || is_meson_sc2())
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 31);
-		VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
-		break;
-	case DOLBY_CORE2A:
-		if (is_meson_tm2() || is_meson_sc2()) {
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 2);
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
-		}
-		break;
-	case DOLBY_CORE2B:
-		if (is_meson_tm2() || is_meson_sc2()) {
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 3);
-			VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
-		}
-		break;
-	default:
-		break;
-	return;
-	}
+  switch (type) {
+
+    case DOLBY_TVCORE:
+      if (is_meson_txlx())
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 9);
+      else if (is_meson_tm2())
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 1);
+
+      VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
+      break;
+
+    case DOLBY_CORE1A:
+      if (is_meson_txlx())
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 10);
+      else if (is_meson_g12())
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 2);
+      else if (is_meson_tm2() || is_meson_sc2())
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 30);
+
+      VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
+      break;
+
+    case DOLBY_CORE1B:
+      if (is_meson_txlx())
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 10);
+      else if (is_meson_g12())
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 3);
+      else if (is_meson_tm2() || is_meson_sc2())
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 31);
+
+      VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
+      break;
+
+    case DOLBY_CORE2A:
+      if (is_meson_tm2() || is_meson_sc2()) {
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 2);
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
+      }
+      break;
+
+    case DOLBY_CORE2B:
+      if (is_meson_tm2() || is_meson_sc2()) {
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 3);
+        VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
+      }
+      break;
+
+    default:      
+      break;
+  }
 }
 
 int dolby_vision_update_setting(void)
