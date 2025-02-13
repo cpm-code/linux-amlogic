@@ -1248,7 +1248,7 @@ static int dolby_core1_set
     if (get_vpu_mem_pd_vmod(VPU_DOLBY1A) == VPU_MEM_POWER_DOWN || 
         get_dv_mem_power_flag(VPU_DOLBY1A) == VPU_MEM_POWER_DOWN)
       dv_mem_power_on(VPU_DOLBY1A);
-      
+
     if (get_vpu_mem_pd_vmod(VPU_PRIME_DOLBY_RAM) == VPU_MEM_POWER_DOWN || 
         get_dv_mem_power_flag(VPU_PRIME_DOLBY_RAM) == VPU_MEM_POWER_DOWN)
       dv_mem_power_on(VPU_PRIME_DOLBY_RAM);
@@ -1266,11 +1266,11 @@ static int dolby_core1_set
   VSYNC_WR_DV_REG(DOLBY_CORE1_REG_START + 2, 1);
 
   if (dolby_copy_core1s0) {
-    
+
     if (get_vpu_mem_pd_vmod(VPU_DOLBY1B) == VPU_MEM_POWER_DOWN ||
         get_dv_mem_power_flag(VPU_DOLBY1B) == VPU_MEM_POWER_DOWN)
       dv_mem_power_on(VPU_DOLBY1B);
-      
+
     VSYNC_WR_DV_REG(DOLBY_CORE1_1_CLKGATE_CTRL, 0);		
     VSYNC_WR_DV_REG(DOLBY_CORE1_1_SWAP_CTRL1, ((hsize + 0x80) << 16) | (vsize + 0x40));
     VSYNC_WR_DV_REG(DOLBY_CORE1_1_SWAP_CTRL3, (hwidth << 16) | vwidth);
@@ -1282,12 +1282,12 @@ static int dolby_core1_set
     VSYNC_WR_DV_REG(DOLBY_CORE1_1_REG_START + 4, 4);
     VSYNC_WR_DV_REG(DOLBY_CORE1_1_REG_START + 2, 1);
   }
-  
+
 #ifdef OLD_VERSION
   /* bypass composer to get 12bit when SDR and HDR source */
   if (!dovi_src) bypass_flag |= 1 << 0;
 #endif
-      
+
   if (dolby_vision_flags & FLAG_BYPASS_CSC) bypass_flag |= 1 << 1;
   if (dolby_vision_flags & FLAG_BYPASS_CVM) bypass_flag |= 1 << 2;
   if (need_skip_cvm(0)) bypass_flag |= 1 << 2;
@@ -1333,7 +1333,7 @@ static int dolby_core1_set
     VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_CTRL, 0x1401);
     if (dolby_copy_core1s0)
       VSYNC_WR_DV_REG(DOLBY_CORE1_1_DMA_CTRL, 0x1401);
-      
+
     for (i = 0; i < (256 * 5); i += 4) {
       VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i+3]);
       VSYNC_WR_DV_REG(DOLBY_CORE1_DMA_PORT, p_core1_lut[i+2]);
@@ -1381,8 +1381,8 @@ static int dolby_core1_set
         if (dolby_copy_core1s0)
           VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 3, 10, 2);
         else
-          VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 10, 2);      
-				
+          VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 10, 2);
+
         VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 17, 1);
         VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 21, 1);
         VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 24, 2);
@@ -1418,12 +1418,12 @@ static int dolby_core1_set
   if (is_meson_g12() || is_meson_tm2_stbmode() || is_meson_sc2()) {
 
     VSYNC_WR_DV_REG(DOLBY_CORE1_SWAP_CTRL0, (el_41_mode ? (0x3 << 4) : (0x0 << 4)) |
-			                                       bl_enable | composer_enable << 1 | el_41_mode << 2);
+                                             bl_enable | composer_enable << 1 | el_41_mode << 2);
     if (dolby_copy_core1s0) {
       VSYNC_WR_DV_REG(DOLBY_CORE1_1_SWAP_CTRL0, (el_41_mode ? (0x3 << 4) : (0x0 << 4)) |
                                                  bl_enable | composer_enable << 1 | el_41_mode << 2);
     }
-  } else	
+  } else
     VSYNC_WR_DV_REG(DOLBY_CORE1_SWAP_CTRL0, bl_enable << 0 | composer_enable << 1 | el_41_mode << 2); /* enable core1 */
 
   tv_dovi_setting_update_flag = true;
@@ -1642,7 +1642,7 @@ static int dolby_core3_set
         VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 6, 2); /* post matrix */
         VSYNC_WR_DV_REG_BITS(VPP_MATRIX_CTRL, 0, 0, 1); /* post matrix */
       }
-      
+
     } else if (is_meson_txlx_stbmode()) {
 
       if (pps_state == 2) {
@@ -1749,75 +1749,75 @@ static int dolby_core3_set
 
   if ((dolby_vision_flags & FLAG_CERTIFICAION) && !(dolby_vision_flags & FLAG_DISABLE_CRC))
     VSYNC_WR_DV_REG(DOLBY_CORE3_CRC_CTRL, 1);
-	
+
   /* enable core3 */
   VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL0, 1);
 
   return 0;
 }
 
+// Used externally
 void update_graphic_width_height(unsigned int width,
-				 unsigned int height)
+                                 unsigned int height)
 {
-	new_osd_graphic_width = width;
-	new_osd_graphic_height = height;
+  new_osd_graphic_width = width;
+  new_osd_graphic_height = height;
 }
 
 void update_graphic_status(void)
 {
-	osd_update = true;
-	pr_dolby_dbg("osd update, need toggle\n");
+  osd_update = true;
+  pr_dolby_dbg("osd update, need toggle\n");
 }
 
 static int is_graphic_changed(void)
 {
-	int ret = 0;
+  int ret = 0;
 
-	if (is_graphics_output_off()) {
-		if (!is_osd_off) {
-			pr_dolby_dbg("osd off\n");
-			is_osd_off = true;
-			ret |= 1;
-		}
-	} else if (is_osd_off) {
-		/* force reset core2 when osd off->on */
-		force_reset_core2 = true;
-		pr_dolby_dbg("osd on\n");
-		is_osd_off = false;
-		ret |= 2;
-	}
+  if (is_graphics_output_off()) {
+    if (!is_osd_off) {
+      pr_dolby_dbg("osd off\n");
+      is_osd_off = true;
+      ret |= 1;
+    }
+  } else if (is_osd_off) {
+    /* force reset core2 when osd off->on */
+    force_reset_core2 = true;
+    pr_dolby_dbg("osd on\n");
+    is_osd_off = false;
+    ret |= 2;
+  }
 
-	if (osd_graphic_width != new_osd_graphic_width ||
-	    osd_graphic_height != new_osd_graphic_height) {
-		if (debug_dolby & 0x2)
-			pr_dolby_dbg("osd changed %d %d-%d %d\n",
-				     osd_graphic_width,
-				     osd_graphic_height,
-				     new_osd_graphic_width,
-				     new_osd_graphic_height);
+  if (osd_graphic_width != new_osd_graphic_width ||
+      osd_graphic_height != new_osd_graphic_height) {
 
-		/* TODO: g12/tm2/sc2/t7 osd pps is after dolby core2, but */
-		/* sometimes osd do crop,should monitor osd size change*/
-		if (!is_osd_off /*&& !is_meson_tm2() && !is_meson_sc2()*/) {
-			osd_graphic_width = new_osd_graphic_width;
-			osd_graphic_height = new_osd_graphic_height;
-			ret |= 2;
-		}
-	}
-	if (old_dolby_vision_graphic_max !=
-	    dolby_vision_graphic_max) {
-		if (debug_dolby & 0x2)
-			pr_dolby_dbg("graphic max changed %d-%d\n",
-				     old_dolby_vision_graphic_max,
-				     dolby_vision_graphic_max);
-		if (!is_osd_off) {
-			old_dolby_vision_graphic_max =
-				dolby_vision_graphic_max;
-			ret |= 2;
-			force_set_lut = true;
-		}
-	}
-	return ret;
+    if (debug_dolby & 0x2)
+      pr_dolby_dbg("osd changed %d %d-%d %d\n",
+                   osd_graphic_width, osd_graphic_height,
+                   new_osd_graphic_width, new_osd_graphic_height);
+
+    /* TODO: g12/tm2/sc2/t7 osd pps is after dolby core2, but */
+    /* sometimes osd do crop,should monitor osd size change */
+    if (!is_osd_off /*&& !is_meson_tm2() && !is_meson_sc2()*/) {
+      osd_graphic_width = new_osd_graphic_width;
+      osd_graphic_height = new_osd_graphic_height;
+      ret |= 2;
+    }
+  }
+
+  if (old_dolby_vision_graphic_max != dolby_vision_graphic_max) {
+
+    if (debug_dolby & 0x2)
+      pr_dolby_dbg("graphic max changed %d-%d\n", old_dolby_vision_graphic_max, dolby_vision_graphic_max);
+
+    if (!is_osd_off) {
+      old_dolby_vision_graphic_max = dolby_vision_graphic_max;
+      ret |= 2;
+      force_set_lut = true;
+    }
+  }
+
+  return ret;
 }
 
 
