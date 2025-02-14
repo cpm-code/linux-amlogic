@@ -5984,57 +5984,11 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			memcpy(&new_dovi_setting.vsvdb_tbl[0],
 			       &vinfo->vout_device->dv_info->rawdata[0],
 			       vinfo->vout_device->dv_info->length + 1);
-			new_dovi_setting.vsvdb_len =
-				vinfo->vout_device->dv_info->length + 1;
-			if (new_dovi_setting.vsvdb_changed &&
-			    new_dovi_setting.vsvdb_len) {
-				int k = 0;
-
-				pr_dolby_dbg("new vsvdb[%d]:\n",
-					     new_dovi_setting.vsvdb_len);
-				pr_dolby_dbg
-				("%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
-				 new_dovi_setting.vsvdb_tbl[k + 0],
-				 new_dovi_setting.vsvdb_tbl[k + 1],
-				 new_dovi_setting.vsvdb_tbl[k + 2],
-				 new_dovi_setting.vsvdb_tbl[k + 3],
-				 new_dovi_setting.vsvdb_tbl[k + 4],
-				 new_dovi_setting.vsvdb_tbl[k + 5],
-				 new_dovi_setting.vsvdb_tbl[k + 6],
-				 new_dovi_setting.vsvdb_tbl[k + 7]);
-				k += 8;
-				pr_dolby_dbg
-				("%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
-				 new_dovi_setting.vsvdb_tbl[k + 0],
-				 new_dovi_setting.vsvdb_tbl[k + 1],
-				 new_dovi_setting.vsvdb_tbl[k + 2],
-				 new_dovi_setting.vsvdb_tbl[k + 3],
-				 new_dovi_setting.vsvdb_tbl[k + 4],
-				 new_dovi_setting.vsvdb_tbl[k + 5],
-				 new_dovi_setting.vsvdb_tbl[k + 6],
-				 new_dovi_setting.vsvdb_tbl[k + 7]);
-				k += 8;
-				pr_dolby_dbg
-				("%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
-				 new_dovi_setting.vsvdb_tbl[k + 0],
-				 new_dovi_setting.vsvdb_tbl[k + 1],
-				 new_dovi_setting.vsvdb_tbl[k + 2],
-				 new_dovi_setting.vsvdb_tbl[k + 3],
-				 new_dovi_setting.vsvdb_tbl[k + 4],
-				 new_dovi_setting.vsvdb_tbl[k + 5],
-				 new_dovi_setting.vsvdb_tbl[k + 6],
-				 new_dovi_setting.vsvdb_tbl[k + 7]);
-				k += 8;
-				pr_dolby_dbg
-				("%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
-				 new_dovi_setting.vsvdb_tbl[k + 0],
-				 new_dovi_setting.vsvdb_tbl[k + 1],
-				 new_dovi_setting.vsvdb_tbl[k + 2],
-				 new_dovi_setting.vsvdb_tbl[k + 3],
-				 new_dovi_setting.vsvdb_tbl[k + 4],
-				 new_dovi_setting.vsvdb_tbl[k + 5],
-				 new_dovi_setting.vsvdb_tbl[k + 6],
-				 new_dovi_setting.vsvdb_tbl[k + 7]);
+			new_dovi_setting.vsvdb_len = vinfo->vout_device->dv_info->length + 1;
+			
+			if (new_dovi_setting.vsvdb_changed && new_dovi_setting.vsvdb_len) {				
+			  if (debug_dolby)  
+			    dump_buffer("DOLBY: new vsvdb", new_dovi_setting.vsvdb_tbl, new_dovi_setting.vsvdb_len);				
 			}
 		} else {
 			if (new_dovi_setting.vsvdb_len)
