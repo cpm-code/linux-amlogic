@@ -3924,7 +3924,6 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 	unsigned int rpu_size = 0;
 	enum signal_format_enum *src_format = (enum signal_format_enum *)fmt;
 	static int parse_process_count;
-	int dump_size = 100;
 	static u32 last_play_id;
 
 	if (!aux_buf || aux_size == 0 || !fmt || !md_buf || !comp_buf ||
@@ -4335,10 +4334,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 			 *total_md_size, *total_comp_size);
 		if ((debug_dolby & 4) && dump_enable)  {
 			dump_buffer("DOLBY: parsed ETSI display management metadata", md_buf, *total_md_size);
-			pr_dolby_dbg("parsed ETSI composing metadata - full size (%d)\n", *total_comp_size);
-			if (*total_comp_size < dump_size)
-				dump_size = *total_comp_size;
-			dump_buffer("DOLBY: parsed ETSI composing metadata [first 100 bytes]", comp_buf, dump_size);
+			dump_buffer("DOLBY: parsed ETSI composing metadata", comp_buf, *total_comp_size);
 		}
 	}
 parse_err:
@@ -5398,7 +5394,6 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	unsigned long time_use = 0;
 	struct timeval start;
 	struct timeval end;
-	int dump_size = 100;
 	char *dvel_provider = NULL;
 
 	memset(&req, 0, (sizeof(struct provider_aux_req_s)));
@@ -5470,26 +5465,14 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			if (ret == 1) { /*parse succeeded*/
 				meta_flag_bl = 0;
 				src_format = FORMAT_DOVI;
-				memcpy(md_buf[current_id],
-				       vf->src_fmt.md_buf,
-				       vf->src_fmt.md_size);
-				memcpy(comp_buf[current_id],
-				       vf->src_fmt.comp_buf,
-				       vf->src_fmt.comp_size);
+				memcpy(md_buf[current_id], vf->src_fmt.md_buf, vf->src_fmt.md_size);
+				memcpy(comp_buf[current_id], vf->src_fmt.comp_buf, vf->src_fmt.comp_size);
 				total_md_size =  vf->src_fmt.md_size;
 				total_comp_size =  vf->src_fmt.comp_size;
 				ret_flags = vf->src_fmt.parse_ret_flags;
 				if ((debug_dolby & 4) && dump_enable) {
-					pr_dolby_dbg("get md_buf %p, size(%d)\n",
-						vf->src_fmt.md_buf,
-						vf->src_fmt.md_size);
 					dump_buffer("DOLBY: ETSI display management metadata", md_buf[current_id], total_md_size);
-					pr_dolby_dbg("parsed ETSI composing metadata - full size (%d)\n",
-						vf->src_fmt.comp_size);
-					if (vf->src_fmt.comp_size < dump_size)
-						dump_size =
-						vf->src_fmt.comp_size;
-					dump_buffer("DOLBY: ETSI composing metadata [first 100 bytes]", comp_buf[current_id], dump_size);
+					dump_buffer("DOLBY: ETSI composing metadata", comp_buf[current_id], total_comp_size);
 				}
 			} else {  /*no parse or parse failed*/
 				meta_flag_bl =
