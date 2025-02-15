@@ -692,14 +692,18 @@ static unsigned int amdolby_vision_poll(struct file *file, poll_table *wait)
 	return mask;
 }
 
-static void dump_buffer(const char *prefix, const unsigned char *buffer, size_t size)
+static void dump_buffer(const char *prefix, const unsigned char *buffer, const size_t size)
 {
   size_t i;
+  if (!buffer) {
+    pr_info("%s: null buffer\n", prefix);
+    return;
+  }
 
   pr_info("%s (%zu):\n", prefix, size);
   for (i = 0; i < size; i += 16) {
     size_t remaining = size - i;
-		if (remaining >= 16) {
+    if (remaining >= 16) {
       pr_info("%02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x  %02x %02x %02x %02x\n",
               buffer[i],    buffer[i+1],  buffer[i+2],  buffer[i+3],
               buffer[i+4],  buffer[i+5],  buffer[i+6],  buffer[i+7],
@@ -716,6 +720,56 @@ static void dump_buffer(const char *prefix, const unsigned char *buffer, size_t 
       pr_info("%s\n", line);
     }
   }
+}
+
+static void dump_u32_buffer(const char *prefix, const u32 *buffer, const size_t size, const bool reverse_4)
+{
+  size_t i;
+  if (!buffer) {
+    pr_info("%s: null buffer\n", prefix);
+    return;
+  }
+
+  pr_info("%s (%zu):\n", prefix, size);
+  for (i = 0; i < size; i += 4) {
+    size_t remaining = size - i;
+    if (remaining >= 4) {
+      if (reverse_4) {
+        pr_info("%08x %08x %08x %08x\n",
+                buffer[i+3], buffer[i+2], buffer[i+1], buffer[i]);
+      } else {
+        pr_info("%08x %08x %08x %08x\n",
+                buffer[i], buffer[i+1], buffer[i+2], buffer[i+3]);
+      }
+    } else {
+      char line[64] = {0};
+      char *ptr = line;
+      size_t j;
+
+      for (j = 0; j < remaining; j++) {
+        if (reverse_4) {
+          ptr += sprintf(ptr, "%08x%s", buffer[i + (remaining-1-j)], " ");
+        } else {
+          ptr += sprintf(ptr, "%08x%s", buffer[i + j], " ");
+        }
+      }
+      pr_info("%s\n", line);
+    }
+  }
+}
+
+static void dump_reg_range(const char *prefix, const u32 start_reg, const u32 end_reg)
+{
+    u32 i;
+    pr_info("%s\n", prefix);
+    for (i = start_reg; i <= end_reg; i += 4) {
+        pr_info("[%4x] = %08x %08x %08x %08x\n",
+            i,
+            READ_VPP_DV_REG(i),
+            READ_VPP_DV_REG(i+1),
+            READ_VPP_DV_REG(i+2),
+            READ_VPP_DV_REG(i+3));
+    }
 }
 
 void dolby_vision_update_vsvdb_config(char *vsvdb_buf, u32 tbl_size)
@@ -3014,160 +3068,63 @@ static void dump_setting
 	u32 *p;
 
 	if ((debug_flag & 0x10) && dump_enable && 0) {
-		pr_info("core1\n");
-		p = (u32 *)&setting->dm_reg1;
-		for (i = 0; i < 27; i++)
-			pr_info("%08x\n", p[i]);
-		pr_info("\ncomposer\n");
-		p = (u32 *)&setting->comp_reg;
-		for (i = 0; i < 173; i++)
-			pr_info("%08x\n", p[i]);
+
+		dump_u32_buffer("core1",    (u32 *)&setting->dm_reg1, 27, false);
+		dump_u32_buffer("composer", (u32 *)&setting->comp_reg, 173, false);
+
 		if (is_meson_gxm()) {
-			pr_info("core1 swap\n");
-			for (i = DOLBY_CORE1_CLKGATE_CTRL;
-				i <= DOLBY_CORE1_DMA_PORT; i++)
-				pr_info("[0x%4x] = 0x%x\n",
-					i, READ_VPP_DV_REG(i));
-			pr_info("core1 real reg\n");
-			for (i = DOLBY_CORE1_REG_START;
-				i <= DOLBY_CORE1_REG_START + 5;
-				i++)
-				pr_info("[0x%4x] = 0x%x\n",
-					i, READ_VPP_DV_REG(i));
-			pr_info("core1 composer real reg\n");
-			for (i = 0; i < 173 ; i++)
-				pr_info("%08x\n",
-					READ_VPP_DV_REG(
-					DOLBY_CORE1_REG_START
-					+ 50 + i));
+
+			dump_reg_range("core1 swap", DOLBY_CORE1_CLKGATE_CTRL, DOLBY_CORE1_DMA_PORT);
+			dump_reg_range("core1 real reg", DOLBY_CORE1_REG_START, DOLBY_CORE1_REG_START + 5);
+			dump_reg_range("core1 composer real reg", DOLBY_CORE1_REG_START + 50, DOLBY_CORE1_REG_START + 50 + 172);
+
 		} else if (is_meson_txlx_stbmode()) {
-			pr_info("core1 swap\n");
-			for (i = DOLBY_CORE1_CLKGATE_CTRL;
-				i <= DOLBY_CORE1_DMA_PORT; i++)
-				pr_info("[0x%4x] = 0x%x\n",
-					i, READ_VPP_DV_REG(i));
-			pr_info("core1 real reg\n");
-			for (i = DOLBY_CORE1_REG_START;
-				i <= DOLBY_CORE1_REG_START + 5;
-				i++)
-				pr_info("[0x%4x] = 0x%x\n",
-					i, READ_VPP_DV_REG(i));
+
+			dump_reg_range("core1 swap", DOLBY_CORE1_CLKGATE_CTRL, DOLBY_CORE1_DMA_PORT);
+			dump_reg_range("core1 real reg", DOLBY_CORE1_REG_START, DOLBY_CORE1_REG_START + 5);
+
 		}
 	}
 
 	if ((debug_flag & 0x20) && dump_enable) {
-		pr_info("\ncore1lut\n");
-		p = (u32 *)&setting->dm_lut1.tm_lut_i;
-		for (i = 0; i < 64; i++)
-			pr_info
-			("%08x, %08x, %08x, %08x\n",
-			 p[i * 4 + 3], p[i * 4 + 2], p[i * 4 + 1], p[i * 4]);
-		pr_info("\n");
-		p = (u32 *)&setting->dm_lut1.tm_lut_s;
-		for (i = 0; i < 64; i++)
-			pr_info
-			("%08x, %08x, %08x, %08x\n",
-			 p[i * 4 + 3], p[i * 4 + 2], p[i * 4 + 1], p[i * 4]);
-		pr_info("\n");
-		p = (u32 *)&setting->dm_lut1.sm_lut_i;
-		for (i = 0; i < 64; i++)
-			pr_info
-			("%08x, %08x, %08x, %08x\n",
-			 p[i * 4 + 3], p[i * 4 + 2], p[i * 4 + 1], p[i * 4]);
-		pr_info("\n");
-		p = (u32 *)&setting->dm_lut1.sm_lut_s;
-		for (i = 0; i < 64; i++)
-			pr_info
-			("%08x, %08x, %08x, %08x\n",
-			 p[i * 4 + 3], p[i * 4 + 2], p[i * 4 + 1], p[i * 4]);
-		pr_info("\n");
-		p = (u32 *)&setting->dm_lut1.g_2_l;
-		for (i = 0; i < 64; i++)
-			pr_info
-			("%08x, %08x, %08x, %08x\n",
-			 p[i * 4 + 3], p[i * 4 + 2], p[i * 4 + 1], p[i * 4]);
-		pr_info("\n");
+
+		dump_u32_buffer("core1 lut tm_lut_i", (u32 *)&setting->dm_lut1.tm_lut_i, 256, true);
+		dump_u32_buffer("core1 lut tm_lut_s", (u32 *)&setting->dm_lut1.tm_lut_s, 256, true);
+		dump_u32_buffer("core1 lut sm_lut_i", (u32 *)&setting->dm_lut1.sm_lut_i, 256, true);
+		dump_u32_buffer("core1 lut sm_lut_s", (u32 *)&setting->dm_lut1.sm_lut_s, 256, true);
+		dump_u32_buffer("core1 lut g_2_l", (u32 *)&setting->dm_lut1.g_2_l, 256, true);
 	}
 
 	if ((debug_flag & 0x10) && dump_enable && !is_graphics_output_off()) {
-		pr_info("core2\n");
-		p = (u32 *)&setting->dm_reg2;
-		for (i = 0; i < 24; i++)
-			pr_info("%08x\n", p[i]);
-		pr_info("core2 swap\n");
-		for (i = DOLBY_CORE2A_CLKGATE_CTRL;
-			i <= DOLBY_CORE2A_DMA_PORT; i++)
-			pr_info("[0x%4x] = 0x%x\n",
-				i, READ_VPP_DV_REG(i));
-		pr_info("core2 real reg\n");
-		for (i = DOLBY_CORE2A_REG_START;
-			i <= DOLBY_CORE2A_REG_START + 5; i++)
-			pr_info("[0x%4x] = 0x%x\n",
-				i, READ_VPP_DV_REG(i));
+
+		dump_u32_buffer("core2", (u32 *)&setting->dm_reg2, 24, false);
+
+		dump_reg_range("core2 swap", DOLBY_CORE2A_CLKGATE_CTRL, DOLBY_CORE2A_DMA_PORT);
+		dump_reg_range("core2 real reg", DOLBY_CORE2A_REG_START, DOLBY_CORE2A_REG_START + 5);
 	}
 
 	if ((debug_flag & 0x20) && dump_enable && !is_graphics_output_off()) {
-		pr_info("\ncore2lut\n");
-		p = (u32 *)&setting->dm_lut2.tm_lut_i;
-		for (i = 0; i < 64; i++)
-			pr_info
-			("%08x, %08x, %08x, %08x\n",
-			 p[i * 4 + 3], p[i * 4 + 2], p[i * 4 + 1], p[i * 4]);
-		pr_info("\n");
-		p = (u32 *)&setting->dm_lut2.tm_lut_s;
-		for (i = 0; i < 64; i++)
-			pr_info
-			("%08x, %08x, %08x, %08x\n",
-			 p[i * 4 + 3], p[i * 4 + 2], p[i * 4 + 1], p[i * 4]);
-		pr_info("\n");
-		p = (u32 *)&setting->dm_lut2.sm_lut_i;
-		for (i = 0; i < 64; i++)
-			pr_info
-			("%08x, %08x, %08x, %08x\n",
-			 p[i * 4 + 3], p[i * 4 + 2], p[i * 4 + 1], p[i * 4]);
-		pr_info("\n");
-		p = (u32 *)&setting->dm_lut2.sm_lut_s;
-		for (i = 0; i < 64; i++)
-			pr_info
-			("%08x, %08x, %08x, %08x\n",
-			 p[i * 4 + 3], p[i * 4 + 2], p[i * 4 + 1], p[i * 4]);
-		pr_info("\n");
-		p = (u32 *)&setting->dm_lut2.g_2_l;
-		for (i = 0; i < 64; i++)
-			pr_info
-			("%08x, %08x, %08x, %08x\n",
-			 p[i * 4 + 3], p[i * 4 + 2], p[i * 4 + 1], p[i * 4]);
-		pr_info("\n");
+
+		dump_u32_buffer("core2 lut tm_lut_i", (u32 *)&setting->dm_lut2.tm_lut_i, 256, true);
+		dump_u32_buffer("core2 lut tm_lut_s", (u32 *)&setting->dm_lut2.tm_lut_s, 256, true);
+		dump_u32_buffer("core2 lut sm_lut_i", (u32 *)&setting->dm_lut2.sm_lut_i, 256, true);
+		dump_u32_buffer("core2 lut sm_lut_s", (u32 *)&setting->dm_lut2.sm_lut_s, 256, true);
+		dump_u32_buffer("core2 lut g_2_l", (u32 *)&setting->dm_lut2.g_2_l, 256, true);
+
 	}
 
 	if ((debug_flag & 0x10) && dump_enable) {
-		pr_info("core3\n");
-		p = (u32 *)&setting->dm_reg3;
-		for (i = 0; i < 26; i++)
-			pr_info("%08x\n", p[i]);
-		pr_info("core3 swap\n");
-		for (i = DOLBY_CORE3_CLKGATE_CTRL;
-			i <= DOLBY_CORE3_OUTPUT_CSC_CRC; i++)
-			pr_info("[0x%4x] = 0x%x\n",
-				i, READ_VPP_DV_REG(i));
-		pr_info("core3 real reg\n");
-		for (i = DOLBY_CORE3_REG_START;
-			i <= DOLBY_CORE3_REG_START + 67; i++)
-			pr_info("[0x%4x] = 0x%08x\n",
-				i, READ_VPP_DV_REG(i));
-		for (i = DOLBY_CORE3_REG_START + 0xf8;
-			i <= DOLBY_CORE3_REG_START + 0xfe; i++)
-			pr_info("[0x%4x] = 0x%08x\n",
-				i, READ_VPP_DV_REG(i));
+
+		dump_u32_buffer("core3", (u32 *)&setting->dm_reg3, 26, false);
+
+		dump_reg_range("core3 swap", DOLBY_CORE3_CLKGATE_CTRL, DOLBY_CORE3_OUTPUT_CSC_CRC);
+		dump_reg_range("core3 real reg 1", DOLBY_CORE3_REG_START, DOLBY_CORE3_REG_START + 67);
+		dump_reg_range("core3 real reg 2", DOLBY_CORE3_REG_START + 0xf8, DOLBY_CORE3_REG_START + 0xfe);
 	}
 
-	if ((debug_flag & 0x40) && dump_enable &&
-	    dolby_vision_mode <= DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL) {
-		pr_info("\ncore3_meta %d\n", setting->md_reg3.size);
-		p = setting->md_reg3.raw_metadata;
-		for (i = 0; i < setting->md_reg3.size; i++)
-			pr_info("%08x\n", p[i]);
-		pr_info("\n");
+	if ((debug_flag & 0x40) && dump_enable && dolby_vision_mode <= DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL) {
+
+		dump_u32_buffer("core3_meta", setting->md_reg3.raw_metadata, setting->md_reg3.size, false);
 	}
 }
 
