@@ -5337,7 +5337,7 @@ static inline void source_meta_copy(
   size_t remaining_input = orig_meta_size - ETSI_META_OFFSET;
 
   uint8_t num_levels = 0;
-  bool level_5_handled = false;
+  bool level_5_handled = (dolby_vision_keep_source_meta_level_5 == 0);
 
   while ((orig_index < orig_end_index) &&
          (remaining_input >= 5) &&
@@ -5355,10 +5355,10 @@ static inline void source_meta_copy(
     // Choose what to copy
     if (!level_5_handled && (level >= 5))
     {
-      if (((level >= 6) &&  (dolby_vision_keep_source_meta_level_5 != 0)) ||
-          ((level == 5) && ((dolby_vision_keep_source_meta_level_5 == 2) ||
-                           ((dolby_vision_keep_source_meta_level_5 == 3) && (dolby_vision_xbmc_osd || dolby_vision_subtitles)) ||
-                           ((dolby_vision_keep_source_meta_level_5 == 4) &&  dolby_vision_xbmc_osd))))
+      if ((level >= 6) ||
+          ( (dolby_vision_keep_source_meta_level_5 == 2) ||
+           ((dolby_vision_keep_source_meta_level_5 == 3) && (dolby_vision_xbmc_osd || dolby_vision_subtitles)) ||
+           ((dolby_vision_keep_source_meta_level_5 == 4) &&  dolby_vision_xbmc_osd)))
       {
         if ((level == 5) && (level_size != LEVEL_5_LENGTH)) {
           pr_err("Invalid metadata: Level 5 size mismatch (%zu)\n", level_size);
@@ -5374,7 +5374,7 @@ static inline void source_meta_copy(
     }
 
     if (((level != 5) && (level != 6)) ||
-        ((level == 5) && (dolby_vision_keep_source_meta_level_5 == 1)) ||
+        ((level == 5) && !level_5_handled) ||
         ((level == 6) && (dolby_vision_keep_source_meta_level_6 == 1)))
     {
       memcpy(combo_index, orig_index, level_size);
