@@ -554,47 +554,47 @@ static u32 debug_bypass_vpp_pq;
 static bool module_installed;
 
 #define MAX_PARAM   8
-static bool is_meson_gxm(void)
+static inline bool is_meson_gxm(void)
 {
 	return (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_GXM);
 }
 
-static bool is_meson_g12(void)
+static inline bool is_meson_g12(void)
 {
 	return (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_G12);
 }
 
-static bool is_meson_sc2(void)
+static inline bool is_meson_sc2(void)
 {
 	return (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_SC2);
 }
 
-static bool is_meson_box(void)
+static inline bool is_meson_box(void)
 {
 	return (is_meson_gxm() || is_meson_g12() || is_meson_sc2());
 }
 
-static bool is_meson_txlx(void)
+static inline bool is_meson_txlx(void)
 {
 	return (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TXLX);
 }
 
-static bool is_meson_txlx_stbmode(void)
+static inline bool is_meson_txlx_stbmode(void)
 {
 	return is_meson_txlx();
 }
 
-static bool is_meson_tm2(void)
+static inline bool is_meson_tm2(void)
 {
 	return ((dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TM2) || (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_TM2_REVB));
 }
 
-static bool is_meson_tm2_stbmode(void)
+static inline bool is_meson_tm2_stbmode(void)
 {
 	return is_meson_tm2();
 }
 
-static int is_graphics_output_off(void)
+static inline int is_graphics_output_off(void)
 {
 	if (is_meson_g12() || is_meson_tm2_stbmode() || is_meson_sc2())
 		return !(READ_VPP_REG(OSD1_BLEND_SRC_CTRL) & (0xf << 8)) &&
