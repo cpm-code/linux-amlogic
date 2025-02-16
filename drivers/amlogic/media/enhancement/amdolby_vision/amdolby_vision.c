@@ -631,7 +631,8 @@ static void dolby_vision_addr(void)
 		CORE3_BASE = 0x3600;
 	}
 }
-static u32 addr_map(u32 adr)
+
+static inline u32 addr_map(u32 adr)
 {
 
 	if (adr & CORE1_OFFSET)
@@ -648,37 +649,34 @@ static u32 addr_map(u32 adr)
 	return adr;
 }
 
-static u32 VSYNC_RD_DV_REG(u32 adr)
+static inline u32 VSYNC_RD_DV_REG(u32 adr)
 {
 	adr = addr_map(adr);
 	return VSYNC_RD_MPEG_REG(adr);
 }
 
-static int VSYNC_WR_DV_REG(u32 adr, u32 val)
+static inline void VSYNC_WR_DV_REG(u32 adr, u32 val)
 {
 	adr = addr_map(adr);
 	VSYNC_WR_MPEG_REG(adr, val);
-	return 0;
 }
 
-static int VSYNC_WR_DV_REG_BITS(u32 adr, u32 val, u32 start, u32 len)
+static inline void VSYNC_WR_DV_REG_BITS(u32 adr, u32 val, u32 start, u32 len)
 {
 	adr = addr_map(adr);
 	VSYNC_WR_MPEG_REG_BITS(adr, val, start, len);
-	return 0;
 }
 
-static u32 READ_VPP_DV_REG(u32 adr)
+static inline u32 READ_VPP_DV_REG(u32 adr)
 {
 	adr = addr_map(adr);
 	return READ_VPP_REG(adr);
 }
 
-static int WRITE_VPP_DV_REG(u32 adr, const u32 val)
+static inline void WRITE_VPP_DV_REG(u32 adr, const u32 val)
 {
 	adr = addr_map(adr);
 	WRITE_VPP_REG(adr, val);
-	return 0;
 }
 
 static unsigned int amdolby_vision_poll(struct file *file, poll_table *wait)
