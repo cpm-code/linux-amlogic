@@ -325,7 +325,7 @@ module_param(vsvdb_lldv_black_level_correction, bool, 0664);
 MODULE_PARM_DESC(vsvdb_lldv_black_level_correction, "\n vsvdb_lldv_black_level_correction\n");
 
 // LLDV brightness level correction for PQ 20 value from -1024 to +1023.
-static int brightness_level = -150;
+static int brightness_level = -300;
 module_param(brightness_level, int, 0664);
 MODULE_PARM_DESC(brightness_level, "\n brightness_level\n");
 
