@@ -317,6 +317,28 @@ static unsigned int dolby_vision_xbmc_osd = 0;
 module_param(dolby_vision_xbmc_osd, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_xbmc_osd, "\n dolby_vision_xbmc_osd\n");
 
+// LLDV flag to request correction for black level when using Low Latency Dolby Vision LLDV (DV-LL) -
+// Set VSVDB Minimum Luminance to PQ 20 to improve black clipping and
+// then need to correct elevated black due to PQ 20 by reducing brightness.
+static bool vsvdb_lldv_black_level_correction = true;
+module_param(vsvdb_lldv_black_level_correction, bool, 0664);
+MODULE_PARM_DESC(vsvdb_lldv_black_level_correction, "\n vsvdb_lldv_black_level_correction\n");
+
+// LLDV brightness level correction for PQ 20 value from -1024 to +1023.
+static int brightness_level = -300;
+module_param(brightness_level, int, 0664);
+MODULE_PARM_DESC(brightness_level, "\n brightness_level\n");
+
+// LLDV flag to request correction for Dolby Vision vsvdb max lum higher than source max lum.
+static bool vsvdb_lldv_source_max_pq_correction = true;
+module_param(vsvdb_lldv_source_max_pq_correction, bool, 0664);
+MODULE_PARM_DESC(vsvdb_lldv_source_max_pq_correction, "\n vsvdb_lldv_source_max_pq_correction\n");
+
+// Dolby Vision source max pq from xbmc.
+static unsigned int dolby_vision_source_max_pq = 0;
+module_param(dolby_vision_source_max_pq, uint, 0664);
+MODULE_PARM_DESC(dolby_vision_source_max_pq, "\n dolby_vision_source_max_pq\n");
+
 static unsigned int dolby_vision_chroma = 0;
 module_param(dolby_vision_chroma, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_chroma, "\n dolby_vision_chroma\n");
@@ -5157,6 +5179,197 @@ static inline int prepare_dv_meta
 	return out->size;
 }
 
+static inline int set_brightness_level(int val)
+{
+	if (get_cpu_type() <= MESON_CPU_MAJOR_ID_GXTVBB)
+		WRITE_VPP_REG_BITS(
+			VPP_VADJ2_Y,
+			val, 8, 9);
+	else if (get_cpu_type() >= MESON_CPU_MAJOR_ID_G12A)
+		WRITE_VPP_REG_BITS(
+			VPP_VADJ2_Y_2,
+			val, 8, 11);
+	else
+		WRITE_VPP_REG_BITS(
+			VPP_VADJ2_Y,
+			val >> 1, 8, 10);
+
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_G12A)
+		WRITE_VPP_REG_BITS(VPP_VADJ2_MISC, 1, 0, 1);
+	else
+		WRITE_VPP_REG_BITS(VPP_VADJ_CTRL, 1, 2, 1);
+	return 0;
+}
+
+// If LLDV PQ 20 black level clipping correction applied through function vsvdb_lldv_set_Min_Lum_PQ_to_20() then
+// correct brightness for PQ 20. This function has to be executed after vsvdb_lldv_set_Min_Lum_PQ_to_20() not before.
+// This function has to be executed while video playback continuously since a similar function
+// is executed prior in the video processing chain and it cancels this function effect if only executed once.
+static inline void vsvdb_lldv_set_PQ_20_brightness(void)
+{
+	if (vsvdb_lldv_black_level_correction &&
+		((dolby_vision_flags & FLAG_FORCE_DOVI_LL) ||
+		  dolby_vision_ll_policy == DOLBY_VISION_LL_YUV422 ||
+		  dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444))
+		  {
+			  set_brightness_level(brightness_level);
+		  }
+}
+
+// If LLDV black level correction requested then set Minimum Luminance to PQ 20 to improve black clipping.
+// This function decodes the 2 digit hexadecimal value that contains the Minimum Luminance and
+// changes only the Minimum Luminance bits leaving the other bits on the this Hexadecimal 2 digit
+// block intact - those other bits are for Global Dimming and Backlight Min Lum features.
+static void vsvdb_lldv_set_Min_Lum_PQ_to_20(void)
+{
+	char dolby_vsvdb_min_lum[3] = "";
+	strncpy(dolby_vsvdb_min_lum, dolby_vision_dolby_vsvdb_payload + 2, 2);
+	dolby_vsvdb_min_lum[2] = '\0';
+	// IF black level correction requested AND not set for PQ 20 yet AND using LLDV THEN set to PQ 20.
+	if (vsvdb_lldv_black_level_correction &&
+		strcmp(dolby_vsvdb_min_lum, "08") &&
+		strcmp(dolby_vsvdb_min_lum, "09") &&
+		strcmp(dolby_vsvdb_min_lum, "0A") &&
+		strcmp(dolby_vsvdb_min_lum, "0B") &&
+		strcmp(dolby_vsvdb_min_lum, "0C") &&
+		strcmp(dolby_vsvdb_min_lum, "0D") &&
+		strcmp(dolby_vsvdb_min_lum, "0E") &&
+		strcmp(dolby_vsvdb_min_lum, "0F") &&
+		((dolby_vision_flags & FLAG_FORCE_DOVI_LL) ||
+		dolby_vision_ll_policy == DOLBY_VISION_LL_YUV422 ||
+		dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444))
+	{
+		// Convert the 2 digits Hexadecimal block to a 8 digits Binary block.
+		unsigned int HexNum;
+		sscanf(dolby_vsvdb_min_lum, "%x", &HexNum);
+		char Binary[9] = "";
+		int i = 0;
+		while (HexNum || i < 8) {
+			Binary[i++] = '0' + HexNum % 2;
+			HexNum /= 2;
+		}
+		i = 0; int j = 7;
+		char TempBin;
+		while (i < j)
+		{
+			TempBin = Binary[i];
+			Binary[i] = Binary[j];
+			Binary[j] = TempBin;
+		i++; j--;
+		}
+		Binary[8] = '\0';
+		
+		// Change only the first 5 bits for Minimum Luminance to PQ 20.
+		Binary[0]='0'; Binary[1]='0'; Binary[2]='0'; Binary[3]='0'; Binary[4]='1';
+		
+		// Re-convert the full 8 digits Binary block back to the full Hexadecimal 2 digit block.
+    	unsigned long Decimal = simple_strtoul(Binary, NULL, 2);  
+		char Hexadecimal[3] = "";
+		sprintf(Hexadecimal, "%02lX", Decimal); 
+		Hexadecimal[2] = '\0';
+
+		// Insert the new Hexadecimal value into the dolby_vision_dolby_vsvdb_payload.
+		char payload_front[3] = "";
+		strncpy(payload_front, dolby_vision_dolby_vsvdb_payload, 2);
+		payload_front[2] = '\0';
+		char payload_rear [11] = "";
+		strncpy(payload_rear, dolby_vision_dolby_vsvdb_payload + 4, 10);
+		payload_rear[10] = '\0';
+		char new_payload[15] = "";
+		strcat(new_payload, payload_front);
+		strcat(new_payload, Hexadecimal);
+		strcat(new_payload, payload_rear); 
+		memset(&dolby_vision_dolby_vsvdb_payload[0], 0, sizeof(dolby_vision_dolby_vsvdb_payload));
+		memcpy(&dolby_vision_dolby_vsvdb_payload[0], new_payload, sizeof(new_payload));
+	}
+}
+
+// Remidiate LLDV VSVDB Maximum Luminance higher than Source Maximum Luminance bug.
+// Remidiation is done by allowing the VSVDB Maximum Luminance to be as set originally
+// by the user as long as it is not higher than the Source Maximum Luminance value.
+// The Source Maximum Luminance values must follow the standard Dolby Vision Source Maximum
+// Luminance values of 1000 nits, 2000 nits, 4000 nits, and 10000 nits. If the VSVDB
+// Maximum Luminance value is higher than the Source Maximum Luminance value then
+// it is set to the closes LLDV VSVDB Maximum Luminance 32 slot value. This function
+// only changes the Maximum Luminance bits leaving the other bits on the this
+// Hexadecimal 2 digit block intact - those other bits are for the Dolby Vision Mode.
+static void vsvdb_lldv_set_Max_Lum_Source_Max(void)
+{
+	// IF Source Maximum Luminance bug correction requested AND using LLDV THEN set the appropriate
+	// VSVDB Maximum Luminance value.
+	if (vsvdb_lldv_source_max_pq_correction &&
+	    ((dolby_vision_flags & FLAG_FORCE_DOVI_LL) ||
+		  dolby_vision_ll_policy == DOLBY_VISION_LL_YUV422 ||
+		  dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444))
+	{
+		// Convert the 2 digits Hexadecimal block to a 8 digits Binary block.
+		char dolby_vsvdb_max_lum[3] = "";
+		strncpy(dolby_vsvdb_max_lum, dolby_vision_dolby_vsvdb_payload + 4, 2);
+		dolby_vsvdb_max_lum[2] = '\0';
+		unsigned int HexNum;
+		sscanf(dolby_vsvdb_max_lum, "%x", &HexNum);
+		char Binary[9] = "";
+		int i = 0;
+		while (HexNum || i < 8) {
+			Binary[i++] = '0' + HexNum % 2;
+			HexNum /= 2;
+		}
+		i = 0; int j = 7;
+		char TempBin;
+		while (i < j)
+		{
+			TempBin = Binary[i];
+			Binary[i] = Binary[j];
+			Binary[j] = TempBin;
+		i++; j--;
+		}
+		Binary[8] = '\0';
+
+		// Convert vsvdb maximum luminance value on the first 5 bits to Decimal. 
+		char vsvdb_max_lum_binary[6];
+		strncpy(vsvdb_max_lum_binary, Binary, 5);
+		vsvdb_max_lum_binary[5] = '\0';
+		unsigned long vsvdb_max_lum_decimal = simple_strtoul(vsvdb_max_lum_binary, NULL, 2);
+
+		// Check the value of the vsvdb maximum luminance against the source maximum luminance and
+		// corret as appropriate by changing only the first 5 bits for the Maximum Luminance value.
+		bool vsvdb_changed = false;
+		if (vsvdb_max_lum_decimal <= 16) {
+			return;
+		} else if ((vsvdb_max_lum_decimal > 16) && (dolby_vision_source_max_pq < 3160)) {
+			Binary[0] = '1'; Binary[1] = '0'; Binary[2] = '0'; Binary[3] = '0'; Binary[4] = '0';
+			vsvdb_changed = true;
+		} else if ((vsvdb_max_lum_decimal > 20) && (dolby_vision_source_max_pq < 3420)) {
+			Binary[0] = '1'; Binary[1] = '0'; Binary[2] = '1'; Binary[3] = '0'; Binary[4] = '0';
+			vsvdb_changed = true;
+		} else if ((vsvdb_max_lum_decimal > 25) && (dolby_vision_source_max_pq < 3745)) {
+			Binary[0] = '1'; Binary[1] = '1'; Binary[2] = '0'; Binary[3] = '0'; Binary[4] = '1';
+			vsvdb_changed = true;
+		}
+		if (!vsvdb_changed) return;
+
+		// Re-convert the full 8 digits Binary block back to the full Hexadecimal 2 digit block.
+		unsigned long Decimal = simple_strtoul(Binary, NULL, 2);
+		char Hexadecimal[3] = "";
+		sprintf(Hexadecimal, "%02lX", Decimal);
+		Hexadecimal[2] = '\0';
+
+		// Insert the new Hexadecimal value into the dolby_vision_dolby_vsvdb_payload.
+		char payload_front[5] = "";
+		strncpy(payload_front, dolby_vision_dolby_vsvdb_payload, 4);
+		payload_front[4] = '\0';
+		char payload_rear [9] = "";
+		strncpy(payload_rear, dolby_vision_dolby_vsvdb_payload + 6, 8);
+		payload_rear[8] = '\0';
+		char new_payload[15] = "";
+		strcat(new_payload, payload_front);
+		strcat(new_payload, Hexadecimal);
+		strcat(new_payload, payload_rear); 
+		memset(&dolby_vision_dolby_vsvdb_payload[0], 0, sizeof(dolby_vision_dolby_vsvdb_payload));
+		memcpy(&dolby_vision_dolby_vsvdb_payload[0], new_payload, sizeof(new_payload));
+	}
+}
+
 static void inject_dolby_vsvdb(void)
 {
   // After developing this found can pass into /dev/dolby_vision 
@@ -5176,6 +5389,12 @@ static void inject_dolby_vsvdb(void)
       pr_info("inject_dolby_vsvdb failed - Cannot parse: Length wrong, must be a Dolby VSVDB V1 or V2 - 14 Hex Char Payload. [%s]\n", dolby_vision_dolby_vsvdb_payload);
       return;
     }
+
+    // Correct LLDV vsvdb max lum higher than source max lum bug - if requested.
+    vsvdb_lldv_set_Max_Lum_Source_Max();
+
+    // Correct LLDV black clipping bug by setting vsvdb min lum to PQ 20 - if requested.
+    vsvdb_lldv_set_Min_Lum_PQ_to_20();
 
     strcpy(dolby_vsvdb, "EB0146D000"); // VSVDB Header and Dolby IEEE OUI
     strcat(dolby_vsvdb, dolby_vision_dolby_vsvdb_payload);
@@ -5246,6 +5465,12 @@ static inline void source_meta_copy(
   size_t orig_meta_size,
   struct md_reg_ipcore3 *core_meta)
 {
+
+  // Correct LLDV black level when using PQ 20 to reduce black clipping - if requested.
+  // This function has to be executed while video playback continuously since a similar function
+  // is executed prior in the video processing chain and it cancels this function effect if only executed once.
+  vsvdb_lldv_set_PQ_20_brightness();
+
   if (!orig_meta_buffer || !core_meta) {
     pr_err("source_meta_copy: Invalid input parameters (null pointers)\n");
     return;
