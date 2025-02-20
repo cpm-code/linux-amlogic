@@ -272,6 +272,10 @@ static char *dolby_vision_dolby_vsvdb_payload = "";
 module_param(dolby_vision_dolby_vsvdb_payload, charp, 0664);
 MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_payload, "\n dolby_vision_dolby_vsvdb_payload\n");
 
+static unsigned int dolby_vision_dolby_vsvdb_source_lum_limit = 0;
+module_param(dolby_vision_dolby_vsvdb_source_lum_limit, uint, 0664);
+MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_source_lum_limit, "\n dolby_vision_dolby_vsvdb_source_lum_limit\n");
+
 static bool dolby_vision_hdr_for_lldv = false;
 module_param(dolby_vision_hdr_for_lldv, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_hdr_for_lldv, "\n dolby_vision_hdr_for_lldv\n");
@@ -766,21 +770,6 @@ static void dump_reg_range(const char *prefix, const u32 start_reg, const u32 en
             READ_VPP_DV_REG(i+2),
             READ_VPP_DV_REG(i+3));
   }
-}
-
-void dolby_vision_update_vsvdb_config(char *vsvdb_buf, u32 tbl_size)
-{
-  if (tbl_size > sizeof(new_dovi_setting.vsvdb_tbl)) {
-    pr_info("update_vsvdb_config tbl size overflow %d\n", tbl_size);
-    return;
-  }
-  memset(&new_dovi_setting.vsvdb_tbl[0], 0, sizeof(new_dovi_setting.vsvdb_tbl));
-  memcpy(&new_dovi_setting.vsvdb_tbl[0], vsvdb_buf, tbl_size);
-  new_dovi_setting.vsvdb_len = tbl_size;
-  new_dovi_setting.vsvdb_changed = 1;
-  dolby_vision_set_toggle_flag(1);
-  dump_buffer("update_vsvdb_config", vsvdb_buf, tbl_size);
-  vsvdb_config_set_flag = true;
 }
 
 static int prepare_stb_dolby_core1_reg
@@ -4870,14 +4859,170 @@ static inline int prepare_dv_meta
 	return out->size;
 }
 
-static void inject_dolby_vsvdb(void)
+static inline void extract_etsi_source_lum(u16* min, u16* max) 
 {
-  // After developing this found can pass into /dev/dolby_vision 
-  // Could not make that work though - crashes kodi side for some reason.
-  // So have this routine instead, can remove if you get that working!
+  // ETSI GS CCM 001 V1.1.1 (2017-02)
+  // [64] source_min_PQ_hi
+  // [65] source_min_PQ_lo
+  // [66] source_max_PQ_hi
+  // [67] source_max_PQ_lo
 
-  /* inject dolby vsvdb when asked, do only once per time */
-  if (dolby_vision_dolby_vsvdb_inject == 1) {
+  // Not testing md_buf is intialsed, call only when initalised (have values).
+  *min = (md_buf[current_id][64] << 8) | md_buf[current_id][65]; // two bytes from the buffer for source min into the unsigned short 
+  *max = (md_buf[current_id][66] << 8) | md_buf[current_id][67]; // two bytes from the buffer for source max into the unsigned short 
+}
+
+// SMPTE ST.2084 (min) direct PQ lookup table
+static const u16 min_direct_to_pq_lut[128] = {
+    0,   5,  12,  19,  26,  33,  40,  47,  55,  62,  69,  76,  83,  90,  97, 104,
+  111, 117, 124, 130, 137, 143, 150, 156, 162, 168, 174, 180, 186, 192, 198, 204,
+  210, 216, 221, 227, 233, 238, 244, 249, 254, 260, 265, 270, 276, 281, 286, 291,
+  296, 301, 306, 311, 316, 321, 326, 331, 335, 340, 345, 350, 354, 359, 364, 368,
+  373, 377, 382, 386, 391, 395, 399, 404, 408, 412, 417, 421, 425, 429, 433, 438,
+  442, 446, 450, 454, 458, 462, 466, 470, 474, 478, 482, 486, 490, 493, 497, 501,
+  505, 509, 512, 516, 520, 524, 527, 531, 535, 538, 542, 545, 549, 553, 556, 560,
+  563, 567, 570, 574, 577, 580, 584, 587, 591, 594, 597, 601, 604, 607, 611, 614
+};
+
+// SMPTE ST.2084 (max) direct PQ lookup table
+static const u16 max_direct_to_pq_lut[128] = {
+  2081, 2249, 2372, 2467, 2547, 2614, 2672, 2724, 2771, 2813, 2851, 2887, 2920, 2950, 2979, 3006,
+  3032, 3056, 3079, 3101, 3121, 3141, 3160, 3178, 3196, 3213, 3229, 3245, 3260, 3275, 3289, 3302,
+  3316, 3329, 3341, 3354, 3365, 3377, 3388, 3399, 3410, 3421, 3431, 3441, 3451, 3460, 3470, 3479,
+  3488, 3497, 3505, 3514, 3522, 3530, 3538, 3546, 3554, 3561, 3569, 3576, 3583, 3590, 3597, 3604,
+  3611, 3618, 3624, 3631, 3637, 3643, 3649, 3656, 3662, 3668, 3673, 3679, 3685, 3690, 3696, 3702,
+  3707, 3712, 3718, 3723, 3728, 3733, 3738, 3743, 3748, 3753, 3758, 3762, 3767, 3772, 3776, 3781,
+  3785, 3790, 3794, 3799, 3803, 3807, 3811, 3816, 3820, 3824, 3828, 3832, 3836, 3840, 3844, 3848,
+  3852, 3855, 3859, 3863, 3867, 3870, 3874, 3878, 3881, 3885, 3888, 3892, 3895, 3899, 3902, 3906
+};
+
+static inline void extract_dolby_vsvdb_source_lum(u16* min, u16* max) 
+{
+  const unsigned char *x = &new_dovi_setting.vsvdb_tbl[5];
+  unsigned char version = (x[0] >> 5) & 0x07;
+
+  switch (version) {
+
+    case 0: {
+      *min = (x[14] << 4) | (x[13] >> 4);
+      *max = (x[15] << 4) | (x[13] & 0x0F);
+      break;
+    }
+
+    case 1: {
+      *min = min_direct_to_pq_lut[(x[2] >> 1)];
+      *max = max_direct_to_pq_lut[(x[1] >> 1)];
+      break;
+    }
+
+    case 2: {
+      *min = 20 * (x[1] >> 3);
+      *max = 2055 + 65 * (x[2] >> 3);
+      break;
+    }
+  }
+
+  pr_info("DOLBY: extract vsvdb lum: version [%d], min [%hu] max [%hu]\n", version, *min, *max);
+}
+
+static inline void set_dolby_vsvdb_source_lum(u16 min, u16 max) 
+{
+  unsigned char *x = &new_dovi_setting.vsvdb_tbl[5];
+  unsigned char version = (x[0] >> 5) & 0x07;
+
+  switch (version) {
+
+    case 0: {
+      x[13] = ((min & 0x0F) << 4) | (max & 0x0F);
+      x[14] = (min >> 4) & 0xFF;
+      x[15] = (max >> 4) & 0xFF;
+      break;
+    }
+
+    case 1: {
+      u16 i;
+      for (i = 0; i < 128; i++) {
+        if (min_direct_to_pq_lut[i] == min) {
+          x[2] = (i << 1);
+          break;
+        }
+      }
+      for (i = 0; i < 128; i++) {
+        if (max_direct_to_pq_lut[i] == max) {
+          x[1] = (i << 1); 
+          break;
+        }
+      }
+      break;
+    }
+
+    case 2: {
+      x[1] = (x[1] & 0x07) | ( (min / 20)         & 0x1F) << 3;
+      x[2] = (x[2] & 0x07) | (((max - 2055) / 65) & 0x1F) << 3;
+      break;
+    }
+  }
+}
+
+static inline void limit_dolby_vsvdb_to_source_lum_for_lldv(void)
+{
+
+  if ((dolby_vision_dolby_vsvdb_source_lum_limit == 1) &&
+      ((dolby_vision_flags & FLAG_FORCE_DOVI_LL) ||
+       (dolby_vision_ll_policy >= DOLBY_VISION_LL_YUV422)))
+  {
+
+    u16 source_min = 0;
+    u16 source_max = 0;
+
+    u16 vsvdb_min = 0;
+    u16 vsvdb_max = 0;
+
+    u16 new_vsvdb_min = 0;
+    u16 new_vsvdb_max = 0;
+
+    extract_etsi_source_lum(&source_min, &source_max);
+    extract_dolby_vsvdb_source_lum(&vsvdb_min, &vsvdb_max);
+
+    new_vsvdb_min = max_t(unsigned short, source_min, vsvdb_min);
+    new_vsvdb_max = min_t(unsigned short, source_max, vsvdb_max);
+
+    pr_info("DOLBY: DV-LL limit vsvdb lum: source min [%hu] max [%hu], vsvdb min [%hu] max [%hu], new vsvdb min [%hu] max [%hu]\n",
+            source_min, source_max, vsvdb_min, vsvdb_max, new_vsvdb_min, new_vsvdb_max);
+
+    if ((vsvdb_min != new_vsvdb_min) || (vsvdb_max != new_vsvdb_max))
+    {
+      set_dolby_vsvdb_source_lum(new_vsvdb_min, new_vsvdb_max);
+      dump_buffer("DOLBY: DV-LL vsvdb with limit", new_dovi_setting.vsvdb_tbl, new_dovi_setting.vsvdb_len);
+    }
+
+    dolby_vision_dolby_vsvdb_source_lum_limit = 2; // Do not do again unless reset to 1.
+  }
+}
+
+static inline void set_dolby_vsvdb(const unsigned char *vsvdb_tbl, u32 vsvdb_len)
+{
+  memset(new_dovi_setting.vsvdb_tbl, 0, sizeof(new_dovi_setting.vsvdb_tbl));
+  memcpy(new_dovi_setting.vsvdb_tbl, vsvdb_tbl, vsvdb_len);
+  new_dovi_setting.vsvdb_len = vsvdb_len;
+  new_dovi_setting.vsvdb_changed = 1;
+
+  dump_buffer("DOLBY: vsvdb", new_dovi_setting.vsvdb_tbl, new_dovi_setting.vsvdb_len);
+
+  // If source limit was set then set back so it can be limited again
+  if (dolby_vision_dolby_vsvdb_source_lum_limit == 2) dolby_vision_dolby_vsvdb_source_lum_limit = 1;
+}
+
+static inline void set_dolby_vsvdb_when_changed(const unsigned char *vsvdb_tbl, u32 vsvdb_len)
+{
+  if ((new_dovi_setting.vsvdb_len != vsvdb_len) || (memcmp(new_dovi_setting.vsvdb_tbl, vsvdb_tbl, vsvdb_len) != 0))
+    set_dolby_vsvdb(vsvdb_tbl, vsvdb_len);
+}
+
+static inline void load_dolby_vsvdb(const struct dv_info *dv_info)
+{
+
+  if (dolby_vision_dolby_vsvdb_inject == 1) { // inject dolby vsvdb when asked.
 
     // Get the DOLBY VSVDB from the parameter
     size_t payload_str_len = strlen(dolby_vision_dolby_vsvdb_payload);
@@ -4886,7 +5031,7 @@ static void inject_dolby_vsvdb(void)
     unsigned int i = 0;
 
     if (payload_str_len != 14) {
-      pr_info("inject_dolby_vsvdb failed - Cannot parse: Length wrong, must be a Dolby VSVDB V1 or V2 - 14 Hex Char Payload. [%s]\n", dolby_vision_dolby_vsvdb_payload);
+      pr_info("DOLBY: inject_dolby_vsvdb failed - Cannot parse: Length wrong, must be a Dolby VSVDB V1 or V2 - 14 Hex Char Payload. [%s]\n", dolby_vision_dolby_vsvdb_payload);
       return;
     }
 
@@ -4899,13 +5044,22 @@ static void inject_dolby_vsvdb(void)
       buf[i] = (unsigned char)(simple_strtoul(hex_byte, NULL, 16) & 0xFF);
     }
 
-    dolby_vision_update_vsvdb_config(buf, 12);
+    set_dolby_vsvdb(buf, 12);
 
-    dolby_vision_dolby_vsvdb_inject = 2;
-    dolby_vision_flags |= FLAG_DISABLE_LOAD_VSVDB; 
+    dolby_vision_dolby_vsvdb_inject = 2; // do not inject again
 
-  } else if (dolby_vision_dolby_vsvdb_inject == 0) {
-    dolby_vision_flags &= ~FLAG_DISABLE_LOAD_VSVDB;
+  } else if (dolby_vision_dolby_vsvdb_inject == 0) { // Not injecting get from HDMI.
+
+    // One-time, initialise to 0 - TODO: why needed.
+    if (!vsvdb_config_set_flag) {
+      set_dolby_vsvdb(NULL, 0);
+      vsvdb_config_set_flag = true;
+    }
+
+    // if have a dolby vsvdb from HDMI, set if different to current.
+    if ((dv_info->ieeeoui    == 0x00d046) &&
+        (dv_info->block_flag == CORRECT))
+      set_dolby_vsvdb_when_changed(&dv_info->rawdata[0], dv_info->length + 1);
   }
 }
 
@@ -5595,49 +5749,11 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		destroy_context();
 	}
 
-	inject_dolby_vsvdb();	
+	// Load the VSVDB from xbmc if injected or obtain from vout (hdmi sink) if present.
+	load_dolby_vsvdb(vinfo->vout_device->dv_info);
 
-	if (!vsvdb_config_set_flag) {
-		memset(&new_dovi_setting.vsvdb_tbl[0],
-		       0, sizeof(new_dovi_setting.vsvdb_tbl));
-		new_dovi_setting.vsvdb_len = 0;
-		new_dovi_setting.vsvdb_changed = 1;
-		vsvdb_config_set_flag = true;
-	}
-	if ((dolby_vision_flags & FLAG_DISABLE_LOAD_VSVDB) == 0) {
-		/* check if vsvdb is changed */
-		if (vinfo &&  vinfo->vout_device &&
-		    vinfo->vout_device->dv_info &&
-		    vinfo->vout_device->dv_info->ieeeoui == 0x00d046 &&
-		    vinfo->vout_device->dv_info->block_flag == CORRECT) {
-			if (new_dovi_setting.vsvdb_len
-				!= vinfo->vout_device->dv_info->length + 1)
-				new_dovi_setting.vsvdb_changed = 1;
-			else if (memcmp
-				(&new_dovi_setting.vsvdb_tbl[0],
-				 &vinfo->vout_device->dv_info->rawdata[0],
-				 vinfo->vout_device->dv_info->length + 1))
-				new_dovi_setting.vsvdb_changed = 1;
-			memset(&new_dovi_setting.vsvdb_tbl[0],
-			       0, sizeof(new_dovi_setting.vsvdb_tbl));
-			memcpy(&new_dovi_setting.vsvdb_tbl[0],
-			       &vinfo->vout_device->dv_info->rawdata[0],
-			       vinfo->vout_device->dv_info->length + 1);
-			new_dovi_setting.vsvdb_len = vinfo->vout_device->dv_info->length + 1;
-			
-			if (new_dovi_setting.vsvdb_changed && new_dovi_setting.vsvdb_len) {				
-			  if (debug_dolby)  
-			    dump_buffer("DOLBY: new vsvdb", new_dovi_setting.vsvdb_tbl, new_dovi_setting.vsvdb_len);				
-			}
-		} else {
-			if (new_dovi_setting.vsvdb_len)
-				new_dovi_setting.vsvdb_changed = 1;
-			memset(&new_dovi_setting.vsvdb_tbl[0],
-				0, sizeof(new_dovi_setting.vsvdb_tbl));
-			new_dovi_setting.vsvdb_len = 0;
-		}
-
-	}
+	// For DV-LL apply limits to the VSVDB min and max, when we have source metadata.
+	if (total_md_size > 0) limit_dolby_vsvdb_to_source_lum_for_lldv();
 
 	/* check video/graphics priority on the fly */
 	/* cert: some graphic test also need video pri 5223,5243,5253,5263 */
