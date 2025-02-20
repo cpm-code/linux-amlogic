@@ -760,35 +760,31 @@ static void dump_u32_buffer(const char *prefix, const u32 *buffer, const size_t 
 
 static void dump_reg_range(const char *prefix, const u32 start_reg, const u32 end_reg)
 {
-    u32 i;
-    pr_info("%s\n", prefix);
-    for (i = start_reg; i <= end_reg; i += 4) {
-        pr_info("[%4x] = %08x %08x %08x %08x\n",
+  u32 i;
+  pr_info("%s\n", prefix);
+  for (i = start_reg; i <= end_reg; i += 4) {
+    pr_info("[%4x] = %08x %08x %08x %08x\n",
             i,
             READ_VPP_DV_REG(i),
             READ_VPP_DV_REG(i+1),
             READ_VPP_DV_REG(i+2),
             READ_VPP_DV_REG(i+3));
-    }
+  }
 }
 
 void dolby_vision_update_vsvdb_config(char *vsvdb_buf, u32 tbl_size)
 {
-	if (tbl_size > sizeof(new_dovi_setting.vsvdb_tbl)) {
-		pr_info("update_vsvdb_config tbl size overflow %d\n", tbl_size);
-		return;
-	}
-	memset(&new_dovi_setting.vsvdb_tbl[0], 0, sizeof(new_dovi_setting.vsvdb_tbl));
-	memcpy(&new_dovi_setting.vsvdb_tbl[0], vsvdb_buf, tbl_size);
-	new_dovi_setting.vsvdb_len = tbl_size;
-	new_dovi_setting.vsvdb_changed = 1;
-	dolby_vision_set_toggle_flag(1);
-	if (tbl_size >= 8)
-    pr_info("update_vsvdb_config[%d] %x %x %x %x  %x %x %x %x\n",
-		   tbl_size,
-		   vsvdb_buf[0], vsvdb_buf[1], vsvdb_buf[2], vsvdb_buf[3],
-		   vsvdb_buf[4], vsvdb_buf[5], vsvdb_buf[6], vsvdb_buf[7]);
-	vsvdb_config_set_flag = true;
+  if (tbl_size > sizeof(new_dovi_setting.vsvdb_tbl)) {
+    pr_info("update_vsvdb_config tbl size overflow %d\n", tbl_size);
+    return;
+  }
+  memset(&new_dovi_setting.vsvdb_tbl[0], 0, sizeof(new_dovi_setting.vsvdb_tbl));
+  memcpy(&new_dovi_setting.vsvdb_tbl[0], vsvdb_buf, tbl_size);
+  new_dovi_setting.vsvdb_len = tbl_size;
+  new_dovi_setting.vsvdb_changed = 1;
+  dolby_vision_set_toggle_flag(1);
+  dump_buffer("update_vsvdb_config", vsvdb_buf, tbl_size);
+  vsvdb_config_set_flag = true;
 }
 
 static int prepare_stb_dolby_core1_reg
