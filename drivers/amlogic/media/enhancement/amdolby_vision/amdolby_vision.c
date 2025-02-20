@@ -7047,29 +7047,6 @@ static int amdolby_vision_open(struct inode *inode, struct file *file)
 
 }
 
-static char *vsvdb_buf;
-static ssize_t amdolby_vision_write
-	(struct file *file,
-	const char __user *buf,
-	size_t len,
-	loff_t *off)
-{
-	int w_len = len > 31 ? 31 : len;
-
-	if (!vsvdb_buf) {
-		vsvdb_buf = vmalloc(31);
-		if (!vsvdb_buf)
-			return -ENOSPC;
-	}
-	
-	if (copy_from_user(vsvdb_buf, buf, w_len))
-		return -EFAULT;
-	
-	dolby_vision_update_vsvdb_config(vsvdb_buf, w_len);
-
-	return w_len;
-}
-
 static ssize_t amdolby_vision_read
 	(struct file *file, char __user *buf,
 	size_t count, loff_t *ppos)
@@ -7108,7 +7085,6 @@ static int amdolby_vision_release(struct inode *inode, struct file *file)
 static const struct file_operations amdolby_vision_fops = {
 	.owner   = THIS_MODULE,
 	.open    = amdolby_vision_open,
-	.write   = amdolby_vision_write,
 	.read = amdolby_vision_read,
 	.release = amdolby_vision_release,
 	.poll = amdolby_vision_poll,
@@ -7844,10 +7820,6 @@ static int __exit amdolby_vision_remove(struct platform_device *pdev)
 	struct amdolby_vision_dev_s *devp = &amdolby_vision_dev;
 	int i;
 
-	if (vsvdb_buf) {
-		vfree(vsvdb_buf);
-		vsvdb_buf = NULL;
-	}
 	for (i = 0; i < 2; i++) {
 		if (md_buf[i]) {
 			vfree(md_buf[i]);
