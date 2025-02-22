@@ -3055,8 +3055,6 @@ static void dump_setting
 	(struct dovi_setting_s *setting,
 	 int frame_cnt, int debug_flag)
 {
-	int i;
-	u32 *p;
 
 	if ((debug_flag & 0x10) && dump_enable && 0) {
 
