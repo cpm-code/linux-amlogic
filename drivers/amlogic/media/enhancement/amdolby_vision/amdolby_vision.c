@@ -5592,16 +5592,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		 cur_src_format, src_format,
 		 cur_dst_format, dst_format,
 		 frame_count, dolby_vision_flags);
-		if (p_funcs_stb)
-			p_funcs_stb->control_path
-				(FORMAT_INVALID, 0,
-				comp_buf[current_id], 0,
-				md_buf[current_id], 0,
-				0, 0, 0, SIGNAL_RANGE_SMPTE,
-				0, 0, 0, 0,
-				0,
-				&hdr10_param,
-				&new_dovi_setting);
+		destroy_context();
 	}
 
 	inject_dolby_vsvdb();	
