@@ -5126,7 +5126,7 @@ static inline int prepare_dv_meta
 {
 	int i, shift;
 	u32 value;
-	unsigned char *p;
+	const unsigned char *p;
 	u32 *p_out;
 
 	/* calculate md size in double word */
