@@ -5564,7 +5564,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		} else {
 			memcpy(dolby_vision_target_max,
 			       dolby_vision_default_max,
-			       sizeof(dolby_vision_target_max));
+			       sizeof(unsigned int[3][3]));
 		}
 	}
 
