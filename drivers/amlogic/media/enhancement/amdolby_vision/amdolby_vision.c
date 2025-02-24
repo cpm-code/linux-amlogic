@@ -272,6 +272,11 @@ static char *dolby_vision_dolby_vsvdb_payload = "";
 module_param(dolby_vision_dolby_vsvdb_payload, charp, 0664);
 MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_payload, "\n dolby_vision_dolby_vsvdb_payload\n");
 
+// 0 - no change
+// 1 - limit min and max
+// 2 - limit max only
+// 3 - post limit min and max (do not do again unless Dolby VSVDB is changed)
+// 4 - post limit max only (do not do again unless Dolby VSVDB is changed)
 static unsigned int dolby_vision_dolby_vsvdb_source_lum_limit = 0;
 module_param(dolby_vision_dolby_vsvdb_source_lum_limit, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_source_lum_limit, "\n dolby_vision_dolby_vsvdb_source_lum_limit\n");
@@ -4967,7 +4972,8 @@ static inline void set_dolby_vsvdb_source_lum(u16 min, u16 max)
 static inline void limit_dolby_vsvdb_to_source_lum_for_lldv(void)
 {
 
-  if ((dolby_vision_dolby_vsvdb_source_lum_limit == 1) &&
+  if (((dolby_vision_dolby_vsvdb_source_lum_limit == 1) || 
+       (dolby_vision_dolby_vsvdb_source_lum_limit == 2)) &&
       ((dolby_vision_flags & FLAG_FORCE_DOVI_LL) ||
        (dolby_vision_ll_policy >= DOLBY_VISION_LL_YUV422)))
   {
@@ -4978,25 +4984,44 @@ static inline void limit_dolby_vsvdb_to_source_lum_for_lldv(void)
     u16 vsvdb_min = 0;
     u16 vsvdb_max = 0;
 
-    u16 new_vsvdb_min = 0;
-    u16 new_vsvdb_max = 0;
+    u16 calc_vsvdb_min = 0;
+    u16 calc_vsvdb_max = 0;
 
     extract_etsi_source_lum(&source_min, &source_max);
     extract_dolby_vsvdb_source_lum(&vsvdb_min, &vsvdb_max);
 
-    new_vsvdb_min = max_t(unsigned short, source_min, vsvdb_min);
-    new_vsvdb_max = min_t(unsigned short, source_max, vsvdb_max);
+    calc_vsvdb_min = max_t(unsigned short, source_min, vsvdb_min);
+    calc_vsvdb_max = min_t(unsigned short, source_max, vsvdb_max);
 
-    pr_info("DOLBY: DV-LL limit vsvdb lum: source min [%hu] max [%hu], vsvdb min [%hu] max [%hu], new vsvdb min [%hu] max [%hu]\n",
-            source_min, source_max, vsvdb_min, vsvdb_max, new_vsvdb_min, new_vsvdb_max);
+    pr_info("DOLBY: DV-LL lum values: source[%hu-%hu] vsvdb[%hu-%hu] calc[%hu-%hu]\n",
+            source_min, source_max, vsvdb_min, vsvdb_max, calc_vsvdb_min, calc_vsvdb_max);
 
-    if ((vsvdb_min != new_vsvdb_min) || (vsvdb_max != new_vsvdb_max))
-    {
-      set_dolby_vsvdb_source_lum(new_vsvdb_min, new_vsvdb_max);
+    bool needs_update = false;
+    u16 new_min = vsvdb_min;
+    u16 new_max = vsvdb_max;
+
+    switch (dolby_vision_dolby_vsvdb_source_lum_limit) {
+      case 1:
+        if (vsvdb_min != calc_vsvdb_min || vsvdb_max != calc_vsvdb_max) {
+            new_min = calc_vsvdb_min;
+            new_max = calc_vsvdb_max;
+            needs_update = true;
+        }
+        break;
+      case 2:
+        if (vsvdb_max != calc_vsvdb_max) {
+            new_max = calc_vsvdb_max;
+            needs_update = true;
+        }
+        break;
+    }
+
+    if (needs_update) {
+      set_dolby_vsvdb_source_lum(new_min, new_max);
       dump_buffer("DOLBY: DV-LL vsvdb with limit", new_dovi_setting.vsvdb_tbl, new_dovi_setting.vsvdb_len);
     }
 
-    dolby_vision_dolby_vsvdb_source_lum_limit = 2; // Do not do again unless reset to 1.
+    dolby_vision_dolby_vsvdb_source_lum_limit += 2; // Do not do again unless reset.
   }
 }
 
@@ -5010,7 +5035,7 @@ static inline void set_dolby_vsvdb(const unsigned char *vsvdb_tbl, u32 vsvdb_len
   dump_buffer("DOLBY: vsvdb", new_dovi_setting.vsvdb_tbl, new_dovi_setting.vsvdb_len);
 
   // If source limit was set then set back so it can be limited again
-  if (dolby_vision_dolby_vsvdb_source_lum_limit == 2) dolby_vision_dolby_vsvdb_source_lum_limit = 1;
+  if (dolby_vision_dolby_vsvdb_source_lum_limit > 2) dolby_vision_dolby_vsvdb_source_lum_limit -= 2;
 }
 
 static inline void set_dolby_vsvdb_when_changed(const unsigned char *vsvdb_tbl, u32 vsvdb_len)
