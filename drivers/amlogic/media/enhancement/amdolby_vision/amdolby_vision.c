@@ -2862,35 +2862,29 @@ static int current_sink_available;
 
 static int is_policy_changed(void)
 {
-	int ret = 0;
+  int ret = 0;
 
-	if (last_dolby_vision_policy != dolby_vision_policy) {
-		/* handle policy change */
-		pr_dolby_dbg("policy changed %d->%d\n",
-			last_dolby_vision_policy,
-			dolby_vision_policy);
-		last_dolby_vision_policy = dolby_vision_policy;
-		ret |= 1;
-	}
-	if (last_dolby_vision_ll_policy != dolby_vision_ll_policy) {
-		/* handle ll policy change when dolby on */
-		if (dolby_vision_on) {
-			pr_dolby_dbg("ll policy changed %d->%d\n",
-				     last_dolby_vision_ll_policy,
-				     dolby_vision_ll_policy);
-			last_dolby_vision_ll_policy = dolby_vision_ll_policy;
-			ret |= 2;
-		}
-	}
-	if (last_dolby_vision_hdr10_policy != dolby_vision_hdr10_policy) {
-		/* handle policy change */
-		pr_dolby_dbg("hdr10 policy changed %d->%d\n",
-			last_dolby_vision_hdr10_policy,
-			dolby_vision_hdr10_policy);
-		last_dolby_vision_hdr10_policy = dolby_vision_hdr10_policy;
-		ret |= 4;
-	}
-	return ret;
+  if (last_dolby_vision_policy != dolby_vision_policy) { // handle policy change
+    pr_dolby_dbg("policy changed %d->%d\n", last_dolby_vision_policy, dolby_vision_policy);
+    last_dolby_vision_policy = dolby_vision_policy;
+    ret |= 1;
+  }
+
+  if (last_dolby_vision_ll_policy != dolby_vision_ll_policy) { // handle ll policy change when dolby on
+    if (dolby_vision_on) {
+      pr_dolby_dbg("ll policy changed %d->%d\n", last_dolby_vision_ll_policy, dolby_vision_ll_policy);
+      last_dolby_vision_ll_policy = dolby_vision_ll_policy;
+      ret |= 2;
+    }
+  }
+
+  if (last_dolby_vision_hdr10_policy != dolby_vision_hdr10_policy) { // handle hdr policy change
+    pr_dolby_dbg("hdr10 policy changed %d->%d\n", last_dolby_vision_hdr10_policy, dolby_vision_hdr10_policy);
+    last_dolby_vision_hdr10_policy = dolby_vision_hdr10_policy;
+    ret |= 4;
+  }
+
+  return ret;
 }
 
 static bool vf_is_hdr10_plus(struct vframe_s *vf);
