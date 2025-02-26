@@ -2736,31 +2736,21 @@ static void dump_struct(void *structure,
 
 void dolby_vision_dump_struct(void)
 {
-	dump_struct(&dovi_setting.dm_reg1,
-		    sizeof(dovi_setting.dm_reg1),
-		    dm_reg_core1_file, frame_count);
-	if (dovi_setting.el_flag)
-		dump_struct(&dovi_setting.comp_reg,
-			    sizeof(dovi_setting.comp_reg),
-			    comp_file, frame_count);
+  dump_struct(&dovi_setting.dm_reg1, sizeof(dovi_setting.dm_reg1), dm_reg_core1_file, frame_count);
 
-	if (!is_graphics_output_off())
-		dump_struct(&dovi_setting.dm_reg2,
-			    sizeof(dovi_setting.dm_reg2),
-			    dm_reg_core2_file, frame_count);
+  if (dovi_setting.el_flag)
+    dump_struct(&dovi_setting.comp_reg, sizeof(dovi_setting.comp_reg), comp_file, frame_count);
 
-	dump_struct(&dovi_setting.dm_reg3,
-		    sizeof(dovi_setting.dm_reg3),
-		    dm_reg_core3_file, frame_count);
+  if (!is_graphics_output_off())
+    dump_struct(&dovi_setting.dm_reg2, sizeof(dovi_setting.dm_reg2), dm_reg_core2_file, frame_count);
 
-	dump_struct(&dovi_setting.dm_lut1,
-		    sizeof(dovi_setting.dm_lut1),
-		    dm_lut_core1_file, frame_count);
-	if (!is_graphics_output_off())
-		dump_struct(&dovi_setting.dm_lut2,
-			    sizeof(dovi_setting.dm_lut2),
-			    dm_lut_core2_file, frame_count);
-	pr_dolby_dbg("setting for frame %d dumped\n", frame_count);
+  dump_struct(&dovi_setting.dm_reg3, sizeof(dovi_setting.dm_reg3), dm_reg_core3_file, frame_count);
+  dump_struct(&dovi_setting.dm_lut1, sizeof(dovi_setting.dm_lut1), dm_lut_core1_file, frame_count);
+
+  if (!is_graphics_output_off())
+    dump_struct(&dovi_setting.dm_lut2, sizeof(dovi_setting.dm_lut2), dm_lut_core2_file, frame_count);
+
+  pr_dolby_dbg("setting for frame %d dumped\n", frame_count);
 }
 EXPORT_SYMBOL(dolby_vision_dump_struct);
 
