@@ -4076,28 +4076,29 @@ static int prepare_vsif_pkt
 	if (!vsif || !vinfo || !setting ||
 	    !vinfo->vout_device || !vinfo->vout_device->dv_info)
 		return -1;
-	vsif->vers.ver2.low_latency =
-		setting->dovi_ll_enable;
+	
+	vsif->vers.ver2.low_latency = setting->dovi_ll_enable;
+
 	if (src_format == FORMAT_DOVI || src_format == FORMAT_DOVI_LL)
-		vsif->vers.ver2.dobly_vision_signal = 1;/*0b0001*/
+		vsif->vers.ver2.dobly_vision_signal = 1; /*0b0001*/
 	else if (src_format == FORMAT_HDR10)
-		vsif->vers.ver2.dobly_vision_signal = 3;/*0b0011*/
+		vsif->vers.ver2.dobly_vision_signal = 3; /*0b0011*/
 	else if (src_format == FORMAT_HLG)
-		vsif->vers.ver2.dobly_vision_signal = 7;/*0b0111*/
+		vsif->vers.ver2.dobly_vision_signal = 7; /*0b0111*/
 	else if (src_format == FORMAT_SDR || src_format == FORMAT_SDR_2020)
-		vsif->vers.ver2.dobly_vision_signal = 5;/*0b0101*/
+		vsif->vers.ver2.dobly_vision_signal = 5; /*0b0101*/
+
 	if ((debug_dolby & 2))
 		pr_dolby_dbg("src %d, dobly_vision_signal %d\n",
 			     src_format, vsif->vers.ver2.dobly_vision_signal);
 
 	if (vinfo->vout_device->dv_info &&
 	    vinfo->vout_device->dv_info->sup_backlight_control &&
-	    (setting->ext_md.avail_level_mask & EXT_MD_LEVEL_2)) {
+	    (setting->ext_md.avail_level_mask & EXT_MD_LEVEL_2)) 
+	{
 		vsif->vers.ver2.backlt_ctrl_MD_present = 1;
-		vsif->vers.ver2.eff_tmax_PQ_hi =
-			setting->ext_md.level_2.target_max_pq_h & 0xf;
-		vsif->vers.ver2.eff_tmax_PQ_low =
-			setting->ext_md.level_2.target_max_pq_l;
+		vsif->vers.ver2.eff_tmax_PQ_hi = setting->ext_md.level_2.target_max_pq_h & 0xf;
+		vsif->vers.ver2.eff_tmax_PQ_low = setting->ext_md.level_2.target_max_pq_l;
 	} else {
 		vsif->vers.ver2.backlt_ctrl_MD_present = 0;
 		vsif->vers.ver2.eff_tmax_PQ_hi = 0;
@@ -4105,15 +4106,12 @@ static int prepare_vsif_pkt
 	}
 
 	if (setting->dovi_ll_enable &&
-	    (setting->ext_md.avail_level_mask
-		& EXT_MD_LEVEL_255)) {
+	    (setting->ext_md.avail_level_mask & EXT_MD_LEVEL_255)) 
+	{
 		vsif->vers.ver2.auxiliary_MD_present = 1;
-		vsif->vers.ver2.auxiliary_runmode =
-			setting->ext_md.level_255.run_mode;
-		vsif->vers.ver2.auxiliary_runversion =
-			setting->ext_md.level_255.run_version;
-		vsif->vers.ver2.auxiliary_debug0 =
-			setting->ext_md.level_255.dm_debug_0;
+		vsif->vers.ver2.auxiliary_runmode = setting->ext_md.level_255.run_mode;
+		vsif->vers.ver2.auxiliary_runversion = setting->ext_md.level_255.run_version;
+		vsif->vers.ver2.auxiliary_debug0 = setting->ext_md.level_255.dm_debug_0;
 	} else {
 		vsif->vers.ver2.auxiliary_MD_present = 0;
 		vsif->vers.ver2.auxiliary_runmode = 0;
