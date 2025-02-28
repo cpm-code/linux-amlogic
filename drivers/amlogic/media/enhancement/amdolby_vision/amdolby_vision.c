@@ -3302,6 +3302,15 @@ static bool is_mvc_frame(struct vframe_s *vf)
 	return false;
 }
 
+static inline dolby_vision_set_wait(int mode)
+{
+	if ((mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) &&
+	    (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_BYPASS))
+		dolby_vision_wait_on = true;
+
+	dolby_vision_target_mode = mode;
+}
+
 int dolby_vision_check_mvc(struct vframe_s *vf)
 {
 	int mode;
@@ -3310,11 +3319,7 @@ int dolby_vision_check_mvc(struct vframe_s *vf)
 		/* mvc source, but dovi enabled, need bypass dv */
 		mode = dolby_vision_mode;
 		if (dolby_vision_policy_process(&mode, FORMAT_MVC, vf)) {
-			if (mode != DOLBY_VISION_OUTPUT_MODE_BYPASS &&
-			    dolby_vision_mode ==
-			    DOLBY_VISION_OUTPUT_MODE_BYPASS)
-				dolby_vision_wait_on = true;
-			dolby_vision_target_mode = mode;
+			dolby_vision_set_wait(mode);
 			return 1;
 		}
 	}
@@ -3330,11 +3335,7 @@ int dolby_vision_check_hlg(struct vframe_s *vf)
 		/* hlg source, but dovi not enabled */
 		mode = dolby_vision_mode;
 		if (dolby_vision_policy_process(&mode, FORMAT_HLG, vf)) {
-			if (mode != DOLBY_VISION_OUTPUT_MODE_BYPASS &&
-			    dolby_vision_mode ==
-			    DOLBY_VISION_OUTPUT_MODE_BYPASS)
-				dolby_vision_wait_on = true;
-			dolby_vision_target_mode = mode;
+			dolby_vision_set_wait(mode);
 			return 1;
 		}
 	}
@@ -3350,11 +3351,7 @@ int dolby_vision_check_hdr10plus(struct vframe_s *vf)
 		/* hdr10+ source, but dovi not enabled */
 		mode = dolby_vision_mode;
 		if (dolby_vision_policy_process(&mode, FORMAT_HDR10PLUS, vf)) {
-			if (mode != DOLBY_VISION_OUTPUT_MODE_BYPASS &&
-			    dolby_vision_mode ==
-			    DOLBY_VISION_OUTPUT_MODE_BYPASS)
-				dolby_vision_wait_on = true;
-			dolby_vision_target_mode = mode;
+			dolby_vision_set_wait(mode);
 			return 1;
 		}
 	}
@@ -3370,11 +3367,7 @@ int dolby_vision_check_cuva(struct vframe_s *vf)
 		/* dovi source, but dovi not enabled */
 		mode = dolby_vision_mode;
 		if (dolby_vision_policy_process(&mode, FORMAT_CUVA, vf)) {
-			if ((mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) &&
-				(dolby_vision_mode ==
-				DOLBY_VISION_OUTPUT_MODE_BYPASS))
-				dolby_vision_wait_on = true;
-			dolby_vision_target_mode = mode;
+			dolby_vision_set_wait(mode);
 			return 1;
 		}
 	}
@@ -3390,11 +3383,7 @@ int dolby_vision_check_hdr10(struct vframe_s *vf)
 		/* hdr10 source, but dovi not enabled */
 		mode = dolby_vision_mode;
 		if (dolby_vision_policy_process(&mode, FORMAT_HDR10, vf)) {
-			if (mode != DOLBY_VISION_OUTPUT_MODE_BYPASS &&
-			    dolby_vision_mode ==
-			    DOLBY_VISION_OUTPUT_MODE_BYPASS)
-				dolby_vision_wait_on = true;
-			dolby_vision_target_mode = mode;
+			dolby_vision_set_wait(mode);
 			return 1;
 		}
 	}
