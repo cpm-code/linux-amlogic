@@ -162,7 +162,7 @@ MODULE_PARM_DESC(dolby_vision_mask, "\n dolby_vision_mask\n");
 #define SDR_PROCESS 1
 #define HDR_PROCESS 2
 #define DV_PROCESS 3
-#define HLG_PROCESS 4
+
 static uint dolby_vision_status;
 module_param(dolby_vision_status, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_status, "\n dolby_vision_status\n");
