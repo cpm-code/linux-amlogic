@@ -3205,104 +3205,80 @@ bool is_dovi_dual_layer_frame(struct vframe_s *vf)
 }
 EXPORT_SYMBOL(is_dovi_dual_layer_frame);
 
-
 #define signal_color_primaries ((vf->signal_type >> 16) & 0xff)
 #define signal_transfer_characteristic ((vf->signal_type >> 8) & 0xff)
 
 static bool vf_is_hlg(struct vframe_s *vf)
 {
-	if ((signal_transfer_characteristic == 18) &&
-	     signal_color_primaries == 9)
-		return true;
-	return false;
-}
-
-static bool is_hlg_frame(struct vframe_s *vf)
-{
-	if (!vf)
-		return false;
-	if (((get_dolby_vision_hdr_policy() & HDR_BY_DV_F_SRC) == 0) &&
-		(signal_transfer_characteristic == 18) &&
-		signal_color_primaries == 9)
-		return true;
-
-	return false;
-}
-
-static bool vf_is_hdr10_plus(struct vframe_s *vf)
-{
-	if (signal_transfer_characteristic == 0x30 &&
-	    (signal_color_primaries == 9 ||
-	    signal_color_primaries == 2))
-		return true;
-	return false;
-}
-
-static bool is_cuva_frame(struct vframe_s *vf)
-{
-	if ((vf->signal_type >> 31) & 1)
-		return true;
-	return false;
-}
-
-static bool is_hdr10plus_frame(struct vframe_s *vf)
-{
-	const struct vinfo_s *vinfo = get_current_vinfo();
-
-	if (!vf)
-		return false;
-	if (!(dolby_vision_hdr10_policy & HDRP_BY_DV)) {
-		/* report hdr10 for the content hdr10+ and
-		 * sink is hdr10+ case
-		 */
-		if (signal_transfer_characteristic == 0x30 &&
-		    (sink_support_hdr10_plus(vinfo)) &&
-		    (signal_color_primaries == 9 ||
-		    signal_color_primaries == 2))
-			return true;
-	}
-	return false;
+	return ((signal_transfer_characteristic == 18) &&
+	        (signal_color_primaries == 9));
 }
 
 static bool vf_is_hdr10(struct vframe_s *vf)
 {
-	if (signal_transfer_characteristic == 16 &&
-	    (signal_color_primaries == 9 ||
-	    signal_color_primaries == 2))
-		return true;
-	return false;
+	return ((signal_transfer_characteristic == 16) &&
+	        ((signal_color_primaries == 9) || 
+	         (signal_color_primaries == 2)));
 }
 
-static bool is_hdr10_frame(struct vframe_s *vf)
+static bool vf_is_hdr10_plus(struct vframe_s *vf)
 {
-	const struct vinfo_s *vinfo = get_current_vinfo();
-
-	if (!vf)
-		return false;
-	if ((signal_transfer_characteristic == 16 ||
-		/* report as hdr10 for the content hdr10+ and
-		 * sink not support hdr10+ or use DV to handle
-		 * hdr10+ as hdr10
-		 */
-		(signal_transfer_characteristic == 0x30 &&
-		((!sink_support_hdr10_plus(vinfo)) ||
-		(dolby_vision_hdr10_policy & HDRP_BY_DV)))) &&
-		(signal_color_primaries == 9 ||
-		 signal_color_primaries == 2))
-		return true;
-	return false;
+	return ((signal_transfer_characteristic == 0x30) &&
+	        ((signal_color_primaries == 9) ||
+	         (signal_color_primaries == 2)));
 }
 
 static bool is_mvc_frame(struct vframe_s *vf)
 {
-	if (!vf)
-		return false;
-	if (vf->type & VIDTYPE_MVC)
-		return true;
-	return false;
+	if (!vf) return false;
+
+	return (vf->type & VIDTYPE_MVC);
 }
 
-static inline dolby_vision_set_wait(int mode)
+static bool is_cuva_frame(struct vframe_s *vf)
+{
+	if (!vf) return false;
+
+	return ((vf->signal_type >> 31) & 1);
+}
+
+static bool is_hlg_frame(struct vframe_s *vf)
+{
+	if (!vf) return false;
+
+	return (((get_dolby_vision_hdr_policy() & HDR_BY_DV_F_SRC) == 0) &&
+	         (vf_is_hlg(vf)));
+}
+
+static bool is_hdr10plus_frame(struct vframe_s *vf)
+{
+	if (!vf) return false;
+
+	// Return true if:
+	// 1. Content is HDR10+
+	// 2. Sink supports HDR10+
+	// 3. Not using DV policy to process HDR10+ content
+	return (vf_is_hdr10_plus(vf) && 
+	        sink_support_hdr10_plus(get_current_vinfo()) &&
+	        !(dolby_vision_hdr10_policy & HDRP_BY_DV));
+}
+
+static bool is_hdr10_frame(struct vframe_s *vf)
+{
+	if (!vf) return false;
+
+	// Return true if:
+	// 1. Content is native HDR10, OR
+	// 2. Content is HDR10+ AND either:
+	//    a. Sink doesn't support HDR10+, OR
+	//    b. DV policy is set to handle HDR10+ as HDR10
+	return (vf_is_hdr10(vf) || 
+	        (vf_is_hdr10_plus(vf) && 
+	         ((!sink_support_hdr10_plus(get_current_vinfo())) || 
+	          (dolby_vision_hdr10_policy & HDRP_BY_DV))));
+}
+
+static inline void dolby_vision_set_wait(int mode)
 {
 	if ((mode != DOLBY_VISION_OUTPUT_MODE_BYPASS) &&
 	    (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_BYPASS))
