@@ -15,6 +15,8 @@
  *
  */
 
+#include <asm/unaligned.h>
+
 #include <linux/types.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -3504,14 +3506,12 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 
 	p = aux_buf;
 	while (p < aux_buf + aux_size - 8) {
-		size = *p++;
-		size = (size << 8) | *p++;
-		size = (size << 8) | *p++;
-		size = (size << 8) | *p++;
-		type = *p++;
-		type = (type << 8) | *p++;
-		type = (type << 8) | *p++;
-		type = (type << 8) | *p++;
+
+		size = get_unaligned_be32(p);
+		p += 4;
+		type = get_unaligned_be32(p);
+		p += 4;
+
 		if (debug_dolby & 4)
 			pr_dolby_dbg("metadata type=%08x, size=%d:\n",
 				     type, size);
@@ -3715,14 +3715,12 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 			dump_buffer("DOLBY: aux_buf", p, aux_size);
 		}
 		while (p < aux_buf + aux_size - 8) {
-			size = *p++;
-			size = (size << 8) | *p++;
-			size = (size << 8) | *p++;
-			size = (size << 8) | *p++;
-			type = *p++;
-			type = (type << 8) | *p++;
-			type = (type << 8) | *p++;
-			type = (type << 8) | *p++;
+
+			size = get_unaligned_be32(p);
+			p += 4;
+			type = get_unaligned_be32(p);
+			p += 4;
+
 			if (debug_dolby & 2)
 				pr_dolby_dbg("type: 0x%x\n", type);
 
