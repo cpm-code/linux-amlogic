@@ -4206,20 +4206,19 @@ static void set_hdr10_data_for_lldv(void)
 
 /* #define HDMI_SEND_ALL_PKT */
 static u32 last_dst_format = FORMAT_SDR;
-static bool send_hdmi_pkt
+static void send_hdmi_pkt
 	(enum signal_format_enum src_format,
 	 enum signal_format_enum dst_format,
 	 const struct vinfo_s *vinfo, struct vframe_s *vf)
 {
 	struct hdr10_infoframe *p_hdr;
 	int i;
-	bool flag = false;
 	static int sdr_transition_delay;
 	struct vd_signal_info_s vd_signal;
 
 	if ((debug_dolby & 2))
 		pr_dolby_dbg("[%s]src_format %d, dst %d, last %d:\n",
-			     __func__, src_format, dst_format, last_dst_format);
+		             __func__, src_format, dst_format, last_dst_format);
 
 	if (dst_format == FORMAT_HDR10) {
 		sdr_transition_delay = 0;
@@ -4232,151 +4231,37 @@ static bool send_hdmi_pkt
 			| (9 << 16)	/* bt2020 */
 			| (0x10 << 8)	/* bt2020-10 */
 			| (10 << 0);/* bt2020c */
+
 		if (src_format != FORMAT_HDR10PLUS) {
+
 			/* keep as r,g,b when src not HDR+ */
-			if (hdr10_data.primaries[0][0] !=
-				((p_hdr->primaries_x_0_msb << 8)
-				| p_hdr->primaries_x_0_lsb))
-				flag = true;
-			hdr10_data.primaries[0][0] =
-				(p_hdr->primaries_x_0_msb << 8)
-				| p_hdr->primaries_x_0_lsb;
+			hdr10_data.primaries[0][0] = (p_hdr->primaries_x_0_msb << 8) | p_hdr->primaries_x_0_lsb;
+			hdr10_data.primaries[0][1] = (p_hdr->primaries_y_0_msb << 8) | p_hdr->primaries_y_0_lsb;
+			hdr10_data.primaries[1][0] = (p_hdr->primaries_x_1_msb << 8) | p_hdr->primaries_x_1_lsb;
+			hdr10_data.primaries[1][1] = (p_hdr->primaries_y_1_msb << 8) | p_hdr->primaries_y_1_lsb;
+			hdr10_data.primaries[2][0] = (p_hdr->primaries_x_2_msb << 8) | p_hdr->primaries_x_2_lsb;
+			hdr10_data.primaries[2][1] = (p_hdr->primaries_y_2_msb << 8) | p_hdr->primaries_y_2_lsb;
 
-			if (hdr10_data.primaries[0][1] !=
-				((p_hdr->primaries_y_0_msb << 8)
-				| p_hdr->primaries_y_0_lsb))
-				flag = true;
-			hdr10_data.primaries[0][1] =
-				(p_hdr->primaries_y_0_msb << 8)
-				| p_hdr->primaries_y_0_lsb;
-
-			if (hdr10_data.primaries[1][0] !=
-				((p_hdr->primaries_x_1_msb << 8)
-				| p_hdr->primaries_x_1_lsb))
-				flag = true;
-			hdr10_data.primaries[1][0] =
-				(p_hdr->primaries_x_1_msb << 8)
-				| p_hdr->primaries_x_1_lsb;
-
-			if (hdr10_data.primaries[1][1] !=
-				((p_hdr->primaries_y_1_msb << 8)
-				| p_hdr->primaries_y_1_lsb))
-				flag = true;
-			hdr10_data.primaries[1][1] =
-				(p_hdr->primaries_y_1_msb << 8)
-				| p_hdr->primaries_y_1_lsb;
-			if (hdr10_data.primaries[2][0] !=
-				((p_hdr->primaries_x_2_msb << 8)
-				| p_hdr->primaries_x_2_lsb))
-				flag = true;
-			hdr10_data.primaries[2][0] =
-				(p_hdr->primaries_x_2_msb << 8)
-				| p_hdr->primaries_x_2_lsb;
-
-			if (hdr10_data.primaries[2][1] !=
-				((p_hdr->primaries_y_2_msb << 8)
-				| p_hdr->primaries_y_2_lsb))
-				flag = true;
-			hdr10_data.primaries[2][1] =
-				(p_hdr->primaries_y_2_msb << 8)
-				| p_hdr->primaries_y_2_lsb;
 		} else {
+
 			/* need invert to g,b,r */
-			if (hdr10_data.primaries[0][0] !=
-				((p_hdr->primaries_x_1_msb << 8)
-				| p_hdr->primaries_x_1_lsb))
-				flag = true;
-			hdr10_data.primaries[0][0] =
-				(p_hdr->primaries_x_1_msb << 8)
-				| p_hdr->primaries_x_1_lsb;
-
-			if (hdr10_data.primaries[0][1] !=
-				((p_hdr->primaries_y_1_msb << 8)
-				| p_hdr->primaries_y_1_lsb))
-				flag = true;
-			hdr10_data.primaries[0][1] =
-				(p_hdr->primaries_y_1_msb << 8)
-				| p_hdr->primaries_y_1_lsb;
-
-			if (hdr10_data.primaries[1][0] !=
-				((p_hdr->primaries_x_2_msb << 8)
-				| p_hdr->primaries_x_2_lsb))
-				flag = true;
-			hdr10_data.primaries[1][0] =
-				(p_hdr->primaries_x_2_msb << 8)
-				| p_hdr->primaries_x_2_lsb;
-
-			if (hdr10_data.primaries[1][1] !=
-				((p_hdr->primaries_y_2_msb << 8)
-				| p_hdr->primaries_y_2_lsb))
-				flag = true;
-			hdr10_data.primaries[1][1] =
-				(p_hdr->primaries_y_2_msb << 8)
-				| p_hdr->primaries_y_2_lsb;
-			if (hdr10_data.primaries[2][0] !=
-				((p_hdr->primaries_x_0_msb << 8)
-				| p_hdr->primaries_x_0_lsb))
-				flag = true;
-			hdr10_data.primaries[2][0] =
-				(p_hdr->primaries_x_0_msb << 8)
-				| p_hdr->primaries_x_0_lsb;
-
-			if (hdr10_data.primaries[2][1] !=
-				((p_hdr->primaries_y_0_msb << 8)
-				| p_hdr->primaries_y_0_lsb))
-				flag = true;
-			hdr10_data.primaries[2][1] =
-				(p_hdr->primaries_y_0_msb << 8)
-				| p_hdr->primaries_y_0_lsb;
+			hdr10_data.primaries[0][0] = (p_hdr->primaries_x_1_msb << 8) | p_hdr->primaries_x_1_lsb;
+			hdr10_data.primaries[0][1] = (p_hdr->primaries_y_1_msb << 8) | p_hdr->primaries_y_1_lsb;
+			hdr10_data.primaries[1][0] = (p_hdr->primaries_x_2_msb << 8) | p_hdr->primaries_x_2_lsb;
+			hdr10_data.primaries[1][1] = (p_hdr->primaries_y_2_msb << 8) | p_hdr->primaries_y_2_lsb;
+			hdr10_data.primaries[2][0] = (p_hdr->primaries_x_0_msb << 8) | p_hdr->primaries_x_0_lsb;
+			hdr10_data.primaries[2][1] = (p_hdr->primaries_y_0_msb << 8) | p_hdr->primaries_y_0_lsb;
 		}
 
-		if (hdr10_data.white_point[0] !=
-			((p_hdr->white_point_x_msb << 8)
-			| p_hdr->white_point_x_lsb))
-			flag = true;
-		hdr10_data.white_point[0] =
-			(p_hdr->white_point_x_msb << 8)
-			| p_hdr->white_point_x_lsb;
+		hdr10_data.white_point[0] = (p_hdr->white_point_x_msb << 8) | p_hdr->white_point_x_lsb;
+		hdr10_data.white_point[1] = (p_hdr->white_point_y_msb << 8) | p_hdr->white_point_y_lsb;
 
-		if (hdr10_data.white_point[1] !=
-			((p_hdr->white_point_y_msb << 8)
-			| p_hdr->white_point_y_lsb))
-			flag = true;
-		hdr10_data.white_point[1] =
-			(p_hdr->white_point_y_msb << 8)
-			| p_hdr->white_point_y_lsb;
+		hdr10_data.luminance[0] = (p_hdr->max_display_mastering_lum_msb << 8) | p_hdr->max_display_mastering_lum_lsb;
+		hdr10_data.luminance[1] = (p_hdr->min_display_mastering_lum_msb << 8) | p_hdr->min_display_mastering_lum_lsb;
 
-		if (hdr10_data.luminance[0] !=
-			((p_hdr->max_display_mastering_lum_msb << 8)
-			| p_hdr->max_display_mastering_lum_lsb))
-			flag = true;
-		hdr10_data.luminance[0] =
-			(p_hdr->max_display_mastering_lum_msb << 8)
-			| p_hdr->max_display_mastering_lum_lsb;
+		hdr10_data.max_content = (p_hdr->max_content_light_level_msb << 8) | p_hdr->max_content_light_level_lsb;
 
-		if (hdr10_data.luminance[1] !=
-			((p_hdr->min_display_mastering_lum_msb << 8)
-			| p_hdr->min_display_mastering_lum_lsb))
-			flag = true;
-		hdr10_data.luminance[1] =
-			(p_hdr->min_display_mastering_lum_msb << 8)
-			| p_hdr->min_display_mastering_lum_lsb;
-
-		if (hdr10_data.max_content !=
-			((p_hdr->max_content_light_level_msb << 8)
-			| p_hdr->max_content_light_level_lsb))
-			flag = true;
-		hdr10_data.max_content =
-			(p_hdr->max_content_light_level_msb << 8)
-			| p_hdr->max_content_light_level_lsb;
-
-		if (hdr10_data.max_frame_average !=
-			((p_hdr->max_frame_avg_light_level_msb << 8)
-			| p_hdr->max_frame_avg_light_level_lsb))
-			flag = true;
-		hdr10_data.max_frame_average =
-			(p_hdr->max_frame_avg_light_level_msb << 8)
-			| p_hdr->max_frame_avg_light_level_lsb;
+		hdr10_data.max_frame_average = (p_hdr->max_frame_avg_light_level_msb << 8) | p_hdr->max_frame_avg_light_level_lsb;
 
 		if (vinfo && vinfo->vout_device &&
 		    vinfo->vout_device->fresh_tx_hdr_pkt)
@@ -4388,15 +4273,14 @@ static bool send_hdmi_pkt
 				(0, 0, NULL, true);
 		}
 #endif
-		if (last_dst_format != FORMAT_HDR10 ||
-		    (dolby_vision_flags & FLAG_FORCE_HDMI_PKT))
+		if (last_dst_format != FORMAT_HDR10 || (dolby_vision_flags & FLAG_FORCE_HDMI_PKT))
 			pr_dolby_dbg("send hdmi pkt: HDR10\n");
 
 		last_dst_format = dst_format;
 		vd_signal.signal_type = SIGNAL_HDR10;
 		notify_vd_signal_to_amvideo(&vd_signal);
-		if (flag && debug_dolby & 8) {
-			pr_dolby_dbg("Info frame for hdr10 changed:\n");
+		if (debug_dolby & 8) {
+			pr_dolby_dbg("Info frame for hdr10:\n");
 			for (i = 0; i < 3; i++)
 				pr_dolby_dbg("\tprimaries[%1d] = %04x, %04x\n",
 					     i,
@@ -4414,6 +4298,7 @@ static bool send_hdmi_pkt
 			pr_dolby_dbg("\tMPALL = %d\n\n",
 				hdr10_data.max_frame_average);
 		}
+
 	} else if (dst_format == FORMAT_DOVI && dovi_setting.dovi_ll_enable && dolby_vision_hdr_for_lldv) {
 
 		sdr_transition_delay = 0;
@@ -4429,6 +4314,7 @@ static bool send_hdmi_pkt
 		notify_vd_signal_to_amvideo(&vd_signal);
 
 	} else if (dst_format == FORMAT_DOVI) {
+
 		struct dv_vsif_para vsif;
 
 		sdr_transition_delay = 0;
@@ -4484,6 +4370,7 @@ static bool send_hdmi_pkt
 		last_dst_format = dst_format;
 		vd_signal.signal_type = SIGNAL_DOVI;
 		notify_vd_signal_to_amvideo(&vd_signal);
+
 	} else if (last_dst_format != dst_format) {
 		if (last_dst_format == FORMAT_HDR10) {
 			sdr_transition_delay = 0;
@@ -4524,8 +4411,7 @@ static bool send_hdmi_pkt
 					 * switch to SDR
 					 * immediately.
 					 */
-					pr_dolby_dbg
-				("send pkt: HDR10+/HLG: signal SDR first\n");
+					pr_dolby_dbg("send pkt: HDR10+/HLG: signal SDR first\n");
 					vinfo->vout_device->fresh_tx_vsif_pkt
 						(0, 0, NULL, true);
 
@@ -4533,8 +4419,7 @@ static bool send_hdmi_pkt
 					sdr_transition_delay = 0;
 				} else if (sdr_transition_delay >=
 					   MAX_TRANSITION_DELAY) {
-					pr_dolby_dbg
-				("send pkt: VSIF disabled, signal SDR\n");
+					pr_dolby_dbg("send pkt: VSIF disabled, signal SDR\n");
 					vinfo->vout_device->fresh_tx_vsif_pkt
 						(0, 0, NULL, true);
 					last_dst_format = dst_format;
@@ -4552,9 +4437,9 @@ static bool send_hdmi_pkt
 		vd_signal.signal_type = SIGNAL_SDR;
 		notify_vd_signal_to_amvideo(&vd_signal);
 	}
+
 	if (dolby_vision_flags & FLAG_FORCE_HDMI_PKT)
 		dolby_vision_flags &= ~FLAG_FORCE_HDMI_PKT;
-	return flag;
 }
 
 static void send_hdmi_pkt_ahead
