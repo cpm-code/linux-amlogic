@@ -5244,16 +5244,9 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			el_flag = 0;
 			mel_flag = 0;
 		}
-		if (src_format == FORMAT_DOVI &&
-		    meta_flag_bl && meta_flag_el) {
-			/* dovi frame no meta or meta error */
-			/* use old setting for this frame   */
-			pr_dolby_dbg("no meta or meta err!\n");
-			return -1;
-		}
 	}
 
-	if (src_format == FORMAT_DOVI && meta_flag_bl && meta_flag_el) {
+	if ((src_format == FORMAT_DOVI) && meta_flag_bl && meta_flag_el) {
 		/* dovi frame no meta or meta error */
 		/* use old setting for this frame   */
 		pr_dolby_dbg("no meta or meta err!\n");
