@@ -5961,7 +5961,6 @@ int dolby_vision_process(struct vframe_s *vf,
 	u32 v_size = display_size & 0xffff;
 	const struct vinfo_s *vinfo = get_current_vinfo();
 	bool reset_flag = false;
-	bool force_set = false;
 	static int sdr_delay;
 	unsigned int mode = dolby_vision_mode;
 	static bool video_turn_off = true;
@@ -5972,7 +5971,6 @@ int dolby_vision_process(struct vframe_s *vf,
 	int sink_changed = 0;
 	int format_changed = 0;
 	u8 core_mask = 0x7;
-	static u8 last_toggle_mode;
 	struct vout_device_s *p_vout = NULL;
 
 	if (!is_meson_box() && !is_meson_txlx() && !is_meson_tm2())
@@ -6040,7 +6038,6 @@ int dolby_vision_process(struct vframe_s *vf,
 		}
 	}
 
-	last_toggle_mode = toggle_mode;
 	if (debug_dolby & 0x1000)
 		pr_dolby_dbg("setting_update_count %d, crc_count %d\n", setting_update_count, crc_count);
 
@@ -6241,11 +6238,6 @@ int dolby_vision_process(struct vframe_s *vf,
 		new_dovi_setting.video_height = 0;
 		return 0;
 	}
-
-	if ((debug_dolby & 2) && force_set &&
-	    !(dolby_vision_flags & FLAG_CERTIFICAION))
-		pr_dolby_dbg("core1 size changed--old: %d x %d, new: %d x %d\n",
-		             core1_disp_hsize, core1_disp_vsize, h_size, v_size);
 
 	if (dolby_vision_core1_on &&
 	    dolby_vision_core1_on_cnt < DV_CORE1_RECONFIG_CNT &&
