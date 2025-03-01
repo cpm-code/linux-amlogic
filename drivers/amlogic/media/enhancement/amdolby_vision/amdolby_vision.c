@@ -4435,8 +4435,7 @@ static void send_hdmi_pkt_ahead
 	bool diagnostic_enable = false;
 
 	if ((dolby_vision_flags & FLAG_FORCE_DOVI_LL) ||
-	    dolby_vision_ll_policy == DOLBY_VISION_LL_YUV422 ||
-	    dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444) {
+	    dolby_vision_ll_policy >= DOLBY_VISION_LL_YUV422) {
 		dovi_ll_enable = true;
 		if (dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444)
 			diagnostic_enable = true;
