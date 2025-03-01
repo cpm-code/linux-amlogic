@@ -4584,42 +4584,62 @@ static inline void extract_dolby_vsvdb_source_lum(u16* min, u16* max)
   pr_info("DOLBY: extract vsvdb lum: version [%d], min [%hu] max [%hu]\n", version, *min, *max);
 }
 
+static inline u8 find_closest_lut_index(u16 value, const u16 *lut, int lut_size)
+{
+  u8 low = 0, high = (lut_size - 1);
+
+  if (value <= lut[low]) return low;
+  if (value >= lut[high]) return high;
+
+  while ((high - low) > 1) {
+    u8 mid = (low + high) / 2;
+    if (lut[mid] == value) return mid;  // Exact match
+
+    (lut[mid] < value) ? (low = mid) : (high = mid);
+  }
+
+  return ((value - lut[low]) < (lut[high] - value)) ? low : high;
+}
+
+static inline void set_vsvdb_v0(unsigned char *x, u16 min, u16 max)
+{
+  x[13] = ((min & 0x0F) << 4) | (max & 0x0F);
+  x[14] = (min >> 4) & 0xFF;
+  x[15] = (max >> 4) & 0xFF;
+}
+
+static inline void set_vsvdb_v1(unsigned char *x, u16 min, u16 max)
+{
+  u8 min_idx = find_closest_lut_index(min, min_direct_to_pq_lut, 128);
+  u8 max_idx = find_closest_lut_index(max, max_direct_to_pq_lut, 128);
+
+  x[2] = (min_idx << 1);
+  x[1] = (max_idx << 1);
+}
+
+static inline void set_vsvdb_v2(unsigned char *x, u16 min, u16 max)
+{
+  x[1] = (x[1] & 0x07) | ((min / 20) & 0x1F) << 3;
+  x[2] = (x[2] & 0x07) | (((max - 2055) / 65) & 0x1F) << 3;
+}
+
 static inline void set_dolby_vsvdb_source_lum(u16 min, u16 max) 
 {
   unsigned char *x = &new_dovi_setting.vsvdb_tbl[5];
   unsigned char version = (x[0] >> 5) & 0x07;
 
   switch (version) {
-
-    case 0: {
-      x[13] = ((min & 0x0F) << 4) | (max & 0x0F);
-      x[14] = (min >> 4) & 0xFF;
-      x[15] = (max >> 4) & 0xFF;
+    case 0:
+      set_vsvdb_v0(x, min, max);
       break;
-    }
 
-    case 1: {
-      u16 i;
-      for (i = 0; i < 128; i++) {
-        if (min_direct_to_pq_lut[i] == min) {
-          x[2] = (i << 1);
-          break;
-        }
-      }
-      for (i = 0; i < 128; i++) {
-        if (max_direct_to_pq_lut[i] == max) {
-          x[1] = (i << 1); 
-          break;
-        }
-      }
+    case 1:
+      set_vsvdb_v1(x, min, max);
       break;
-    }
 
-    case 2: {
-      x[1] = (x[1] & 0x07) | ( (min / 20)         & 0x1F) << 3;
-      x[2] = (x[2] & 0x07) | (((max - 2055) / 65) & 0x1F) << 3;
+    case 2:
+      set_vsvdb_v2(x, min, max);
       break;
-    }
   }
 }
 
