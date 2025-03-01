@@ -5888,8 +5888,8 @@ int dolby_vision_update_src_format(struct vframe_s *vf, u8 toggle_mode)
 	} else {
 		check_format = FORMAT_SDR;
 	}
-	if (vf)
-		update_src_format(check_format, vf);
+
+	update_src_format(check_format, vf);
 
 	if (!dolby_vision_wait_init &&
 	    !dolby_vision_core1_on &&
