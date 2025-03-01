@@ -15,6 +15,8 @@
  *
  */
 
+ #include <asm/unaligned.h>
+
 #include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -7577,14 +7579,10 @@ static int check_media_sei(char *sei, u32 sei_size, u32 sei_type)
 
 	p = sei;
 	while (p < sei + sei_size - 8) {
-		size = *p++;
-		size = (size << 8) | *p++;
-		size = (size << 8) | *p++;
-		size = (size << 8) | *p++;
-		type = *p++;
-		type = (type << 8) | *p++;
-		type = (type << 8) | *p++;
-		type = (type << 8) | *p++;
+		size = get_unaligned_be32(p);
+		p += 4;
+		type = get_unaligned_be32(p);
+		p += 4;
 
 		if (((sei_type == DV_SEI || sei_type == HDR10P) &&
 			sei_type == type) ||
