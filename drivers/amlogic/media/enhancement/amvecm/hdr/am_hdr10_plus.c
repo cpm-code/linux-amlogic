@@ -16,6 +16,9 @@
  */
 
 /* Standard Linux headers */
+
+#include <asm/unaligned.h>
+
 #include <linux/types.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -1075,14 +1078,10 @@ void parser_dynmic_metadata(struct vframe_s *vf)
 			p = req.aux_buf;
 			while (p < req.aux_buf
 				+ req.aux_size - 8) {
-				size = *p++;
-				size = (size << 8) | *p++;
-				size = (size << 8) | *p++;
-				size = (size << 8) | *p++;
-				type = *p++;
-				type = (type << 8) | *p++;
-				type = (type << 8) | *p++;
-				type = (type << 8) | *p++;
+				size = get_unaligned_be32(p);
+				p += 4;
+				type = get_unaligned_be32(p);
+				p += 4;
 				if (type == 0x02000000)
 					parse_sei(p, size);
 
