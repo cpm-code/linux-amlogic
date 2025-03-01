@@ -4798,10 +4798,8 @@ static inline size_t reverse_dv_meta(
     if (i == 0) { /*raw_metadata[0] bit7-0 valid, skip bit31-8*/
       metadata[j++] = in->raw_metadata[i] & 0xFF;
     } else {
-      metadata[j++] = (in->raw_metadata[i] >> 0) & 0xFF;
-      metadata[j++] = (in->raw_metadata[i] >> 8) & 0xFF;
-      metadata[j++] = (in->raw_metadata[i] >> 16) & 0xFF;
-      metadata[j++] = (in->raw_metadata[i] >> 24) & 0xFF;
+      put_unaligned_le32(in->raw_metadata[i], &metadata[j]);
+      j += 4;
     }
   }
 
