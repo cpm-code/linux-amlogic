@@ -3145,14 +3145,10 @@ int is_dovi_frame(struct vframe_s *vf)
 		if (!req.aux_buf || !req.aux_size) return 0;
 		p = req.aux_buf;
 		while (p < req.aux_buf + req.aux_size - 8) {
-			size = *p++;
-			size = (size << 8) | *p++;
-			size = (size << 8) | *p++;
-			size = (size << 8) | *p++;
-			type = *p++;
-			type = (type << 8) | *p++;
-			type = (type << 8) | *p++;
-			type = (type << 8) | *p++;
+			size = get_unaligned_be32(p);
+			p += 4;
+			type = get_unaligned_be32(p);
+			p += 4;
 			if (type == DV_SEI ||
 			    (type & 0xffff0000) == DV_AV1_SEI)
 				return 1;
