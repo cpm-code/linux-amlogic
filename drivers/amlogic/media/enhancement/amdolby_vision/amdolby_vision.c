@@ -1921,11 +1921,12 @@ static void apply_stb_core_settings
   }
 
   adjust_vpotch();
+
   if (mask & 1) {  // Core 1
     if (is_meson_txlx_stbmode()) {
       stb_dolby_core1_set(
           (u32 *)&new_dovi_setting.dm_reg1,
-          (  u32 *)&new_dovi_setting.comp_reg,
+          (u32 *)&new_dovi_setting.comp_reg,
           (u32 *)&new_dovi_setting.dm_lut1,
           h_size,
           v_size,
@@ -1986,7 +1987,7 @@ static void apply_stb_core_settings
       /* unmute vpp and mute by core3 */
       pr_dolby_dbg("mute %s\n", mute_type_str[mute_type]);
       VSYNC_WR_MPEG_REG(VPP_CLIP_MISC0, (0x3ff << 20) | (0x3ff << 10) | 0x3ff);
-      VSYNC_WR_MPEG_REG(VPP_CLIP_MISC1, (0x0 << 20) | (0x0 << 10) | 0x0);
+      VSYNC_WR_MPEG_REG(VPP_CLIP_MISC1, (0x0 << 20)   | (0x0 << 10)   | 0x0);
       cur_mute_type = mute_type;
       dolby_vision_flags |= FLAG_MUTE;
     } else if ((get_video_mute() == VIDEO_MUTE_OFF) && (dolby_vision_flags & FLAG_MUTE)) {
@@ -2570,7 +2571,7 @@ void enable_dolby_vision(int enable)
 }
 EXPORT_SYMBOL(enable_dolby_vision);
 
-/*  dolby vision enhanced layer receiver*/
+/* dolby vision enhanced layer receiver */
 
 #define DVEL_RECV_NAME "dvel"
 
@@ -7087,6 +7088,7 @@ static ssize_t amdolby_vision_dv_mode_store
 		dolby_vision_dump_struct();
 	else if (val & 0x70)
 		dolby_vision_dump_setting(val);
+
 	return count;
 }
 
