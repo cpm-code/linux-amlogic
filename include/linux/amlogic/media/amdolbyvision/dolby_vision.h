@@ -147,7 +147,6 @@ bool is_dolby_vision_on(void);
 bool is_dolby_vision_video_on(void);
 bool for_dolby_vision_certification(void);
 void set_dolby_vision_mode(int mode);
-int get_dolby_vision_mode(void);
 int get_dolby_vision_target_mode(void);
 void dolby_vision_set_toggle_flag(int flag);
 int dolby_vision_wait_metadata(struct vframe_s *vf);
@@ -163,25 +162,25 @@ void dolby_vision_dump_struct(void);
 void enable_osd_path(int on, int shadow_mode);
 int dolby_vision_update_setting(void);
 bool is_dolby_vision_stb_mode(void);
-void tv_dolby_vision_crc_clear(int flag);
-char *tv_dolby_vision_get_crc(u32 *len);
-void tv_dolby_vision_insert_crc(bool print);
+
 int dolby_vision_check_hdr10(struct vframe_s *vf);
 int dolby_vision_check_hlg(struct vframe_s *vf);
 int dolby_vision_check_hdr10plus(struct vframe_s *vf);
 int dolby_vision_check_cuva(struct vframe_s *vf);
-void tv_dolby_vision_dma_table_modify
-	(u32 tbl_id, uint64_t value);
+
+int dolby_vision_parse_metadata(
+	struct vframe_s *vf, u8 toggle_mode,
+	bool bypass_release, bool drop_flag);
+
+void tv_dolby_vision_crc_clear(int flag);
+char *tv_dolby_vision_get_crc(u32 *len);
+void tv_dolby_vision_insert_crc(bool print);
+void tv_dolby_vision_dma_table_modify(u32 tbl_id, uint64_t value);
 void tv_dolby_vision_efuse_info(void);
-int dolby_vision_parse_metadata
-	(struct vframe_s *vf, u8 toggle_mode,
-	 bool bypass_release, bool drop_flag);
-void dolby_vision_update_vsvdb_config
-	(char *vsvdb_buf, u32 tbl_size);
 void tv_dolby_vision_el_info(void);
 
-int enable_rgb_to_yuv_matrix_for_dvll
-	(s32 on, uint32_t *coeff_orig, uint32_t bits);
+// in amcsc.c
+int enable_rgb_to_yuv_matrix_for_dvll(s32 on, uint32_t *coeff_orig, uint32_t bits);
 
 int is_dovi_frame(struct vframe_s *vf);
 void update_graphic_width_height(unsigned int width, unsigned int height);
@@ -192,7 +191,7 @@ bool is_dolby_vision_el_disable(void);
 bool is_dovi_dual_layer_frame(struct vframe_s *vf);
 void dolby_vision_set_provider(char *prov_name);
 int dolby_vision_check_mvc(struct vframe_s *vf);
-bool for_dolby_vision_video_effect(void);
+
 int get_dolby_vision_hdr_policy(void);
 int get_dv_support_info(void);
 int dolby_vision_update_src_format(struct vframe_s *vf, u8 toggle_mode);
