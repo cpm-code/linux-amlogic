@@ -75,12 +75,12 @@ static const struct dolby_vision_func_s *p_funcs_stb;
 #define AMDOLBY_VISION_CLASS_NAME         "amdolby_vision"
 
 struct amdolby_vision_dev_s {
-	dev_t                       devt;
-	struct cdev                 cdev;
-	dev_t                       devno;
-	struct device               *dev;
-	struct class                *clsp;
-	wait_queue_head_t	dv_queue;
+	dev_t             devt;
+	struct cdev       cdev;
+	dev_t             devno;
+	struct device     *dev;
+	struct class      *clsp;
+	wait_queue_head_t dv_queue;
 };
 static struct amdolby_vision_dev_s amdolby_vision_dev;
 struct dv_device_data_s dv_meson_dev;
@@ -194,8 +194,7 @@ module_param(dolby_vision_run_mode_delay, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_run_mode_delay, "\n dolby_vision_run_mode_delay\n");
 
 /* reset control -- end << 8 | start */
-static uint dolby_vision_reset_delay =
-	(RUN_MODE_DELAY << 8) | RUN_MODE_DELAY;
+static uint dolby_vision_reset_delay = (RUN_MODE_DELAY << 8) | RUN_MODE_DELAY;
 module_param(dolby_vision_reset_delay, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_reset_delay, "\n dolby_vision_reset_delay\n");
 
@@ -470,7 +469,6 @@ module_param(dolby_vision_graphics_priority, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_graphics_priority, "\n dolby_vision_graphics_priority\n");
 
 static unsigned int atsc_sei = 1;
-
 module_param(atsc_sei, uint, 0664);
 MODULE_PARM_DESC(atsc_sei, "\n atsc_sei\n");
 
@@ -489,8 +487,10 @@ MODULE_PARM_DESC(debug_dolby_frame, "\n debug_dolby_frame\n");
 		if (debug_dolby)\
 			pr_info("DOLBY: " fmt, ## args);\
 	} while (0)
+
 #define pr_dolby_error(fmt, args...)\
 	pr_info("DOLBY ERROR: " fmt, ## args)
+
 #define dump_enable \
 	((debug_dolby_frame >= 0xffff) || \
 	(debug_dolby_frame + 1 == frame_count))
@@ -505,14 +505,17 @@ MODULE_PARM_DESC(debug_dolby_frame, "\n debug_dolby_frame\n");
 
 static bool dolby_vision_on;
 static bool dolby_vision_core1_on;
+
 static u32 dolby_vision_core1_on_cnt;
-static bool dolby_vision_wait_on;
 static u32 dolby_vision_core2_on_cnt;
 
+static bool dolby_vision_wait_on;
 module_param(dolby_vision_wait_on, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_wait_on, "\n dolby_vision_wait_on\n");
+
 static bool dolby_vision_on_in_uboot;
 static bool dolby_vision_wait_init;
+
 static unsigned int frame_count;
 static struct hdr10_parameter hdr10_param;
 static struct master_display_info_s hdr10_data;
@@ -537,7 +540,7 @@ static bool vsvdb_config_set_flag;
 #define CP_FLAG_CHANGE_TC       0x000010
 #define CP_FLAG_CHANGE_TC2      0x000020
 #define CP_FLAG_CONST_TC2       0x200000
-#define CP_FLAG_CHANGE_ALL         0xffffffff
+#define CP_FLAG_CHANGE_ALL      0xffffffff
 /* update all core */
 static u32 stb_core_setting_update_flag = CP_FLAG_CHANGE_ALL;
 static bool stb_core2_const_flag;
@@ -551,8 +554,7 @@ static bool osd_update;
 static bool enable_fel;
 static bool bypass_all_vpp_pq;
 
-/*0: not debug mode; 1:force bypass vpp pq; 2:force enable vpp pq*/
-/*3: force do nothing*/
+/* 0:not debug mode, 1:force bypass vpp pq, 2:force enable vpp, 3:force do nothing */
 static u32 debug_bypass_vpp_pq;
 
 static bool module_installed;
@@ -2148,7 +2150,7 @@ static void osd_path_enable(int on)
       VSYNC_WR_DV_REG(VIU_OSD1_EOTF_COEF22_RS, hdr_osd_reg.viu_osd1_eotf_coef22_rs);
       VSYNC_WR_DV_REG(VIU_OSD1_EOTF_CTL, hdr_osd_reg.viu_osd1_eotf_ctl);
     }
-        
+
     /* restore oetf lut */
     if ((hdr_osd_reg.viu_osd1_oetf_ctl & 0xe0000000) != 0) {
       addr_port = VIU_OSD1_OETF_LUT_ADDR_PORT;
@@ -3912,9 +3914,8 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 	u32 min_lum = 50;
 	int primaries_type = 0;
 
-	if (get_primary_policy() == PRIMARIES_NATIVE ||
-		primary_debug == 1 ||
-		(dolby_vision_flags & FLAG_CERTIFICAION)) {
+	if ((get_primary_policy() == PRIMARIES_NATIVE) || (primary_debug == 1) || (dolby_vision_flags & FLAG_CERTIFICAION)) 
+	{
 		p_hdr10_param->min_display_mastering_lum = min_lum;
 		p_hdr10_param->max_display_mastering_lum = max_lum;
 		p_hdr10_param->r_x = bt2020_primaries[2][0];
@@ -3928,8 +3929,9 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 		p_hdr10_param->max_content_light_level = 0;
 		p_hdr10_param->max_frame_avg_light_level = 0;
 		return;
-	} else if (get_primary_policy() == PRIMARIES_AUTO ||
-		primary_debug == 2) {
+	} 
+	else if ((get_primary_policy() == PRIMARIES_AUTO) || (primary_debug == 2))
+	{
 		p_hdr10_param->min_display_mastering_lum = min_lum;
 		p_hdr10_param->max_display_mastering_lum = max_lum;
 		p_hdr10_param->r_x = p3_primaries[2][0];
@@ -6674,7 +6676,6 @@ static int amdolby_vision_open(struct inode *inode, struct file *file)
 	devp = container_of(inode->i_cdev, struct amdolby_vision_dev_s, cdev);
 	file->private_data = devp;
 	return 0;
-
 }
 
 static ssize_t amdolby_vision_read
@@ -6686,6 +6687,7 @@ static ssize_t amdolby_vision_read
 
 	if (!is_dolby_vision_enable())
 		return ret_val;
+
 	out = tv_dolby_vision_get_crc(&data_size);
 	if (data_size > CRC_BUFF_SIZE) {
 		pr_err("crc_output_buff_off is out of bound\n");
@@ -6694,15 +6696,12 @@ static ssize_t amdolby_vision_read
 	}
 
 	if (out && data_size > 0) {
-		res = copy_to_user((void *)buf,
-			(void *)out,
-			data_size);
+		res = copy_to_user((void *)buf, (void *)out, data_size);
 		ret_val = data_size - res;
-		pr_info
-			("%s crc size %d, res: %d, ret: %d\n",
-			__func__, data_size, res, ret_val);
+		pr_info("%s crc size %d, res: %d, ret: %d\n", __func__, data_size, res, ret_val);
 		tv_dolby_vision_crc_clear(0);
 	}
+
 	return ret_val;
 }
 
@@ -6715,9 +6714,9 @@ static int amdolby_vision_release(struct inode *inode, struct file *file)
 static const struct file_operations amdolby_vision_fops = {
 	.owner   = THIS_MODULE,
 	.open    = amdolby_vision_open,
-	.read = amdolby_vision_read,
+	.read    = amdolby_vision_read,
 	.release = amdolby_vision_release,
-	.poll = amdolby_vision_poll,
+	.poll    = amdolby_vision_poll,
 };
 
 static ssize_t amdolby_vision_ko_info_show
@@ -6739,6 +6738,7 @@ static const char *amdolby_vision_debug_usage_str = {
 	"echo debug_bypass_vpp_pq 0 > /sys/class/amdolby_vision/debug; not debug mode\n"
 	"echo debug_bypass_vpp_pq 1 > /sys/class/amdolby_vision/debug; force disable vpp pq\n"
 	"echo debug_bypass_vpp_pq 2 > /sys/class/amdolby_vision/debug; force enable vpp pq\n"
+	"echo debug_bypass_vpp_pq 3 > /sys/class/amdolby_vision/debug; force do nothing\n"
 	"echo bypass_all_vpp_pq 1 > /sys/class/amdolby_vision/debug; force bypass vpp pq in cert mode\n"
 	"echo ko_info > /sys/class/amdolby_vision/debug; query ko info\n"
 };
