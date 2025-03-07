@@ -97,10 +97,6 @@ static unsigned int dolby_vision_profile = 0xff;
 module_param(dolby_vision_profile, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_profile, "\n dolby_vision_profile\n");
 
-static unsigned int dolby_vision_level = 0xff;
-module_param(dolby_vision_level, uint, 0664);
-MODULE_PARM_DESC(dolby_vision_level, "\n dolby_vision_level\n");
-
 static unsigned int primary_debug;
 module_param(primary_debug, uint, 0664);
 MODULE_PARM_DESC(primary_debug, "\n primary_debug\n");
