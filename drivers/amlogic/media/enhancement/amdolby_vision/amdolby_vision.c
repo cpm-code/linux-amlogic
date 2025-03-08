@@ -565,6 +565,12 @@ static const char dv_mode_str[6][12] = {
 };
 
 #define MAX_PARAM   8
+
+static inline bool is_dv_ll(void)
+{
+	return (dolby_vision_flags & FLAG_FORCE_DOVI_LL) || (dolby_vision_ll_policy >= DOLBY_VISION_LL_YUV422);
+}
+
 static inline bool is_meson_gxm(void)
 {
 	return (dv_meson_dev.cpu_id == _CPU_MAJOR_ID_GXM);
@@ -4563,8 +4569,7 @@ static void send_hdmi_pkt_ahead
 	bool dovi_ll_enable = false;
 	bool diagnostic_enable = false;
 
-	if ((dolby_vision_flags & FLAG_FORCE_DOVI_LL) ||
-	    dolby_vision_ll_policy >= DOLBY_VISION_LL_YUV422)
+	if (is_dv_ll())
 	{
 		dovi_ll_enable = true;
 		if (dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444)
@@ -5416,8 +5421,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	if (dolby_vision_graphic_max != 0) {
 		graphic_max = dolby_vision_graphic_max;
 	} else {
-		if ((dolby_vision_flags & FLAG_FORCE_DOVI_LL) ||
-		    dolby_vision_ll_policy >= DOLBY_VISION_LL_YUV422) {
+		if (is_dv_ll()) {
 			graphic_max = dv_target_graphics_LL_max[src_format][dst_format];
 		} else {
 			graphic_max = dv_target_graphics_max[src_format][dst_format];
@@ -5497,8 +5501,12 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	// Load the VSVDB from xbmc if injected or obtain from vout (hdmi sink) if present.
 	load_dolby_vsvdb(vinfo->vout_device->dv_info);
 
-	// For DV-LL apply limits to the VSVDB min and max, when we have source metadata.
-	if (total_md_size > 0) limit_dolby_vsvdb_to_source_lum_for_lldv();
+	// For DV-LL
+	if ((total_md_size > 0) && is_dv_ll())
+	{
+		// Apply limits to the VSVDB min and max.
+		limit_dolby_vsvdb_to_source_lum_for_lldv();
+	}
 
 	/* check video/graphics priority on the fly */
 	/* cert: some graphic test also need video pri 5223,5243,5253,5263 */
@@ -5514,8 +5522,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		pri_mode = V_PRIORITY;
 
 	if (dst_format == FORMAT_DOVI) {
-		new_dovi_setting.use_ll_flag = ((dolby_vision_flags & FLAG_FORCE_DOVI_LL) ||
-		                                (dolby_vision_ll_policy >= DOLBY_VISION_LL_YUV422));
+		new_dovi_setting.use_ll_flag = is_dv_ll();
 
 		new_dovi_setting.ll_rgb_desired = ((dolby_vision_flags & FLAG_FORCE_RGB_OUTPUT) ||
 		                                   (dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444));
