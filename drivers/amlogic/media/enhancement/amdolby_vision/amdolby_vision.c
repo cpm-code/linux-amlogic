@@ -3877,25 +3877,66 @@ static int parse_sei_and_meta
 	return ret;
 }
 
+// SMPTE ST.2084 (min) direct PQ lookup table
+static const u16 min_direct_to_pq_lut[128] = {
+    0,   5,  12,  19,  26,  33,  40,  47,  55,  62,  69,  76,  83,  90,  97, 104,
+  111, 117, 124, 130, 137, 143, 150, 156, 162, 168, 174, 180, 186, 192, 198, 204,
+  210, 216, 221, 227, 233, 238, 244, 249, 254, 260, 265, 270, 276, 281, 286, 291,
+  296, 301, 306, 311, 316, 321, 326, 331, 335, 340, 345, 350, 354, 359, 364, 368,
+  373, 377, 382, 386, 391, 395, 399, 404, 408, 412, 417, 421, 425, 429, 433, 438,
+  442, 446, 450, 454, 458, 462, 466, 470, 474, 478, 482, 486, 490, 493, 497, 501,
+  505, 509, 512, 516, 520, 524, 527, 531, 535, 538, 542, 545, 549, 553, 556, 560,
+  563, 567, 570, 574, 577, 580, 584, 587, 591, 594, 597, 601, 604, 607, 611, 614
+};
+
+// SMPTE ST.2084 (max) direct PQ lookup table
+static const u16 max_direct_to_pq_lut[128] = {
+  2081, 2249, 2372, 2467, 2547, 2614, 2672, 2724, 2771, 2813, 2851, 2887, 2920, 2950, 2979, 3006,
+  3032, 3056, 3079, 3101, 3121, 3141, 3160, 3178, 3196, 3213, 3229, 3245, 3260, 3275, 3289, 3302,
+  3316, 3329, 3341, 3354, 3365, 3377, 3388, 3399, 3410, 3421, 3431, 3441, 3451, 3460, 3470, 3479,
+  3488, 3497, 3505, 3514, 3522, 3530, 3538, 3546, 3554, 3561, 3569, 3576, 3583, 3590, 3597, 3604,
+  3611, 3618, 3624, 3631, 3637, 3643, 3649, 3656, 3662, 3668, 3673, 3679, 3685, 3690, 3696, 3702,
+  3707, 3712, 3718, 3723, 3728, 3733, 3738, 3743, 3748, 3753, 3758, 3762, 3767, 3772, 3776, 3781,
+  3785, 3790, 3794, 3799, 3803, 3807, 3811, 3816, 3820, 3824, 3828, 3832, 3836, 3840, 3844, 3848,
+  3852, 3855, 3859, 3863, 3867, 3870, 3874, 3878, 3881, 3885, 3888, 3892, 3895, 3899, 3902, 3906
+};
+
 #define INORM	50000
+
+static u32 empty_primaries[3][2] = {
+	{0, 0}, // G
+	{0, 0}, // B
+	{0, 0}  // R
+};
+
 static u32 bt2020_primaries[3][2] = {
-	{0.17 * INORM + 0.5, 0.797 * INORM + 0.5},	/* G */
-	{0.131 * INORM + 0.5, 0.046 * INORM + 0.5},	/* B */
-	{0.708 * INORM + 0.5, 0.292 * INORM + 0.5},	/* R */
+	{0.17  * INORM + 0.5, 0.797 * INORM + 0.5}, // G
+	{0.131 * INORM + 0.5, 0.046 * INORM + 0.5}, // B
+	{0.708 * INORM + 0.5, 0.292 * INORM + 0.5}  // R
 };
 
 static u32 p3_primaries[3][2] = {
-	{0.265 * INORM + 0.5, 0.69 * INORM + 0.5},	/* G */
-	{0.15 * INORM + 0.5, 0.06 * INORM + 0.5},	/* B */
-	{0.68 * INORM + 0.5, 0.32 * INORM + 0.5},	/* R */
+	{0.265 * INORM + 0.5, 0.69  * INORM + 0.5}, // G
+	{0.15  * INORM + 0.5, 0.06  * INORM + 0.5}, // B
+	{0.68  * INORM + 0.5, 0.32  * INORM + 0.5}  // R
 };
 
-static u32 bt2020_white_point[2] = {
+static u32 bt709_primaries[3][2] = {
+	{0.3   * INORM + 0.5, 0.6   * INORM + 0.5}, // G
+	{0.15  * INORM + 0.5, 0.06  * INORM + 0.5}, // B
+	{0.64  * INORM + 0.5, 0.33  * INORM + 0.5}  // R
+};
+
+static u32 empty_white_point[2] = {
+	0, 0
+};
+
+static u32 d65_white_point[2] = {
 	0.3127 * INORM + 0.5, 0.3290 * INORM + 0.5
 };
 
-static u32 p3_white_point[2] = {
-	0.3127 * INORM + 0.5, 0.3290 * INORM + 0.5
+static u32 empty_luminance[2] = {
+	0, 0
 };
 
 void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
@@ -3917,8 +3958,8 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 		p_hdr10_param->g_y = bt2020_primaries[0][1];
 		p_hdr10_param->b_x = bt2020_primaries[1][0];
 		p_hdr10_param->b_y = bt2020_primaries[1][1];
-		p_hdr10_param->w_x = bt2020_white_point[0];
-		p_hdr10_param->w_y = bt2020_white_point[1];
+		p_hdr10_param->w_x = d65_white_point[0];
+		p_hdr10_param->w_y = d65_white_point[1];
 		p_hdr10_param->max_content_light_level = 0;
 		p_hdr10_param->max_frame_avg_light_level = 0;
 		return;
@@ -3933,8 +3974,8 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 		p_hdr10_param->g_y = p3_primaries[0][1];
 		p_hdr10_param->b_x = p3_primaries[1][0];
 		p_hdr10_param->b_y = p3_primaries[1][1];
-		p_hdr10_param->w_x = p3_white_point[0];
-		p_hdr10_param->w_y = p3_white_point[1];
+		p_hdr10_param->w_x = d65_white_point[0];
+		p_hdr10_param->w_y = d65_white_point[1];
 		p_hdr10_param->max_content_light_level = 0;
 		p_hdr10_param->max_frame_avg_light_level = 0;
 		return;
@@ -3999,8 +4040,8 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 		    p_hdr10_param->g_y != bt2020_primaries[0][1] ||
 		    p_hdr10_param->b_x != bt2020_primaries[1][0] ||
 		    p_hdr10_param->b_y != bt2020_primaries[1][1] ||
-		    p_hdr10_param->w_x != bt2020_white_point[0] ||
-		    p_hdr10_param->w_y != bt2020_white_point[1]) {
+		    p_hdr10_param->w_x != d65_white_point[0] ||
+		    p_hdr10_param->w_y != d65_white_point[1]) {
 			flag |= 2;
 			p_hdr10_param->min_display_mastering_lum = min_lum;
 			p_hdr10_param->max_display_mastering_lum = max_lum;
@@ -4010,8 +4051,8 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 			p_hdr10_param->g_y = bt2020_primaries[0][1];
 			p_hdr10_param->b_x = bt2020_primaries[1][0];
 			p_hdr10_param->b_y = bt2020_primaries[1][1];
-			p_hdr10_param->w_x = bt2020_white_point[0];
-			p_hdr10_param->w_y = bt2020_white_point[1];
+			p_hdr10_param->w_x = d65_white_point[0];
+			p_hdr10_param->w_y = d65_white_point[1];
 		}
 	}
 
@@ -4117,7 +4158,58 @@ static int notify_vd_signal_to_amvideo(struct vd_signal_info_s *vd_signal)
 	return 0;
 }
 
-static u32 get_swap_endian_u32(char* input)
+static inline unsigned char extract_dolby_vsvdb_source_cs(void)
+{
+  const unsigned char *x = &new_dovi_setting.vsvdb_tbl[5];
+  unsigned char version = (x[0] >> 5) & 0x07;
+  unsigned char cs = 0;
+
+  switch (version)
+  {
+    case 0:
+      cs = (x[5] << 4) | (x[4] >> 4);
+      break;
+
+    case 1:
+      cs = (new_dovi_setting.vsvdb_len == 12) ? x[7] : (x[4] >> 1);
+      break;
+
+    case 2:
+      cs = (x[3] >> 1);
+      break;
+  }
+
+  pr_info("DOLBY: extract vsvdb cs: version [%d], cs [%02x]\n", version, cs);
+  return cs;
+}
+
+static inline void extract_dolby_vsvdb_source_lum(u16* min, u16* max)
+{
+  const unsigned char *x = &new_dovi_setting.vsvdb_tbl[5];
+  unsigned char version = (x[0] >> 5) & 0x07;
+
+  switch (version)
+  {
+    case 0:
+      *min = (x[14] << 4) | (x[13] >> 4);
+      *max = (x[15] << 4) | (x[13] & 0x0F);
+      break;
+
+    case 1:
+      *min = min_direct_to_pq_lut[(x[2] >> 1)];
+      *max = max_direct_to_pq_lut[(x[1] >> 1)];
+      break;
+
+    case 2:
+      *min = 20 * (x[1] >> 3);
+      *max = 2055 + 65 * (x[2] >> 3);
+      break;
+  }
+
+  pr_info("DOLBY: extract vsvdb lum: version [%d], min [%hu] max [%hu]\n", version, *min, *max);
+}
+
+static inline u32 get_swap_endian_u32(char* input)
 {
 	long result;
 	int ret;
@@ -4136,37 +4228,32 @@ static u32 get_swap_endian_u32(char* input)
 static void set_hdr10_data_for_lldv(void)
 {
 	hdr10_data.features =
-			  (1 << 29)		/* 1 video available / present */
-			| (5 << 26)		/* 5 unspecified */
-			| (0 << 25)		/* 0 limited range */
-			| (1 << 24)		/* 1 color available / present */
-			| (9 << 16)		/* 9 primaries bt2020 */
-			| (0x10 << 8)	/* 16 transfer char. smpte-st-2084 */
-			| (10 << 0);	/* 10 matrix co. bt2020c / 9  bt2020nc */
+			  (1 << 29)   // 1 video available / present
+			| (5 << 26)   // 5 unspecified
+			| (0 << 25)   // 0 limited range
+			| (1 << 24)   // 1 color available / present
+			| (9 << 16)   // 9 primaries bt2020
+			| (0x10 << 8) // 16 transfer char. smpte-st-2084
+			| (10 << 0);  // 10 matrix co. bt2020c / 9  bt2020nc
 
-	// Not injecting or attempting to inject but payload is not 48 byte long - then set all 0.
-	if ((dolby_vision_hdr_inject == 0) || ((dolby_vision_hdr_inject == 1) && (strlen(dolby_vision_hdr_payload) != 48))) {
+	size_t payload_len = strlen(dolby_vision_hdr_payload);
 
-		int i = 0;
-
-		for (i = 0; i < 3; i++) {
-			hdr10_data.primaries[i][0] = 0;
-			hdr10_data.primaries[i][1] = 0;
-		}
-		hdr10_data.white_point[0] = 0;
-		hdr10_data.white_point[1] = 0;
-		hdr10_data.luminance[0] = 0;
-		hdr10_data.luminance[1] = 0;
+	// Not injecting or injecting and invalid payload specified or no payload and no vsvdb, then set values to 0
+	if ((dolby_vision_hdr_inject == 0) ||
+	    ((payload_len != 48) && (payload_len > 0 || new_dovi_setting.vsvdb_len == 0)))
+	{
+		memcpy(hdr10_data.primaries, empty_primaries, sizeof(empty_primaries));
+		memcpy(hdr10_data.white_point, empty_white_point, sizeof(empty_white_point));
+		memcpy(hdr10_data.luminance, empty_luminance, sizeof(empty_luminance));
 		hdr10_data.max_content = 0;
 		hdr10_data.max_frame_average = 0;
 
-		dolby_vision_hdr_inject = 2; // Do not set again until inject reset to 0;
-
-	// Injecting and payload is 48 byte long - then parse payload and inject (if parsing fails then will be 0 for that element).
-	} else if ((dolby_vision_hdr_inject == 1) && (strlen(dolby_vision_hdr_payload) == 48)) {
-
-		int i = 0;
-
+		dolby_vision_hdr_inject = 2; // Do not set again until inject reset to 0
+	}
+	// Injecting and payload is 48 bytes, then parse and inject (if parsing fails then will be 0 for that element).
+	else if ((dolby_vision_hdr_inject == 1) && (payload_len == 48))
+	{
+		int i;
 		for (i = 0; i < 3; i++) {
 			hdr10_data.primaries[i][0] = get_swap_endian_u32(dolby_vision_hdr_payload+(i*8));
 			hdr10_data.primaries[i][1] = get_swap_endian_u32(dolby_vision_hdr_payload+(i*8)+4);
@@ -4178,7 +4265,64 @@ static void set_hdr10_data_for_lldv(void)
 		hdr10_data.max_content = get_swap_endian_u32(dolby_vision_hdr_payload+40);
 		hdr10_data.max_frame_average = get_swap_endian_u32(dolby_vision_hdr_payload+44);
 
-		dolby_vision_hdr_inject = 3; // Do not set again until inject reset to 1;
+		dolby_vision_hdr_inject = 3; // Do not set again until inject reset to 1
+	}
+	// Injecting and no payload then align to VSVDB if we have one
+	else if ((dolby_vision_hdr_inject == 1) && (new_dovi_setting.vsvdb_len > 0))
+	{
+		switch (extract_dolby_vsvdb_source_cs())
+		{
+			case 0x2B: // BT.2020
+				memcpy(hdr10_data.primaries, bt2020_primaries, sizeof(bt2020_primaries));
+				memcpy(hdr10_data.white_point, d65_white_point, sizeof(d65_white_point));
+				break;
+
+			case 0x2F: // DCI-P3
+				memcpy(hdr10_data.primaries, p3_primaries, sizeof(p3_primaries));
+				memcpy(hdr10_data.white_point, d65_white_point, sizeof(d65_white_point));
+				break;
+
+			case 0x4C: // BT.709
+				memcpy(hdr10_data.primaries, bt709_primaries, sizeof(bt709_primaries));
+				memcpy(hdr10_data.white_point, d65_white_point, sizeof(d65_white_point));
+				break;
+
+			default: // Other CS
+				memcpy(hdr10_data.primaries, empty_primaries, sizeof(empty_primaries));
+				memcpy(hdr10_data.white_point, empty_white_point, sizeof(empty_white_point));
+		}
+
+		hdr10_data.max_content = 0;
+		hdr10_data.max_frame_average = 0;
+
+		u16 vsvdb_max = 0;
+		u16 vsvdb_min = 0;
+		extract_dolby_vsvdb_source_lum(&vsvdb_min, &vsvdb_max);
+
+		hdr10_data.luminance[0] = 
+			(vsvdb_max <= 2469) ? 0x00FA :
+			(vsvdb_max <= 2772) ? 0x01F4 :
+			(vsvdb_max <= 3096) ? 0x03E8 :
+			(vsvdb_max <= 3389) ? 0x07D0 :
+			(vsvdb_max <= 3697) ? 0x0FA0 : 0x2710;
+
+		hdr10_data.luminance[1] = 
+			(vsvdb_min == 0)  ? 0x0000 :
+			(vsvdb_min <= 12) ? 0x0001 :
+			(vsvdb_min <= 22) ? 0x0005 :
+			(vsvdb_min <= 32) ? 0x000A :
+			(vsvdb_min <= 51) ? 0x0014 : 0x0032;
+
+		hdr10_data.max_content = hdr10_data.luminance[0];
+
+		hdr10_data.max_frame_average = 
+			(vsvdb_max <= 2469) ? 0x0064 :
+			(vsvdb_max <= 2772) ? 0x00C8 :
+			(vsvdb_max <= 3096) ? 0x0190 :
+			(vsvdb_max <= 3389) ? 0x0320 :
+			(vsvdb_max <= 3697) ? 0x0640 : 0x0FA0;
+
+		dolby_vision_hdr_inject = 4; // Do not set again until inject reset to 1
 	}
 }
 
@@ -4202,13 +4346,13 @@ static void send_hdmi_pkt
 		sdr_transition_delay = 0;
 		p_hdr = &dovi_setting.hdr_info;
 		hdr10_data.features =
-			  (1 << 29)	/* video available */
-			| (5 << 26)	/* unspecified */
-			| (0 << 25)	/* limit */
-			| (1 << 24)	/* color available */
-			| (9 << 16)	/* bt2020 */
-			| (0x10 << 8)	/* bt2020-10 */
-			| (10 << 0);/* bt2020c */
+			  (1 << 29)   // video available
+			| (5 << 26)   // unspecified
+			| (0 << 25)   // limit
+			| (1 << 24)   // color available
+			| (9 << 16)   // bt2020
+			| (0x10 << 8) // smpte-st-2084
+			| (10 << 0);  // bt2020c
 
 		if (src_format != FORMAT_HDR10PLUS) {
 
@@ -4510,59 +4654,6 @@ static inline void extract_etsi_source_lum(u16* min, u16* max)
   // Not testing md_buf is intialsed, call only when initalised (have values).
   *min = (md_buf[current_id][64] << 8) | md_buf[current_id][65]; // two bytes from the buffer for source min into the unsigned short 
   *max = (md_buf[current_id][66] << 8) | md_buf[current_id][67]; // two bytes from the buffer for source max into the unsigned short 
-}
-
-// SMPTE ST.2084 (min) direct PQ lookup table
-static const u16 min_direct_to_pq_lut[128] = {
-    0,   5,  12,  19,  26,  33,  40,  47,  55,  62,  69,  76,  83,  90,  97, 104,
-  111, 117, 124, 130, 137, 143, 150, 156, 162, 168, 174, 180, 186, 192, 198, 204,
-  210, 216, 221, 227, 233, 238, 244, 249, 254, 260, 265, 270, 276, 281, 286, 291,
-  296, 301, 306, 311, 316, 321, 326, 331, 335, 340, 345, 350, 354, 359, 364, 368,
-  373, 377, 382, 386, 391, 395, 399, 404, 408, 412, 417, 421, 425, 429, 433, 438,
-  442, 446, 450, 454, 458, 462, 466, 470, 474, 478, 482, 486, 490, 493, 497, 501,
-  505, 509, 512, 516, 520, 524, 527, 531, 535, 538, 542, 545, 549, 553, 556, 560,
-  563, 567, 570, 574, 577, 580, 584, 587, 591, 594, 597, 601, 604, 607, 611, 614
-};
-
-// SMPTE ST.2084 (max) direct PQ lookup table
-static const u16 max_direct_to_pq_lut[128] = {
-  2081, 2249, 2372, 2467, 2547, 2614, 2672, 2724, 2771, 2813, 2851, 2887, 2920, 2950, 2979, 3006,
-  3032, 3056, 3079, 3101, 3121, 3141, 3160, 3178, 3196, 3213, 3229, 3245, 3260, 3275, 3289, 3302,
-  3316, 3329, 3341, 3354, 3365, 3377, 3388, 3399, 3410, 3421, 3431, 3441, 3451, 3460, 3470, 3479,
-  3488, 3497, 3505, 3514, 3522, 3530, 3538, 3546, 3554, 3561, 3569, 3576, 3583, 3590, 3597, 3604,
-  3611, 3618, 3624, 3631, 3637, 3643, 3649, 3656, 3662, 3668, 3673, 3679, 3685, 3690, 3696, 3702,
-  3707, 3712, 3718, 3723, 3728, 3733, 3738, 3743, 3748, 3753, 3758, 3762, 3767, 3772, 3776, 3781,
-  3785, 3790, 3794, 3799, 3803, 3807, 3811, 3816, 3820, 3824, 3828, 3832, 3836, 3840, 3844, 3848,
-  3852, 3855, 3859, 3863, 3867, 3870, 3874, 3878, 3881, 3885, 3888, 3892, 3895, 3899, 3902, 3906
-};
-
-static inline void extract_dolby_vsvdb_source_lum(u16* min, u16* max) 
-{
-  const unsigned char *x = &new_dovi_setting.vsvdb_tbl[5];
-  unsigned char version = (x[0] >> 5) & 0x07;
-
-  switch (version) {
-
-    case 0: {
-      *min = (x[14] << 4) | (x[13] >> 4);
-      *max = (x[15] << 4) | (x[13] & 0x0F);
-      break;
-    }
-
-    case 1: {
-      *min = min_direct_to_pq_lut[(x[2] >> 1)];
-      *max = max_direct_to_pq_lut[(x[1] >> 1)];
-      break;
-    }
-
-    case 2: {
-      *min = 20 * (x[1] >> 3);
-      *max = 2055 + 65 * (x[2] >> 3);
-      break;
-    }
-  }
-
-  pr_info("DOLBY: extract vsvdb lum: version [%d], min [%hu] max [%hu]\n", version, *min, *max);
 }
 
 static inline u8 find_closest_lut_index(u16 value, const u16 *lut, int lut_size)
