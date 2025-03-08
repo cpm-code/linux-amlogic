@@ -2984,21 +2984,18 @@ static inline int mode_check(int *mode, unsigned int check_mode, enum signal_for
 {
   if (dolby_vision_mode != check_mode) {
     if (debug_dolby) {
-      char* mode_name = "UNKNOWN";
-      if (check_mode < 6) mode_name = dv_mode_str[check_mode];
-      char* src_name = "UNKNOWN";
-      switch (src_format) {
-        case FORMAT_INVALID:   src_name = "INVALID";   break;
-        case FORMAT_DOVI:      src_name = "DOVI";      break;
-        case FORMAT_HDR10:     src_name = "HDR10";     break;
-        case FORMAT_SDR:       src_name = "SDR";       break;
-        case FORMAT_DOVI_LL:   src_name = "DOVI_LL";   break;
-        case FORMAT_HLG:       src_name = "HLG";       break;
-        case FORMAT_HDR10PLUS: src_name = "HDR10PLUS"; break;
-        case FORMAT_SDR_2020:  src_name = "SDR_2020";  break;
-        case FORMAT_MVC:       src_name = "MVC";       break;
-        case FORMAT_CUVA:      src_name = "CUVA";      break;
-      }
+      const char* mode_name = (check_mode < 6) ? dv_mode_str[check_mode] : "UNKNOWN";
+      const char* src_name = 
+       (src_format == FORMAT_INVALID)   ? "INVALID" :
+       (src_format == FORMAT_DOVI)      ? "DOVI" :
+       (src_format == FORMAT_HDR10)     ? "HDR10" :
+       (src_format == FORMAT_SDR)       ? "SDR" :
+       (src_format == FORMAT_DOVI_LL)   ? "DOVI_LL" :
+       (src_format == FORMAT_HLG)       ? "HLG" :
+       (src_format == FORMAT_HDR10PLUS) ? "HDR10PLUS" :
+       (src_format == FORMAT_SDR_2020)  ? "SDR_2020" :
+       (src_format == FORMAT_MVC)       ? "MVC" :
+       (src_format == FORMAT_CUVA)      ? "CUVA" : "UNKNOWN";
       pr_dolby_dbg("%s, %s -> %s\n", src_name, log, mode_name);
     }
     *mode = check_mode;
