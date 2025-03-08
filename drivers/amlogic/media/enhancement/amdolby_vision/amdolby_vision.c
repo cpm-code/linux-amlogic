@@ -280,6 +280,12 @@ static unsigned int dolby_vision_dolby_vsvdb_source_lum_limit = 0;
 module_param(dolby_vision_dolby_vsvdb_source_lum_limit, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_source_lum_limit, "\n dolby_vision_dolby_vsvdb_source_lum_limit\n");
 
+// Value for set_brightness_level function - Value range from -1024 to 1023.
+// Ugoos AM6B+ - Value when using VSVDB Min Lum PQ=20 is -4.
+static int dolby_vision_dolby_vsvdb_brightness_lvl_pq20 = -4;
+module_param(dolby_vision_dolby_vsvdb_brightness_lvl_pq20, int, 0664);
+MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_brightness_lvl_pq20, "\n dolby_vision_dolby_vsvdb_brightness_lvl_pq20\n");
+
 static bool dolby_vision_hdr_for_lldv = false;
 module_param(dolby_vision_hdr_for_lldv, bool, 0664);
 MODULE_PARM_DESC(dolby_vision_hdr_for_lldv, "\n dolby_vision_hdr_for_lldv\n");
@@ -4998,6 +5004,21 @@ static inline void source_meta_copy(
   prepare_dv_meta(core_meta, combo_meta_buffer, combo_meta_size);
 }
 
+static inline void set_brightness_level(int val)
+{
+	if (get_cpu_type() <= MESON_CPU_MAJOR_ID_GXTVBB)
+		WRITE_VPP_REG_BITS(VPP_VADJ2_Y, val, 8, 9);
+	else if (get_cpu_type() >= MESON_CPU_MAJOR_ID_G12A)
+		WRITE_VPP_REG_BITS(VPP_VADJ2_Y_2, val, 8, 11);
+	else
+		WRITE_VPP_REG_BITS(VPP_VADJ2_Y, val >> 1, 8, 10);
+
+	if (get_cpu_type() >= MESON_CPU_MAJOR_ID_G12A)
+		WRITE_VPP_REG_BITS(VPP_VADJ2_MISC, 1, 0, 1);
+	else
+		WRITE_VPP_REG_BITS(VPP_VADJ_CTRL, 1, 2, 1);
+}
+
 static u32 last_total_md_size;
 static u32 last_total_comp_size;
 /* toggle mode: 0: not toggle; 1: toggle frame; 2: use keep frame */
@@ -5517,6 +5538,11 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	{
 		// Apply limits to the VSVDB min and max.
 		limit_dolby_vsvdb_to_source_lum_for_lldv();
+
+		// When min source set to PQ 20, apply brightness correction.
+		// TODO: Do we need to remove this after playing - how is it reset for other video etc?
+		if (dolby_vision_dolby_vsvdb_source_lum_limit == (2+3))
+			set_brightness_level(dolby_vision_dolby_vsvdb_brightness_lvl_pq20);
 	}
 
 	/* check video/graphics priority on the fly */
