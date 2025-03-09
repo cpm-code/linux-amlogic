@@ -497,7 +497,7 @@ signed int amvecm_get_brightness1(void)
 	return brightness;
 }
 
-static int amvecm_set_brightness2(int val)
+int amvecm_set_brightness2(int val)
 {
 	if (get_cpu_type() <= MESON_CPU_MAJOR_ID_GXTVBB)
 		WRITE_VPP_REG_BITS(

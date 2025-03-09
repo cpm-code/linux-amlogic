@@ -609,6 +609,7 @@ int amvecm_set_contrast1(int val);
 int amvecm_set_contrast2(int val);
 signed int amvecm_get_contrast1(void);
 signed int amvecm_get_contrast2(void);
+int amvecm_set_brightness2(int val);
 signed int amvecm_get_brightness1(void);
 extern unsigned int vecm_latch_flag;
 extern void amvecm_sharpness_enable(int sel);
