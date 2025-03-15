@@ -472,7 +472,8 @@ static unsigned int dolby_vision_graphics_priority;
 module_param(dolby_vision_graphics_priority, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_graphics_priority, "\n dolby_vision_graphics_priority\n");
 
-static unsigned int atsc_sei = 1;
+// Default to 0 (Off) as dovi.ko used with S922X does not support atsc mode
+static unsigned int atsc_sei = 0;
 module_param(atsc_sei, uint, 0664);
 MODULE_PARM_DESC(atsc_sei, "\n atsc_sei\n");
 
