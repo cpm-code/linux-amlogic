@@ -945,6 +945,7 @@ void auge_toacodec_ctrl_ext(int tdmout_id,
 		((tdmout_id << 2) + ch1_sel) << 20 /* data 1 */
 		| ((tdmout_id << 2) + ch0_sel) << 16 /* data 0 */
 		| tdmout_id << 12          /* lrclk */
+		| 1 << 10                  /* invert channels */
 		| 1 << 9                   /* Bclk_cap_inv*/
 		| tdmout_id << 4           /* bclk */
 		| tdmout_id << 0           /* mclk */
