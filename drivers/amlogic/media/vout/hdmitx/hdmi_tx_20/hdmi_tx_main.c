@@ -2013,7 +2013,7 @@ void hdmitx_set_vsif_pkt(enum eotf_type type,
 
 			if (dovi_tv_led_no_colorimetry) {
 				/* Clear the Colorimetry flags for TV-LED config */
-				hdev->hwop.cntlconfig(hdev, CONF_AVI_BT2020, 
+				hdev->hwop.cntlconfig(hdev, CONF_AVI_BT2020,
 					SET_AVI_NO_CM);
 			} else {
 				if (dovi_tv_led_bt2020) {
@@ -2132,7 +2132,7 @@ void hdmitx_set_vsif_pkt(enum eotf_type type,
 
 			if (dovi_tv_led_no_colorimetry) {
 				/* Clear the Colorimetry flags for TV-LED config */
-				hdev->hwop.cntlconfig(hdev, CONF_AVI_BT2020, 
+				hdev->hwop.cntlconfig(hdev, CONF_AVI_BT2020,
 					SET_AVI_NO_CM);
 			} else {
 				if (dovi_tv_led_bt2020) {
