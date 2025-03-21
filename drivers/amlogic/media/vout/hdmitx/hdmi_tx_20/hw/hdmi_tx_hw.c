@@ -2629,20 +2629,20 @@ static void set_aud_acr_pkt(struct hdmitx_dev *hdev,
 	/* audio packetizer config */
 	hdmitx_wr_reg(HDMITX_DWC_AUD_INPUTCLKFS, hdev->tx_aud_src ? 4 : 0);
 
-	if ((audio_param->type == CT_MAT)
-	|| (audio_param->type == CT_DTS_HD_MA))
+	if ((audio_param->type == CT_MAT) ||
+	    (audio_param->type == CT_DTS_HD_MA))
 		hdmitx_wr_reg(HDMITX_DWC_AUD_INPUTCLKFS, 2);
 
 	if ((hdev->frac_rate_policy) && (hdev->para->timing.frac_freq))
 		char_rate = hdev->para->timing.frac_freq;
 	else
 		char_rate = hdev->para->timing.pixel_freq;
+
 	if (hdev->para->cs == COLORSPACE_YUV422)
-		aud_n_para = hdmi_get_aud_n_paras(audio_param->sample_rate,
-			COLORDEPTH_24B, char_rate);
+		aud_n_para = hdmi_get_aud_n_paras(audio_param->sample_rate, COLORDEPTH_24B, char_rate);
 	else
-		aud_n_para = hdmi_get_aud_n_paras(audio_param->sample_rate,
-			hdev->para->cd, char_rate);
+		aud_n_para = hdmi_get_aud_n_paras(audio_param->sample_rate, hdev->para->cd, char_rate);
+
 	pr_info(HW "aud_n_para = %d\n", aud_n_para);
 
 	/* ACR packet configuration */
