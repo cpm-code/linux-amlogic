@@ -2584,29 +2584,8 @@ static void set_aud_info_pkt(struct hdmitx_dev *hdev,
 		break;
 	case CT_PCM:
 		if (!hdev->aud_output_ch)
-			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0,
-				audio_param->channel_num, 4, 3);
-		if ((audio_param->channel_num == 0x7) && (!hdev->aud_output_ch))
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
-		else
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x00);
-		/* Refer to CEA861-D P90 */
-		switch (GET_OUTCHN_NO(hdev->aud_output_ch)) {
-		case 2:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x00);
-			break;
-		case 4:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x03);
-			break;
-		case 6:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x0b);
-			break;
-		case 8:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
-			break;
-		default:
-			break;
-		}
+			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, audio_param->channel_num, 4, 3);
+		hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, audio_param->layout);
 		break;
 	case CT_DTS:
 	case CT_DTS_HD:
@@ -2681,48 +2660,35 @@ static void set_aud_fifo_rst(void)
 	hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF0, 0, 7, 1);
 }
 
+static inline void set_aud_samp_reg(
+	unsigned int spdif_bit_6,
+	unsigned int spdif_bit_7,
+	unsigned int aud_conf)
+{
+	hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, spdif_bit_7, 7, 1);   // [7]   non-linear pcm
+	hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, spdif_bit_6, 6, 1);   // [6]   ?
+	hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 24, 0, 5);            // [4:0] bit depth (width)
+	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, aud_conf, 0, 1);     // [0]   aud_packet_layout.
+}
+
 static void set_aud_samp_pkt(struct hdmitx_dev *hdev,
 	struct hdmitx_audpara *audio_param)
 {
 	switch (audio_param->type) {
-	case CT_MAT: /* HBR */
-	case CT_DTS_HD_MA:
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 1, 7, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 1, 6, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 24, 0, 5);
-		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 1, 0, 1);
-		break;
-	case CT_PCM: /* AudSamp */
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0, 7, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0, 6, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 24, 0, 5);
-		if ((audio_param->channel_num == 0x7) && (!hdev->aud_output_ch))
-			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 1, 0, 1);
-		else
-			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 0, 0, 1);
-		switch (GET_OUTCHN_NO(hdev->aud_output_ch)) {
-		case 2:
-			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 0, 0, 1);
+		case CT_MAT: /* HBR - high bit rate */
+		case CT_DTS_HD_MA:
+			set_aud_samp_reg(1, 1, 1);
 			break;
-		case 4:
-		case 6:
-		case 8:
-			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 1, 0, 1);
+		case CT_PCM: /* AudSamp */
+			set_aud_samp_reg((GET_OUTCHN_NO(hdev->aud_output_ch) > 2), 0, 1);
 			break;
+		case CT_AC_3:
+		case CT_DOLBY_D:
+		case CT_DTS:
+		case CT_DTS_HD:
 		default:
+			set_aud_samp_reg(0, 0, 0);
 			break;
-		}
-		break;
-	case CT_AC_3:
-	case CT_DOLBY_D:
-	case CT_DTS:
-	case CT_DTS_HD:
-	default:
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0, 7, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 0, 6, 1);
-		hdmitx_set_reg_bits(HDMITX_DWC_AUD_SPDIF1, 24, 0, 5);
-		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, 0, 0, 1);
-		break;
 	}
 }
 

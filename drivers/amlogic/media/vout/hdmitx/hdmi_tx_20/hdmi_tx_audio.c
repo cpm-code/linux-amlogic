@@ -73,15 +73,7 @@ static void hdmi_tx_construct_aud_packet(
 				AUD_DB[0] = (0<<4)|(audio_param->channel_num);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
 			AUD_DB[2] = 0x0;
-			if (audio_param->channel_num == CC_6CH)
-				AUD_DB[3] = 0xb;
-			else if (audio_param->channel_num == CC_8CH) {
-				if (hdmi_ch == CC_6CH)
-					AUD_DB[3] = 0x0b;
-				else
-					AUD_DB[3] = 0x13;
-			} else
-				AUD_DB[3] = 0;
+			AUD_DB[3] = audio_param->layout;
 			AUD_DB[4] = 0;
 		}
 		if (CHAN_STAT_BUF) {

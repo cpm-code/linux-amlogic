@@ -5982,6 +5982,12 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 			hdev->aud_output_ch = 0;
 		hdev->audio_param_update_flag = 1;
 	}
+
+	if (audio_param->layout != aud_param->layout) {
+		audio_param->layout = aud_param->layout;
+		hdev->audio_param_update_flag = 1;
+	}
+
 	if (hdev->tx_aud_cfg == 2) {
 		pr_info(AUD "auto mode\n");
 		/* Detect whether Rx is support current audio format */

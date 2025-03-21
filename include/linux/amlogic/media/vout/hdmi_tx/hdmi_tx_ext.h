@@ -55,6 +55,7 @@ struct aud_para {
 	enum hdmi_audio_fs rate;
 	enum hdmi_audio_sampsize size;
 	enum hdmi_audio_chnnum chs;
+	enum hdmi_speak_location layout;
 	bool fifo_rst;
 };
 

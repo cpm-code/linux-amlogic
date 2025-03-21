@@ -365,6 +365,7 @@ struct snd_pcm_runtime {
 	snd_pcm_subformat_t subformat;	/* subformat */
 	unsigned int rate;		/* rate in Hz */
 	unsigned int channels;		/* channels */
+	unsigned int layout;	/* CEA layout */
 	snd_pcm_uframes_t period_size;	/* period size */
 	unsigned int periods;		/* periods */
 	snd_pcm_uframes_t buffer_size;	/* buffer size */
