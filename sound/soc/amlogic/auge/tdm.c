@@ -54,41 +54,6 @@
 
 #define DRV_NAME "snd_tdm"
 
-struct channel_speaker_allocation {
-        int channels;
-        int speakers[8];
-};
-
-#define NL	SNDRV_CHMAP_UNKNOWN
-#define NA	SNDRV_CHMAP_NA
-#define FL	SNDRV_CHMAP_FL
-#define FR	SNDRV_CHMAP_FR
-#define RL	SNDRV_CHMAP_RL
-#define RR	SNDRV_CHMAP_RR
-#define LFE	SNDRV_CHMAP_LFE
-#define FC	SNDRV_CHMAP_FC
-#define RLC	SNDRV_CHMAP_RLC
-#define RRC	SNDRV_CHMAP_RRC
-#define RC	SNDRV_CHMAP_RC
-#define FLC	SNDRV_CHMAP_FLC
-#define FRC	SNDRV_CHMAP_FRC
-#define FLH	SNDRV_CHMAP_TFL
-#define FRH	SNDRV_CHMAP_TFR
-#define FLW	SNDRV_CHMAP_FLW
-#define FRW	SNDRV_CHMAP_FRW
-#define TC	SNDRV_CHMAP_TC
-#define FCH	SNDRV_CHMAP_TFC
-
-static struct channel_speaker_allocation channel_allocations[] = {
-/*      	       channel:   7     6    5    4    3     2    1    0  */
-{ .channels = 2,  .speakers = {  NL,   NL,  NL,  NL,  NL,   NL,  FR,  FL } },
-                                 /* 3.1 CEA 0x03 */
-{ .channels = 4,  .speakers = {  NL,   NL,  NL,  NL,  FC,  LFE,  FR,  FL } },
-                                 /* surround51 CEA 0x0b */
-{ .channels = 6,  .speakers = {  NL,   NL,  RR,  RL,  FC,  LFE,  FR,  FL } },
-                                 /* surround71 CEA 0x13 */
-{ .channels = 8,  .speakers = { RRC,  RLC,  RR,  RL,  FC,  LFE,  FR,  FL } },
-};
 
 static void dump_pcm_setting(struct pcm_setting *setting)
 {
