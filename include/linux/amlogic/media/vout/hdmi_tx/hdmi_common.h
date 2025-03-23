@@ -491,12 +491,12 @@ struct size_map {
 /* FC --Front Center */
 /* FR --Front Right */
 /* FLC-- Front Left Center */
-/* FRC-- Front RiQhtCenter */
+/* FRC-- Front Right Center */
 /* RL-- Rear Left */
 /* RC --Rear Center */
 /* RR-- Rear Right */
 /* RLC-- Rear Left Center */
-/* RRC --Rear RiQhtCenter */
+/* RRC --Rear Right Center */
 /* LFE-- Low Frequency Effect */
 enum hdmi_speak_location {
 	CA_FR_FL = 0,
@@ -519,25 +519,25 @@ enum hdmi_speak_location {
 	CA_RC_RR_RL_FC_FR_FL,
 	CA_RC_RR_RL_FC_LFE_FR_FL,
 
-	CA_RRC_RC_RR_RL_FR_FL,
-	CA_RRC_RC_RR_RL_LFE_FR_FL,
-	CA_RRC_RC_RR_RL_FC_FR_FL,
-	CA_RRC_RC_RR_RL_FC_LFE_FR_FL,
+	CA_RRC_RLC_RR_RL_FR_FL,
+	CA_RRC_RLC_RR_RL_LFE_FR_FL,
+	CA_RRC_RLC_RR_RL_FC_FR_FL,
+	CA_RRC_RLC_RR_RL_FC_LFE_FR_FL,
 
-	CA_FRC_RLC_FR_FL,
-	CA_FRC_RLC_LFE_FR_FL,
-	CA_FRC_RLC_FC_FR_FL,
-	CA_FRC_RLC_FC_LFE_FR_FL,
+	CA_FRC_FLC_FR_FL,
+	CA_FRC_FLC_LFE_FR_FL,
+	CA_FRC_FLC_FC_FR_FL,
+	CA_FRC_FLC_FC_LFE_FR_FL,
 
-	CA_FRC_RLC_RC_FR_FL,
-	CA_FRC_RLC_RC_LFE_FR_FL,
-	CA_FRC_RLC_RC_FC_FR_FL,
-	CA_FRC_RLC_RC_FC_LFE_FR_FL,
+	CA_FRC_FLC_RC_FR_FL,
+	CA_FRC_FLC_RC_LFE_FR_FL,
+	CA_FRC_FLC_RC_FC_FR_FL,
+	CA_FRC_FLC_RC_FC_LFE_FR_FL,
 
-	CA_FRC_RLC_RR_RL_FR_FL,
-	CA_FRC_RLC_RR_RL_LFE_FR_FL,
-	CA_FRC_RLC_RR_RL_FC_FR_FL,
-	CA_FRC_RLC_RR_RL_FC_LFE_FR_FL,
+	CA_FRC_FLC_RR_RL_FR_FL,
+	CA_FRC_FLC_RR_RL_LFE_FR_FL,
+	CA_FRC_FLC_RR_RL_FC_FR_FL,
+	CA_FRC_FLC_RR_RL_FC_LFE_FR_FL,
 };
 
 enum hdmi_audio_downmix {
