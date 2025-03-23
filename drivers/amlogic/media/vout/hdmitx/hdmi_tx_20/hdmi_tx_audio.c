@@ -58,7 +58,7 @@ static const unsigned char channel_status_sample_word_length[] = {
 
 static void hdmi_tx_construct_aud_packet(
 	struct hdmitx_audpara *audio_param, unsigned char *AUD_DB,
-	unsigned char *CHAN_STAT_BUF, int hdmi_ch)
+	unsigned char *CHAN_STAT_BUF)
 {
 #ifndef PCM_USE_INFOFRAME
 	if (audio_param->type == CT_PCM) {
@@ -223,7 +223,6 @@ int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
 	int i, ret = -1;
 	unsigned char AUD_DB[32];
 	unsigned char CHAN_STAT_BUF[24*2];
-	unsigned int hdmi_ch = hdmitx_device->hdmi_ch;
 
 	for (i = 0; i < 32; i++)
 		AUD_DB[i] = 0;
@@ -231,8 +230,7 @@ int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
 		CHAN_STAT_BUF[i] = 0;
 	if (hdmitx_device->hwop.setaudmode(hdmitx_device,
 					   audio_param) >= 0) {
-		hdmi_tx_construct_aud_packet(audio_param, AUD_DB,
-			CHAN_STAT_BUF, hdmi_ch);
+		hdmi_tx_construct_aud_packet(audio_param, AUD_DB, CHAN_STAT_BUF);
 
 		hdmitx_device->hwop.setaudioinfoframe(AUD_DB, CHAN_STAT_BUF);
 		ret = 0;

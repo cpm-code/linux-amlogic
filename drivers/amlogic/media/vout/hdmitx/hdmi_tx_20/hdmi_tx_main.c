@@ -2933,7 +2933,6 @@ void hdmitx_ext_set_i2s_mask(char ch_num, char ch_msk)
 		hdev->aud_output_ch = 0;
 		if (update_flag != hdev->aud_output_ch) {
 			update_flag = hdev->aud_output_ch;
-			hdev->hdmi_ch = 0;
 			hdmitx_set_audio(hdev, &(hdev->cur_audio_param));
 		}
 	}
@@ -2944,7 +2943,6 @@ void hdmitx_ext_set_i2s_mask(char ch_num, char ch_msk)
 	hdev->aud_output_ch = ((ch_num << 4) & 0xf0) | (ch_msk & 0xf);
 	if (update_flag != hdev->aud_output_ch) {
 		update_flag = hdev->aud_output_ch;
-		hdev->hdmi_ch = 0;
 		hdmitx_set_audio(hdev, &(hdev->cur_audio_param));
 	}
 }
@@ -3916,35 +3914,6 @@ static ssize_t show_dv_cap2(struct device *dev,
 	const struct dv_info *dv2 = &hdmitx_device.rxcap.dv_info2;
 
 	return _show_dv_cap(dev, attr, buf, dv2);
-}
-
-static ssize_t show_aud_ch(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	   int pos = 0;
-
-	pos += snprintf(buf + pos, PAGE_SIZE,
-		"hdmi_channel = %d ch\n",
-		hdmitx_device.hdmi_ch ? hdmitx_device.hdmi_ch + 1 : 0);
-	return pos;
-}
-
-static ssize_t store_aud_ch(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	if (strncmp(buf, "6ch", 3) == 0)
-		hdmitx_device.hdmi_ch = 5;
-	else if (strncmp(buf, "8ch", 3) == 0)
-		hdmitx_device.hdmi_ch = 7;
-	else if (strncmp(buf, "2ch", 3) == 0)
-		hdmitx_device.hdmi_ch = 1;
-	else
-		return count;
-
-	hdmitx_device.audio_param_update_flag = 1;
-	hdmitx_device.force_audio_flag = 1;
-
-	return count;
 }
 
 /*
@@ -5377,10 +5346,6 @@ static ssize_t show_hdmirx_info(struct device *dev,
 	buf[pos] = '\0';
 	pr_info("******aud_cap******\n%s\n", buf);
 
-	pos = show_aud_ch(dev, attr, buf);
-	buf[pos] = '\0';
-	pr_info("******aud_ch******\n%s\n", buf);
-
 	pos = show_rawedid(dev, attr, buf);
 	buf[pos] = '\0';
 	pr_info("******rawedid******\n%s\n", buf);
@@ -5593,7 +5558,6 @@ static DEVICE_ATTR(allfmt_names, 0444, show_allfmt_names, NULL);
 static DEVICE_ATTR(contenttype_cap, 0444, show_contenttype_cap, NULL);
 static DEVICE_ATTR(contenttype_mode, 0664,
 	show_contenttype_mode, store_contenttype_mode);
-static DEVICE_ATTR(aud_ch, 0664, show_aud_ch, store_aud_ch);
 static DEVICE_ATTR(avmute, 0664, show_avmute, store_avmute);
 static DEVICE_ATTR(swap, 0644, show_swap, store_swap);
 static DEVICE_ATTR(vic, 0664, show_vic, store_vic);
@@ -6846,8 +6810,6 @@ static int amhdmitx_device_init(struct hdmitx_dev *hdmi_dev)
 		hdmitx_device.mux_hpd_if_pin_high_flag = 1;
 
 	hdmitx_device.audio_param_update_flag = 0;
-	/* 1: 2ch */
-	hdmitx_device.hdmi_ch = 1;
 	hdmitx_device.topo_info =
 		kmalloc(sizeof(struct hdcprp_topo), GFP_KERNEL);
 	if (!hdmitx_device.topo_info)
@@ -7077,7 +7039,6 @@ static int amhdmitx_probe(struct platform_device *pdev)
 	ret = device_create_file(dev, &dev_attr_hdr_cap2);
 	ret = device_create_file(dev, &dev_attr_dv_cap);
 	ret = device_create_file(dev, &dev_attr_dv_cap2);
-	ret = device_create_file(dev, &dev_attr_aud_ch);
 	ret = device_create_file(dev, &dev_attr_avmute);
 	ret = device_create_file(dev, &dev_attr_swap);
 	ret = device_create_file(dev, &dev_attr_vic);
