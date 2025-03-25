@@ -381,6 +381,7 @@ void spdifout_to_hdmitx_ctrl(int spdif_tohdmitxen_separated, int spdif_index)
 		| 0 << 2 /* spdif_clk_inv */
 		| spdif_index << 1 /* spdif_out */
 		| spdif_index << 0 /* spdif_clk */
+		| 0x0 << 28 /* clear clk and dat */
 	);
 
 	/* if tohdmitx_en is separated, need do:
