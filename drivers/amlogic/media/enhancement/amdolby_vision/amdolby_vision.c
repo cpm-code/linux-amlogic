@@ -1636,9 +1636,9 @@ static int dolby_core2_set
 
 bool is_core3_mute_reg(int index)
 {
-  return (index == 12) ||                  // ipt_scale for ipt
-         (index >= 16 && index <= 17) ||   // rgb2yuv scale for yuv
-         (index >= 5 && index <= 9);       // lms2rgb coeff for rgb
+  return (index == 12) ||                  // ipt_scale for ipt (bit depth?)
+         (index >= 16 && index <= 17) ||   // rgb2yuv scale for yuv (output_range)
+         (index >= 5 && index <= 9);       // lms2rgb coeff for rgb (b2a_coeff)
 }
 
 static int dolby_core3_set
@@ -1704,10 +1704,10 @@ static int dolby_core3_set
     if (is_meson_box() || is_meson_tm2_stbmode() || is_meson_sc2()) {
 
       if (new_dovi_setting.dovi_ll_enable && new_dovi_setting.diagnostic_enable == 0) {
-        VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 3, 6, 2); /* post matrix */
+        VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 3, 6, 2);  /* post matrix */
         VSYNC_WR_DV_REG_BITS(VPP_MATRIX_CTRL, 1, 0, 1); /* post matrix */
       } else {
-        VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 6, 2); /* post matrix */
+        VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 6, 2);  /* post matrix */
         VSYNC_WR_DV_REG_BITS(VPP_MATRIX_CTRL, 0, 0, 1); /* post matrix */
       }
 
@@ -1779,6 +1779,7 @@ static int dolby_core3_set
 
   /* for delay */
 
+  /* from addr 0x06 to 0x1F - Colour Space conversion metadata? */
   for (i = 0; i < 26; i++) {
     if (reset || p_core3_dm_regs[i] != last_dm[i] || is_core3_mute_reg(i)) {
       if ((dolby_vision_flags & FLAG_MUTE) && is_core3_mute_reg(i))
@@ -1788,8 +1789,7 @@ static int dolby_core3_set
     }
   }
 
-  /* from addr 0x18 */
-
+  /* from addr 0x24 to 0xA4 [padded size] or 0xF0 [max size] - RPU Metadata - only done for IPT Tunnel */
   if (scramble_en) {
     if (md_count > 204) {
       pr_dolby_error("core3 metadata size %d > 204 !\n", md_count);
@@ -1806,8 +1806,6 @@ static int dolby_core3_set
         VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 0x24 + i, 0);
     }
   }
-
-  /* from addr 0x90 */
 
   /* core3 metadata program done */
 
@@ -2264,14 +2262,14 @@ void enable_dolby_vision(int enable)
 				VSYNC_WR_DV_REG_BITS(VIU_MISC_CTRL1, !core2, 18, 1); // core2
 
 				if (dolby_vision_flags & FLAG_CERTIFICAION) {
-					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 7, 0, 3);		// bypass dither/PPS/SR/CM/EO/OE/vadj2/mtx/gainoff
+					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 7, 0, 3);   // bypass dither/PPS/SR/CM/EO/OE/vadj2/mtx/gainoff
 					video_effect_bypass(1);
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x08000800);	// u12 to s12 (before vadj1) s12 to u12 (before post blend)
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000);	// 12->10 before vadj2 10->12 after gainoff
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x08000800); // u12 to s12 (before vadj1) s12 to u12 (before post blend)
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000); // 12->10 before vadj2 10->12 after gainoff
 				} else {
 					if (dolby_vision_flags & FLAG_BYPASS_VPP) video_effect_bypass(1);
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x20002000);	// 12->10 before vadj1 10->12 before post blend
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000);	// 12->10 before vadj2 10->12 after gainoff
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x20002000); // 12->10 before vadj1 10->12 before post blend
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000); // 12->10 before vadj2 10->12 after gainoff
 				}
 
 				VSYNC_WR_DV_REG(VPP_DUMMY_DATA1, 0x80200);
@@ -2279,10 +2277,10 @@ void enable_dolby_vision(int enable)
 
 				if (dvll) {
 					u32 *reg = (u32 *)&dovi_setting.dm_reg3;
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x8000800);	// input u12 -0x800 to s12
-					VSYNC_WR_DV_REG(VPP_VADJ_CTRL, 0); 				// bypass vadj
-					VSYNC_WR_DV_REG(VPP_GAINOFF_CTRL0, 0);			// bypass gainoff
-					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 1, 1, 2); 	// enable wm tp vks - bypass gainoff to vks
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x8000800); // input u12 -0x800 to s12
+					VSYNC_WR_DV_REG(VPP_VADJ_CTRL, 0);              // bypass vadj
+					VSYNC_WR_DV_REG(VPP_GAINOFF_CTRL0, 0);          // bypass gainoff
+					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 1, 1, 2);  // enable wm tp vks - bypass gainoff to vks
 					enable_rgb_to_yuv_matrix_for_dvll(1, &reg[18], 12);
 				} else {
 					enable_rgb_to_yuv_matrix_for_dvll(0, NULL, 12);
@@ -2328,14 +2326,14 @@ void enable_dolby_vision(int enable)
 				}
 
 				if (dolby_vision_flags & FLAG_CERTIFICAION) {
-					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 7, 0, 3);		// bypass dither/PPS/SR/CM/EO/OE/vadj2/mtx/gainoff
+					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 7, 0, 3);   // bypass dither/PPS/SR/CM/EO/OE/vadj2/mtx/gainoff
 					video_effect_bypass(1);
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x08000800);	// u12 to s12 (before vadj1) s12 to u12 (before post blend)
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000);	// 12->10 before vadj2 10->12 after gainoff
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x08000800); // u12 to s12 (before vadj1) s12 to u12 (before post blend)
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000); // 12->10 before vadj2 10->12 after gainoff
 				} else {
 					if (dolby_vision_flags & FLAG_BYPASS_VPP) video_effect_bypass(1);
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x20002000);	// 12->10 before vadj1 10->12 before post blend
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000);	// 12->10 before vadj2 10->12 after gainoff
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x20002000); // 12->10 before vadj1 10->12 before post blend
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000); // 12->10 before vadj2 10->12 after gainoff
 				}
 
 				VSYNC_WR_DV_REG(VPP_MATRIX_CTRL, 0);
@@ -2344,9 +2342,9 @@ void enable_dolby_vision(int enable)
 				if (dvll) {
 					u32 *reg = (u32 *)&dovi_setting.dm_reg3;
 					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x8000800); // input u12 -0x800 to s12
-					VSYNC_WR_DV_REG(VPP_VADJ_CTRL, 0);				// bypass vadj
-					VSYNC_WR_DV_REG(VPP_GAINOFF_CTRL0, 0);			// bypass gainoff
-					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 1, 1, 2);	// enable wm tp vks - bypass gainoff to vks
+					VSYNC_WR_DV_REG(VPP_VADJ_CTRL, 0);              // bypass vadj
+					VSYNC_WR_DV_REG(VPP_GAINOFF_CTRL0, 0);          // bypass gainoff
+					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 1, 1, 2); // enable wm tp vks - bypass gainoff to vks
 					enable_rgb_to_yuv_matrix_for_dvll(1, &reg[18], (dv_ll_output_mode >> 8) & 0xff);
 				} else {
 					enable_rgb_to_yuv_matrix_for_dvll(0, NULL, 12);
