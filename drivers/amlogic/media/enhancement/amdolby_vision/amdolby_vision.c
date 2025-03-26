@@ -4621,12 +4621,12 @@ static void send_hdmi_pkt_ahead
 			else
 				vinfo->vout_device->fresh_tx_vsif_pkt(
 				                    EOTF_T_DV_AHEAD,
-				                    dolby_vision_target_mode == dovi_ll_enable
-				                      ? YUV422_BIT12
-				                      : RGB_8BIT,
+				                    (dolby_vision_target_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
+				                      ? RGB_8BIT
+				                      : YUV422_BIT12,
 				                    &vsif, false);
 		}
-		pr_dolby_dbg("send_hdmi_pkt ahead: %s\n", dovi_ll_enable ? "LL" : "DV");
+		pr_dolby_dbg("send_hdmi_pkt ahead: %s\n", dovi_ll_enable ? "DV-LL" : "DV-Std");
 	}
 }
 
@@ -5556,7 +5556,6 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 
 	if (dst_format == FORMAT_DOVI) {
 		new_dovi_setting.use_ll_flag = is_dv_ll();
-
 		new_dovi_setting.ll_rgb_desired = ((dolby_vision_flags & FLAG_FORCE_RGB_OUTPUT) ||
 		                                   (dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444));
 	} else {
