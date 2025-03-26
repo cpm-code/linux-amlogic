@@ -286,9 +286,9 @@ static int dolby_vision_dolby_vsvdb_brightness_lvl_pq20 = -4;
 module_param(dolby_vision_dolby_vsvdb_brightness_lvl_pq20, int, 0664);
 MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_brightness_lvl_pq20, "\n dolby_vision_dolby_vsvdb_brightness_lvl_pq20\n");
 
-static bool dolby_vision_hdr_for_lldv = false;
-module_param(dolby_vision_hdr_for_lldv, bool, 0664);
-MODULE_PARM_DESC(dolby_vision_hdr_for_lldv, "\n dolby_vision_hdr_for_lldv\n");
+static bool dolby_vision_hdr_for_dv_ll = false;
+module_param(dolby_vision_hdr_for_dv_ll, bool, 0664);
+MODULE_PARM_DESC(dolby_vision_hdr_for_dv_ll, "\n dolby_vision_hdr_for_dv_ll\n");
 
 static unsigned int dolby_vision_hdr_inject = 0;
 module_param(dolby_vision_hdr_inject, uint, 0664);
@@ -4251,7 +4251,7 @@ static inline u32 get_swap_endian_u32(char* input)
 	return (ret == 0) ? (u32)result : 0;
 }
 
-static void set_hdr10_data_for_lldv(void)
+static void set_hdr10_data_for_dv_ll(void)
 {
 	hdr10_data.features =
 			  (1 << 29)   // 1 video available / present
@@ -4443,11 +4443,11 @@ static void send_hdmi_pkt
 				hdr10_data.max_frame_average);
 		}
 
-	} else if (dst_format == FORMAT_DOVI && dovi_setting.dovi_ll_enable && dolby_vision_hdr_for_lldv) {
+	} else if (dst_format == FORMAT_DOVI && dovi_setting.dovi_ll_enable && dolby_vision_hdr_for_dv_ll) {
 
 		sdr_transition_delay = 0;
 
-		set_hdr10_data_for_lldv();
+		set_hdr10_data_for_dv_ll();
 
 		if (vinfo && vinfo->vout_device &&
 		    vinfo->vout_device->fresh_tx_hdr_pkt)
@@ -4740,7 +4740,7 @@ static inline void set_dolby_vsvdb_source_lum(u16 min, u16 max)
   }
 }
 
-static inline void limit_dolby_vsvdb_to_source_lum_for_lldv(void)
+static inline void limit_dolby_vsvdb_to_source_lum_for_dv_ll(void)
 {
 
   if ((dolby_vision_dolby_vsvdb_source_lum_limit == 1) ||
@@ -5534,7 +5534,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	if ((total_md_size > 0) && is_dv_ll())
 	{
 		// Apply limits to the VSVDB min and max.
-		limit_dolby_vsvdb_to_source_lum_for_lldv();
+		limit_dolby_vsvdb_to_source_lum_for_dv_ll();
 
 		// When min source set to PQ 20, apply brightness correction.
 		// TODO: Do we need to remove this after playing - how is it reset for other video etc?
