@@ -342,6 +342,10 @@ static unsigned int dolby_vision_signal_range = 0;
 module_param(dolby_vision_signal_range, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_signal_range, "\n dolby_vision_signal_range\n");
 
+static bool dolby_vision_suppress_use_ll_flag = false;
+module_param(dolby_vision_suppress_use_ll_flag, bool, 0664);
+MODULE_PARM_DESC(dolby_vision_suppress_use_ll_flag, "\n dolby_vision_suppress_use_ll_flag\n");
+
 /*bit0:reset core1 reg; bit1:reset core2 reg;bit2:reset core3 reg*/
 /*bit3: reset core1 lut; bit4: reset core2 lut*/
 static unsigned int force_update_reg;
@@ -5555,7 +5559,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		pri_mode = V_PRIORITY;
 
 	if (dst_format == FORMAT_DOVI) {
-		new_dovi_setting.use_ll_flag = is_dv_ll();
+		new_dovi_setting.use_ll_flag = dolby_vision_suppress_use_ll_flag ? 0 : is_dv_ll();
 		new_dovi_setting.ll_rgb_desired = ((dolby_vision_flags & FLAG_FORCE_RGB_OUTPUT) ||
 		                                   (dolby_vision_ll_policy == DOLBY_VISION_LL_RGB444));
 	} else {
