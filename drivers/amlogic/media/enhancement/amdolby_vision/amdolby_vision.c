@@ -281,8 +281,8 @@ module_param(dolby_vision_dolby_vsvdb_source_lum_limit, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_source_lum_limit, "\n dolby_vision_dolby_vsvdb_source_lum_limit\n");
 
 // DV LL - Brightness adjustment: -1024 to 1023.
-// Ugoos AM6B+ - Value when using VSVDB Min Lum PQ=20 is -4.
-static int dolby_vision_dolby_vsvdb_brightness_lvl_pq20 = -4;
+// Ugoos AM6B+ - Value when using VSVDB Min Lum PQ=20 is advised to be -1.
+static int dolby_vision_dolby_vsvdb_brightness_lvl_pq20 = 0;
 module_param(dolby_vision_dolby_vsvdb_brightness_lvl_pq20, int, 0664);
 MODULE_PARM_DESC(dolby_vision_dolby_vsvdb_brightness_lvl_pq20, "\n dolby_vision_dolby_vsvdb_brightness_lvl_pq20\n");
 
