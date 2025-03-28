@@ -81,7 +81,7 @@ struct snd_pcm_ops {
 	int (*copy)(struct snd_pcm_substream *substream, int channel,
 		    snd_pcm_uframes_t pos,
 		    void __user *buf, snd_pcm_uframes_t count);
-	int (*silence)(struct snd_pcm_substream *substream, int channel, 
+	int (*silence)(struct snd_pcm_substream *substream, int channel,
 		       snd_pcm_uframes_t pos, snd_pcm_uframes_t count);
 	struct page *(*page)(struct snd_pcm_substream *substream,
 			     unsigned long offset);
@@ -240,7 +240,7 @@ struct snd_pcm_hw_rule {
 };
 
 struct snd_pcm_hw_constraints {
-	struct snd_mask masks[SNDRV_PCM_HW_PARAM_LAST_MASK - 
+	struct snd_mask masks[SNDRV_PCM_HW_PARAM_LAST_MASK -
 			 SNDRV_PCM_HW_PARAM_FIRST_MASK + 1];
 	struct snd_interval intervals[SNDRV_PCM_HW_PARAM_LAST_INTERVAL -
 			     SNDRV_PCM_HW_PARAM_FIRST_INTERVAL + 1];
@@ -365,7 +365,7 @@ struct snd_pcm_runtime {
 	snd_pcm_subformat_t subformat;	/* subformat */
 	unsigned int rate;		/* rate in Hz */
 	unsigned int channels;		/* channels */
-	unsigned int layout;	/* CEA layout */
+	unsigned int layout;		/* CEA layout */
 	snd_pcm_uframes_t period_size;	/* period size */
 	unsigned int periods;		/* periods */
 	snd_pcm_uframes_t buffer_size;	/* buffer size */
@@ -415,7 +415,7 @@ struct snd_pcm_runtime {
 	unsigned int timer_resolution;	/* timer resolution */
 	int tstamp_type;		/* timestamp type */
 
-	/* -- DMA -- */           
+	/* -- DMA -- */
 	unsigned char *dma_area;	/* DMA area */
 	dma_addr_t dma_addr;		/* physical bus address (not accessible from main CPU) */
 	size_t dma_bytes;		/* size of DMA area */
@@ -823,7 +823,7 @@ static inline int snd_pcm_capture_ready(struct snd_pcm_substream *substream)
 static inline int snd_pcm_playback_data(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	
+
 	if (runtime->stop_threshold >= runtime->boundary)
 		return 1;
 	return snd_pcm_playback_avail(runtime) < runtime->buffer_size;
@@ -871,7 +871,7 @@ static inline int snd_pcm_capture_empty(struct snd_pcm_substream *substream)
  * The trigger_master mark is cleared at timestamp updates at the end
  * of trigger operations.
  */
-static inline void snd_pcm_trigger_done(struct snd_pcm_substream *substream, 
+static inline void snd_pcm_trigger_done(struct snd_pcm_substream *substream,
 					struct snd_pcm_substream *master)
 {
 	substream->runtime->trigger_master = master;
@@ -970,7 +970,7 @@ static inline unsigned int params_buffer_bytes(const struct snd_pcm_hw_params *p
 int snd_interval_refine(struct snd_interval *i, const struct snd_interval *v);
 void snd_interval_mul(const struct snd_interval *a, const struct snd_interval *b, struct snd_interval *c);
 void snd_interval_div(const struct snd_interval *a, const struct snd_interval *b, struct snd_interval *c);
-void snd_interval_muldivk(const struct snd_interval *a, const struct snd_interval *b, 
+void snd_interval_muldivk(const struct snd_interval *a, const struct snd_interval *b,
 			  unsigned int k, struct snd_interval *c);
 void snd_interval_mulkdiv(const struct snd_interval *a, unsigned int k,
 			  const struct snd_interval *b, struct snd_interval *c);
@@ -998,7 +998,7 @@ int snd_pcm_hw_constraint_mask64(struct snd_pcm_runtime *runtime, snd_pcm_hw_par
 int snd_pcm_hw_constraint_minmax(struct snd_pcm_runtime *runtime, snd_pcm_hw_param_t var,
 				 unsigned int min, unsigned int max);
 int snd_pcm_hw_constraint_integer(struct snd_pcm_runtime *runtime, snd_pcm_hw_param_t var);
-int snd_pcm_hw_constraint_list(struct snd_pcm_runtime *runtime, 
+int snd_pcm_hw_constraint_list(struct snd_pcm_runtime *runtime,
 			       unsigned int cond,
 			       snd_pcm_hw_param_t var,
 			       const struct snd_pcm_hw_constraint_list *l);
@@ -1006,15 +1006,15 @@ int snd_pcm_hw_constraint_ranges(struct snd_pcm_runtime *runtime,
 				 unsigned int cond,
 				 snd_pcm_hw_param_t var,
 				 const struct snd_pcm_hw_constraint_ranges *r);
-int snd_pcm_hw_constraint_ratnums(struct snd_pcm_runtime *runtime, 
+int snd_pcm_hw_constraint_ratnums(struct snd_pcm_runtime *runtime,
 				  unsigned int cond,
 				  snd_pcm_hw_param_t var,
 				  const struct snd_pcm_hw_constraint_ratnums *r);
-int snd_pcm_hw_constraint_ratdens(struct snd_pcm_runtime *runtime, 
+int snd_pcm_hw_constraint_ratdens(struct snd_pcm_runtime *runtime,
 				  unsigned int cond,
 				  snd_pcm_hw_param_t var,
 				  const struct snd_pcm_hw_constraint_ratdens *r);
-int snd_pcm_hw_constraint_msbits(struct snd_pcm_runtime *runtime, 
+int snd_pcm_hw_constraint_msbits(struct snd_pcm_runtime *runtime,
 				 unsigned int cond,
 				 unsigned int width,
 				 unsigned int msbits);
@@ -1079,7 +1079,7 @@ void snd_pcm_set_ops(struct snd_pcm * pcm, int direction,
 		     const struct snd_pcm_ops *ops);
 void snd_pcm_set_sync(struct snd_pcm_substream *substream);
 int snd_pcm_lib_ioctl(struct snd_pcm_substream *substream,
-		      unsigned int cmd, void *arg);                      
+		      unsigned int cmd, void *arg);
 int snd_pcm_update_state(struct snd_pcm_substream *substream,
 			 struct snd_pcm_runtime *runtime);
 int snd_pcm_update_hw_ptr(struct snd_pcm_substream *substream);
