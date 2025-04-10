@@ -5055,7 +5055,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	u32 graphic_max = 100; /* 1 */
 	int ret_flags = 0;
 	static int bypass_frame = -1;
-	static int last_current_format;
+	static int last_current_format = FORMAT_INVALID;
 	int ret = -1;
 	bool mel_flag = false;
 	unsigned long time_use = 0;
@@ -5149,7 +5149,10 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 					 &total_comp_size,
 					 &total_md_size,
 					 &src_format,
-					  &ret_flags, drop_flag);
+					 &ret_flags, drop_flag);
+
+				// CE: received not finished metadata from decoder, ignore source format change
+				if ((last_current_format == FORMAT_DOVI) && (src_format != FORMAT_DOVI)) src_format = FORMAT_DOVI;
 			}
 
 			if (force_mel) ret_flags = 1;
