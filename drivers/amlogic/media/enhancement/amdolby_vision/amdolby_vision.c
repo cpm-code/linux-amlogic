@@ -3380,15 +3380,13 @@ void dolby_vision_vf_put(struct vframe_s *vf)
 			if (dv_vf[i][0] == vf) {
 				if (dv_vf[i][1]) {
 					if (debug_dolby & 2)
-						pr_dolby_dbg
-					("put bl(%p-%lld) with el(%p-%lld)\n",
-					 vf, vf->pts_us64,
-					 dv_vf[i][1],
-					 dv_vf[i][1]->pts_us64);
+						pr_dolby_dbg("put bl(%p-%lld) with el(%p-%lld)\n",
+						             vf, vf->pts_us64,
+						             dv_vf[i][1],
+						             dv_vf[i][1]->pts_us64);
 					dvel_vf_put(dv_vf[i][1]);
 				} else if (debug_dolby & 2) {
-					pr_dolby_dbg("--- put bl(%p-%lld) ---\n",
-						vf, vf->pts_us64);
+					pr_dolby_dbg("--- put bl(%p-%lld) ---\n", vf, vf->pts_us64);
 				}
 				dv_vf[i][0] = NULL;
 				dv_vf[i][1] = NULL;
