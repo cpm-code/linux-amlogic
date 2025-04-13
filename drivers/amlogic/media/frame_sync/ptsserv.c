@@ -764,343 +764,94 @@ int pts_lookup(u8 type, u32 *val, u32 *frame_size, u32 pts_margin)
 		return -EINVAL;
 }
 EXPORT_SYMBOL(pts_lookup);
+
+// refactor pts lookup offset - changes required for DV FEL, to correctly pick up pts as written by AMLCodec.
+// Caution: only supports this use case - audio logic removed as not needed in this setup.
 static int pts_lookup_offset_inline_locked(u8 type, u32 offset, u32 *val,
 		u32 *frame_size, u32 pts_margin, u64 *us64)
 {
 	struct pts_table_s *ptable;
-	int lookup_threshold;
 
-	int look_cnt = 0;
-
-	if (type >= PTS_TYPE_MAX)
-		return -EINVAL;
+	if (type != PTS_TYPE_VIDEO) return -EINVAL;
 
 	ptable = &pts_table[type];
 
-	if (pts_margin == 0)
-		lookup_threshold = ptable->lookup_threshold;
-	else
-		lookup_threshold = pts_margin;
+	if (!(likely(ptable->status == PTS_RUNNING))) return -1;
 
-	if (!ptable->first_lookup_ok)
-		lookup_threshold <<= 1;
-
-
-
-	if (likely(ptable->status == PTS_RUNNING)) {
-		struct pts_rec_s *p = NULL;
-		struct pts_rec_s *p2 = NULL;
-
-		if ((ptable->lookup_cache_valid) &&
-		    (offset == ptable->lookup_cache_offset)) {
-			*val = ptable->lookup_cache_pts;
-			*us64 = ptable->lookup_cache_pts_us64;
-			return 0;
-		}
-
-		if ((type == PTS_TYPE_VIDEO) &&
-		    !list_empty(&ptable->valid_list)) {
-			struct pts_rec_s *rec = NULL;
-			struct pts_rec_s *next = NULL;
-			int look_cnt1 = 0;
-
-			list_for_each_entry_safe(rec,
-				next, &ptable->valid_list, list) {
-				if (OFFSET_DIFF(offset, rec->offset) >
-					PTS_VALID_OFFSET_TO_CHECK) {
-					if (ptable->pts_search == &rec->list)
-						ptable->pts_search =
-						rec->list.next;
-
-					if (tsync_get_debug_vpts()) {
-						pr_info("remove node  offset: 0x%x cnt:%d\n",
-							rec->offset, look_cnt1);
-					}
-
-					list_move_tail(&rec->list,
-						&ptable->free_list);
-					look_cnt1++;
-				} else {
-					break;
-				}
-			}
-		}
-
-		if (list_empty(&ptable->valid_list))
-			return -1;
-
-		if (ptable->pts_search == &ptable->valid_list) {
-			p = list_entry(ptable->valid_list.next,
-				       struct pts_rec_s, list);
-		} else {
-			p = list_entry(ptable->pts_search, struct pts_rec_s,
-				       list);
-		}
-
-		if (OFFSET_LATER(offset, p->offset)) {
-			p2 = p;	/* lookup candidate */
-
-			list_for_each_entry_continue(p, &ptable->valid_list,
-						     list) {
-#if 0
-				if (type == PTS_TYPE_VIDEO)
-					pr_info("   >> rec: 0x%x\n", p->offset);
-#endif
-				look_cnt++;
-
-				if (OFFSET_LATER(p->offset, offset))
-					break;
-
-				if (type == PTS_TYPE_AUDIO) {
-					list_move_tail(&p2->list,
-							&ptable->free_list);
-				}
-
-				p2 = p;
-			}
-			if (&p->list != &ptable->valid_list) {
-				/* if p2 lookup fail, set p2 = p */
-				if (type == PTS_TYPE_VIDEO && p2 && p &&
-					OFFSET_DIFF(offset, p2->offset) >
-					lookup_threshold &&
-					abs(OFFSET_DIFF(offset, p->offset)) <
-					lookup_threshold)
-					p2 = p;
-			}
-		} else if (OFFSET_LATER(p->offset, offset)) {
-			list_for_each_entry_continue_reverse(p,
-					&ptable->
-					valid_list, list) {
-#if 0
-				if (type == PTS_TYPE_VIDEO)
-					pr_info("   >> rec: 0x%x\n", p->offset);
-#endif
-#ifdef DEBUG
-				look_cnt++;
-#endif
-				if (OFFSET_EQLATER(offset, p->offset)) {
-					p2 = p;
-					break;
-				}
-			}
-		} else
-			p2 = p;
-
-		if (type == PTS_TYPE_VIDEO)
-			*frame_size = p->size;
-
-		if ((p2) &&
-			(OFFSET_DIFF(offset, p2->offset) < lookup_threshold)) {
-			if (p2->val == 0)	/* FFT: set valid vpts */
-				p2->val = 1;
-			if (tsync_get_debug_pts_checkout()) {
-				if (tsync_get_debug_vpts()
-					&& (type == PTS_TYPE_VIDEO)) {
-					pr_info
-					("vpts look up offset<0x%x> -->",
-					 offset);
-					pr_info
-				("<0x%x:0x%x>, fsize %x, look_cnt = %d\n",
-							p2->offset, p2->val,
-							p2->size, look_cnt);
-				}
-
-				if (tsync_get_debug_apts()
-					&& (type == PTS_TYPE_AUDIO)) {
-					pr_info
-					("apts look up offset<0x%x> -->",
-					 offset);
-					pr_info
-					("<0x%x:0x%x>, look_cnt = %d\n",
-					 p2->offset, p2->val, look_cnt);
-
-				}
-			}
-			*val = p2->val;
-			*us64 = p2->pts_us64;
-			*frame_size = p2->size;
-
-#ifdef CALC_CACHED_TIME
-			ptable->last_checkout_pts = p2->val;
-			ptable->last_checkout_offset = offset;
-#endif
-
-			ptable->lookup_cache_pts = *val;
-			ptable->lookup_cache_pts_us64 = *us64;
-			ptable->lookup_cache_offset = offset;
-			ptable->lookup_cache_valid = true;
-
-			/* update next look up search start point */
-			ptable->pts_search = p2->list.prev;
-
-			list_move_tail(&p2->list, &ptable->free_list);
-
-
-			if (!ptable->first_lookup_ok) {
-				ptable->first_lookup_ok = 1;
-				if (type == PTS_TYPE_VIDEO ||
-					type == PTS_TYPE_AUDIO) {
-					pr_info("[pts_kpi] first lookup %spts=0x%x offset:0x%x\n",
-						(type == PTS_TYPE_VIDEO)?"v":"a",
-						*val, offset);
-					/*timestamp_firstvpts_set(*val);*/
-				}
-				if (tsync_get_debug_pts_checkout()) {
-					if (tsync_get_debug_vpts()
-						&& (type == PTS_TYPE_VIDEO)) {
-						pr_info("first vpts look up");
-						pr_info("offset<0x%x> -->",
-								offset);
-						pr_info("<0x%x:0x%x> ok!\n",
-								p2->offset,
-								p2->val);
-					}
-					if (tsync_get_debug_apts()
-						&& (type == PTS_TYPE_AUDIO)) {
-						pr_info("first apts look up");
-						pr_info("offset<0x%x> -->",
-								offset);
-						pr_info("<0x%x:0x%x> ok!\n",
-								p2->offset,
-								p2->val);
-
-					}
-				}
-			}
-			return 0;
-
-		}
-#ifdef INTERPOLATE_AUDIO_PTS
-		else if ((type == PTS_TYPE_AUDIO) &&
-				 (p2 != NULL) &&
-				 (!list_is_last(&p2->list,
-						&ptable->valid_list))) {
-			p = list_entry(p2->list.next, struct pts_rec_s, list);
-			if (VAL_DIFF(p->val, p2->val) <
-				INTERPOLATE_AUDIO_RESOLUTION
-				&& (VAL_DIFF(p->val, p2->val) >= 0)) {
-				/* do interpolation between [p2, p] */
-				*val =
-					div_u64((((u64)p->val - p2->val) *
-						(offset - p2->offset)),
-						(p->offset - p2->offset)) +
-					p2->val;
-				*us64 = (u64)(*val) << 32;
-
-				if (tsync_get_debug_pts_checkout()
-					&& tsync_get_debug_apts()
-					&& (type == PTS_TYPE_AUDIO)) {
-					pr_info("apts look up offset");
-					pr_info("<0x%x> --><0x%x> ",
-							offset, *val);
-					pr_info("<0x%x:0x%x>-<0x%x:0x%x>\n",
-							p2->offset, p2->val,
-							p->offset, p->val);
-				}
-#ifdef CALC_CACHED_TIME
-				ptable->last_checkout_pts = *val;
-				ptable->last_checkout_offset = offset;
-
-#endif
-				ptable->lookup_cache_pts = *val;
-				ptable->lookup_cache_offset = offset;
-				ptable->lookup_cache_valid = true;
-
-				/* update next look up search start point */
-				ptable->pts_search = p2->list.prev;
-
-				list_move_tail(&p2->list, &ptable->free_list);
-
-
-				if (!ptable->first_lookup_ok) {
-					ptable->first_lookup_ok = 1;
-					if (tsync_get_debug_pts_checkout()
-						&& tsync_get_debug_apts()
-						&& (type == PTS_TYPE_AUDIO)) {
-						pr_info("first apts look up");
-						pr_info("offset<0x%x>", offset);
-						pr_info("--> <0x%x> ", *val);
-						pr_info("<0x%x:0x%x>",
-								p2->offset,
-								p2->val);
-						pr_info("-<0x%x:0x%x>\n",
-								p->offset,
-								p->val);
-					}
-				}
-				return 0;
-			}
-		}
-#endif
-		else {
-			/*
-			 *when first pts lookup failed,
-			 * use first checkin pts instead
-			 */
-			if (!ptable->first_lookup_ok) {
-				*val = ptable->first_checkin_pts;
-				*us64 = ptable->first_checkin_pts_us64;
-				ptable->first_lookup_ok = 1;
-				ptable->first_lookup_is_fail = 1;
-
-				if (type == PTS_TYPE_VIDEO) {
-					if (timestamp_vpts_get() == 0)
-						timestamp_firstvpts_set(1);
-					else
-						timestamp_firstvpts_set(
-						timestamp_vpts_get());
-					pr_info("video first pts lookup failed. offset:0x%x\n",
-						offset);
-				}
-
-				if (tsync_get_debug_pts_checkout()) {
-					if (tsync_get_debug_vpts()
-						&& (type == PTS_TYPE_VIDEO)) {
-						pr_info("first vpts look up fail");
-						pr_info(" offset<0x%x>,",
-								offset);
-						pr_info("return ");
-						pr_info("first_checkin_pts");
-						pr_info("<0x%x>\n", *val);
-					}
-					if (tsync_get_debug_apts()
-						&& (type == PTS_TYPE_AUDIO)) {
-
-						pr_info("first apts look up fail");
-						pr_info(" offset<0x%x>,",
-								offset);
-						pr_info("return ");
-						pr_info("first_checkin_pts");
-						pr_info("<0x%x>\n", *val);
-					}
-				}
-
-
-				return 0;
-			}
-
-			if (tsync_get_debug_pts_checkout()) {
-				if (tsync_get_debug_vpts()
-					&& (type == PTS_TYPE_VIDEO)) {
-					pr_info("vpts look up offset<0x%x> fail,",
-							offset);
-					pr_info("look_cnt = %d\n",
-							look_cnt);
-				}
-				if (tsync_get_debug_apts()
-					&& (type == PTS_TYPE_AUDIO)) {
-					pr_info("apts look up offset<0x%x> fail,",
-							offset);
-					pr_info("look_cnt = %d\n",
-							look_cnt);
-				}
-			}
-
-
-			return -1;
-		}
+	// Check cache first for exact match
+	if ((ptable->lookup_cache_valid) &&
+		(ptable->lookup_cache_offset == offset))
+	{
+		*val = ptable->lookup_cache_pts;
+		*us64 = ptable->lookup_cache_pts_us64;
+		return 0;
 	}
 
+	if (list_empty(&ptable->valid_list)) return -1;
+
+	// Find nearest value (prefer lower when between two values)
+	struct pts_rec_s *best_match = NULL;
+	struct pts_rec_s *rec = NULL;
+	struct pts_rec_s *next = NULL;
+
+	// remove obsolete entries and find if-any "preceding" match for the passed offset.
+	list_for_each_entry_safe(rec, next, &ptable->valid_list, list)
+	{
+		// Remove entries that are too old
+		if (OFFSET_DIFF(offset, rec->offset) > PTS_VALID_OFFSET_TO_CHECK)
+		{
+			list_move_tail(&rec->list, &ptable->free_list);
+			continue;
+		}
+
+		// If this entry is before or at our target offset
+		if (!OFFSET_LATER(rec->offset, offset))
+			best_match = rec;
+		else
+			break; // We've gone past our target offset
+	}
+
+	// If we found a match
+	if (best_match)
+	{
+		*val = best_match->val;
+		*us64 = best_match->pts_us64;
+		*frame_size = best_match->size;
+
+		// Update cache
+		ptable->lookup_cache_pts = *val;
+		ptable->lookup_cache_pts_us64 = *us64;
+		ptable->lookup_cache_offset = offset;
+		ptable->lookup_cache_valid = true;
+
+		// Handle first lookup case
+		if (!ptable->first_lookup_ok) ptable->first_lookup_ok = 1;
+
+		// Move to free list
+		list_move_tail(&best_match->list, &ptable->free_list);
+
+		return 0;
+
+	}
+	else
+	{
+		// Handle first lookup failure case
+		if (!ptable->first_lookup_ok)
+		{
+			*val = ptable->first_checkin_pts;
+			*us64 = ptable->first_checkin_pts_us64;
+
+			ptable->first_lookup_ok = 1;
+			ptable->first_lookup_is_fail = 1;
+
+			if (timestamp_vpts_get() == 0)
+				timestamp_firstvpts_set(1);
+			else
+				timestamp_firstvpts_set(timestamp_vpts_get());
+
+			return 0;
+		}
+	}
 
 	return -1;
 }
