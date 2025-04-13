@@ -1066,8 +1066,7 @@ static int aml_dai_tdm_chmap_ctl_tlv(struct snd_kcontrol *kcontrol, int op_flag,
 		int c;
 		chs_bytes = ch.channels * 4;
 
-		if (size < 8)
-			return -ENOMEM;
+		if (size < 8) return -ENOMEM;
 
 		if (put_user(SNDRV_CTL_TLVT_CHMAP_FIXED, dst) ||
 		    put_user(chs_bytes, dst + 1))
@@ -1082,7 +1081,7 @@ static int aml_dai_tdm_chmap_ctl_tlv(struct snd_kcontrol *kcontrol, int op_flag,
 		size -= chs_bytes;
 		count += chs_bytes;
 
-		for (c = 0; c < ch.channels; c++) {
+		for (c = ch.channels - 1; c >= 0; c--) {
 			int sp = ch.speakers[c];
 			if (sp) {
 				if (put_user(sp, dst)) return -EFAULT;
@@ -1107,7 +1106,7 @@ static int aml_dai_tdm_chmap_ctl_get(struct snd_kcontrol *kcontrol,
 	if (mutex_lock_interruptible(&prtd->chmap_lock)) return -EINTR;
 
 	for (channel = 0; channel < ch.channels; channel++)
-		ucontrol->value.integer.value[channel] = ch.speakers[channel];
+		ucontrol->value.integer.value[ch.channels - channel - 1] = ch.speakers[channel];
 
 	mutex_unlock(&prtd->chmap_lock);
 	return res;
@@ -1133,7 +1132,7 @@ static int aml_dai_tdm_chmap_ctl_put(struct snd_kcontrol *kcontrol,
 
 		matches = 1;
 		for (channel = 0; channel < runtime->channels; channel++) {
-			if (ucontrol->value.integer.value[channel] != ch.speakers[channel]) {
+			if (ucontrol->value.integer.value[runtime->channels - channel - 1] != ch.speakers[channel]) {
 				matches = 0;
 				break;
 			}

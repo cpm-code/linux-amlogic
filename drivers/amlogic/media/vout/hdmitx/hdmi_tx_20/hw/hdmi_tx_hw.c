@@ -2680,7 +2680,7 @@ static void set_aud_samp_pkt(struct hdmitx_dev *hdev,
 			set_aud_samp_reg(1, 1, 1);
 			break;
 		case CT_PCM: /* AudSamp */
-			set_aud_samp_reg((GET_OUTCHN_NO(hdev->aud_output_ch) > 2), 0, 1);
+			set_aud_samp_reg(0, 0, (GET_OUTCHN_NO(hdev->aud_output_ch) > 2));
 			break;
 		case CT_AC_3:
 		case CT_DOLBY_D:
