@@ -709,11 +709,11 @@ static int pts_lookup_offset_inline_locked(u8 type, u32 offset, u32 *val, u32 *f
 
 	ptable = &pts_table[type];
 
-	if (!(likely(ptable->status == PTS_RUNNING))) return -1;
+	if (unlikely(ptable->status != PTS_RUNNING)) return -1;
 
 	// check cache first for exact match
 	if ((ptable->lookup_cache_valid) &&
-		(ptable->lookup_cache_offset == offset))
+	    (ptable->lookup_cache_offset == offset))
 	{
 		*val = ptable->lookup_cache_pts;
 		*us64 = ptable->lookup_cache_pts_us64;
