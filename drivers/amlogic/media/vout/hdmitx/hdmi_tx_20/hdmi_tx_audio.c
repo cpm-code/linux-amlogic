@@ -185,12 +185,14 @@ int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
 
 	for (i = 0; i < 32; i++)
 		AUD_DB[i] = 0;
+
 	for (i = 0; i < (24*2); i++)
 		CHAN_STAT_BUF[i] = 0;
-	if (hdmitx_device->hwop.setaudmode(hdmitx_device,
-					   audio_param) >= 0) {
-		hdmi_tx_construct_aud_packet(audio_param, AUD_DB, CHAN_STAT_BUF);
 
+	if (hdmitx_device->hwop.setaudmode(hdmitx_device, audio_param) >= 0) {
+		// Not used for anything - keep for log statements
+		hdmi_tx_construct_aud_packet(audio_param, AUD_DB, CHAN_STAT_BUF);
+		// empty function - does nothing
 		hdmitx_device->hwop.setaudioinfoframe(AUD_DB, CHAN_STAT_BUF);
 		ret = 0;
 	}
