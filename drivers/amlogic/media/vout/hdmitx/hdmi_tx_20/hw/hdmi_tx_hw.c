@@ -2567,35 +2567,34 @@ static void set_aud_chnls(struct hdmitx_dev *hdev,
 static void set_aud_info_pkt(struct hdmitx_dev *hdev,
 	struct hdmitx_audpara *audio_param)
 {
-	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 0, 0, 4); /* CT */
-	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, audio_param->channel_num,
-		4, 3); /* CC */
-	if (GET_OUTCHN_NO(hdev->aud_output_ch))
-		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0,
-			GET_OUTCHN_NO(hdev->aud_output_ch) - 1, 4, 3);
-	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF1, 0, 0, 3); /* SF */
-	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF1, 0, 4, 2); /* SS */
-	switch (audio_param->type) {
-	case CT_MAT:
-	case CT_DTS_HD_MA:
-		/* CC: 8ch */
-		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 7, 4, 3);
-		hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x13);
-		break;
-	case CT_PCM:
-		if (!hdev->aud_output_ch)
-			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, audio_param->channel_num, 4, 3);
-		hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, audio_param->layout);
-		break;
-	case CT_DTS:
-	case CT_DTS_HD:
-	default:
-		/* CC: 2ch */
-		hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 1, 4, 3);
-		hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, 0x0);
-		break;
+	switch (audio_param->type)
+	{
+		case CT_MAT:
+		case CT_DTS_HD_MA:
+			/* CC: 8ch */
+			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 0, 0, 4);                 // CT (Coding Type) - [0000] Refer to stream
+			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, CC_8CH, 4, 3);            // CC (Channel Count)
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, CA_RRC_RLC_RR_RL_FC_LFE_FR_FL); // CA (Channel Allocation)
+			break;
+		case CT_PCM:
+			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 1, 0, 4);                        // CT (Coding Type) - [0001] LPCM
+			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, audio_param->channel_num, 4, 3); // CC (Channel Count)
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, audio_param->layout);                  // CA (Channel Allocation)
+			break;
+		case CT_DTS:
+		case CT_DTS_HD:
+		default:
+			/* CC: 2ch */
+			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 0, 0, 4);      // CT (Coding Type) - [0000] Refer to stream
+			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, CC_2CH, 4, 3); // CC (Channel Count)
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, CA_FR_FL);			// CA (Channel Allocation)
+			break;
 	}
-	hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF3, 0);
+
+	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF1, 0, 0, 3); // SF (Sampling Frequency) - [000] Refer to stream
+	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF1, 0, 4, 2); // SS (Sampling Size) - [00] Refer to stream
+
+	hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF3, 0); // See comments on HDMITX_DWC_FC_AUDICONF3
 }
 
 static void set_aud_acr_pkt(struct hdmitx_dev *hdev,
@@ -2737,6 +2736,7 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 		hsty_hdmiaud_config_num = 8;
 
 	audio_mute_op(hdev->tx_aud_cfg);
+
 	/* PCM & multi channel use I2S */
 	if (audio_param->type == CT_PCM &&
 	    audio_param->channel_num > 2)
