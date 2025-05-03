@@ -64,17 +64,9 @@ static void hdmi_tx_construct_aud_packet(
 	if (audio_param->type == CT_PCM) {
 		pr_info(AUD "Audio Type: PCM\n");
 		if (AUD_DB) {
-			/*Note: HDMI Spec V1.4 Page 154*/
-			if ((audio_param->channel_num == CC_2CH) ||
-				(audio_param->channel_num ==
-				CC_REFER_TO_STREAM))
-				AUD_DB[0] = 0;
-			else
-				AUD_DB[0] = (0<<4)|(audio_param->channel_num);
+			AUD_DB[0] = (CT_PCM<<4)|(audio_param->channel_num & 0x07);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[2] = 0x0;
 			AUD_DB[3] = audio_param->layout;
-			AUD_DB[4] = 0;
 		}
 		if (CHAN_STAT_BUF) {
 			CHAN_STAT_BUF[2] = 0x10|(audio_param->channel_num+1);
@@ -92,73 +84,54 @@ static void hdmi_tx_construct_aud_packet(
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_AC_3<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_MPEG1) {
 		pr_info(AUD "Audio Type: MPEG1\n");
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_MPEG1<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_MP3) {
 		pr_info(AUD "Audio Type: MP3\n");
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_MP3<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_MPEG2) {
 		pr_info(AUD "Audio Type: MPEG2\n");
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_MPEG2<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_AAC) {
 		pr_info(AUD "Audio Type: AAC\n");
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_AAC<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_DTS) {
 		pr_info(AUD "Audio Type: DTS\n");
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_DTS<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_ATRAC) {
 		pr_info(AUD "Audio Type: ATRAC\n");
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_ATRAC<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_ONE_BIT_AUDIO) {
 		pr_info(AUD "Audio Type: One Bit Audio\n");
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_ONE_BIT_AUDIO<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_DOLBY_D) {
-		pr_info(AUD "Audio Type: Dobly Digital +\n");
+		pr_info(AUD "Audio Type: Dolby Digital +\n");
 		if (AUD_DB) {
-			AUD_DB[0] =
-				(FS_REFER_TO_STREAM<<4)|(CC_REFER_TO_STREAM);
+			AUD_DB[0] = (CT_DOLBY_D<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 		if (CHAN_STAT_BUF) {
 			CHAN_STAT_BUF[0] = CHAN_STAT_BUF[24+0] = 0x2;
@@ -168,51 +141,37 @@ static void hdmi_tx_construct_aud_packet(
 	} else if (audio_param->type == CT_DTS_HD) {
 		pr_info(AUD "Audio Type: DTS-HD\n");
 		if (AUD_DB) {
-			AUD_DB[0] =
-				(FS_REFER_TO_STREAM<<4)|(CC_REFER_TO_STREAM);
+			AUD_DB[0] = (CT_DTS_HD<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_MAT) {
 		pr_info(AUD "Audio Type: MAT(MLP)\n");
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_MAT<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_DST) {
 		pr_info(AUD "Audio Type: DST\n");
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_DST<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_WMA) {
 		pr_info(AUD "Audio Type: WMA Pro\n");
 		if (AUD_DB) {
 			AUD_DB[0] = (CT_WMA<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
 	} else if (audio_param->type == CT_DTS_HD_MA) {
 		pr_info(AUD "Audio Type: DTS-HD MA\n");
 		if (AUD_DB) {
-			AUD_DB[0] =
-				(CT_DTS_HD_MA<<4)|(CC_REFER_TO_STREAM);
+			AUD_DB[0] = (CT_DTS_HD_MA<<4)|(CC_REFER_TO_STREAM);
 			AUD_DB[1] = (FS_REFER_TO_STREAM<<2)|SS_REFER_TO_STREAM;
-			AUD_DB[3] = 0;
-			AUD_DB[4] = 0;
 		}
-	} else {
-		;
 	}
+
 	if (AUD_DB) {
-		AUD_DB[0] = AUD_DB[0] & 0xf;/*bit[7:4] always set to 0 in HDMI*/
-		AUD_DB[1] = 0;		/*always set to 0 in HDMI*/
+		AUD_DB[0] = AUD_DB[0] & 0xf; /*bit[7:4] always set to 0 in HDMI*/
 	}
 #endif
 }
