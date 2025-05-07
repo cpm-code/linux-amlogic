@@ -1211,16 +1211,16 @@ static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream,
 			i2s_to_hdmitx_ctrl(separated, p_tdm->id);
 
 			if (runtime->channels > 6) {
-				hdmitx_ext_set_i2s_mask(runtime->channels, 0xf);
+				hdmitx_ext_set_i2s_mask(runtime->channels, 0xf);  // 15 (0-15 - 16 lines mask)
 			}
 			else if (runtime->channels > 4) {
-				hdmitx_ext_set_i2s_mask(runtime->channels, 0x7);
+				hdmitx_ext_set_i2s_mask(runtime->channels, 0x7);  // 7 (0-7 - 8 lines mask)
 			}
 			else if (runtime->channels > 2) {
-				hdmitx_ext_set_i2s_mask(runtime->channels, 0x3);
+				hdmitx_ext_set_i2s_mask(runtime->channels, 0x3);  // 3 (0-3 - 4 lines mask)
 			}
 			else {
-				hdmitx_ext_set_i2s_mask(runtime->channels, 0x1);
+				hdmitx_ext_set_i2s_mask(runtime->channels, 0x1);  // 1 (0-1 - 2 Lines mask)
 			}
 
 			aout_notifier_call_chain(AOUT_EVENT_IEC_60958_PCM, &aud_param);

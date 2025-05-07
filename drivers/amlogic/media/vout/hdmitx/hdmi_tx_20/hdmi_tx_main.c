@@ -2928,20 +2928,15 @@ void hdmitx_ext_set_i2s_mask(char ch_num, char ch_msk)
 	struct hdmitx_dev *hdev = &hdmitx_device;
 	static unsigned int update_flag = -1;
 
-	if (!ch_num || !(ch_num % 2 == 0)) {
-		pr_info("err chn setting, must be 2, 4, 6 or 8, Rst as def\n");
-		hdev->aud_output_ch = 0;
-		if (update_flag != hdev->aud_output_ch) {
-			update_flag = hdev->aud_output_ch;
-			hdmitx_set_audio(hdev, &(hdev->cur_audio_param));
-		}
-	}
 	if (ch_msk == 0) {
 		pr_info("err chn msk, must larger than 0\n");
 		return;
 	}
+	
 	hdev->aud_output_ch = ((ch_num << 4) & 0xf0) | (ch_msk & 0xf);
-	if (update_flag != hdev->aud_output_ch) {
+	
+	if (update_flag != hdev->aud_output_ch)
+	{
 		update_flag = hdev->aud_output_ch;
 		hdmitx_set_audio(hdev, &(hdev->cur_audio_param));
 	}
@@ -5933,40 +5928,46 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 		hdev->audio_param_update_flag = 1;
 	}
 
-	if (audio_param->channel_num !=
-		(aud_param->chs - 1)) {
+	if (audio_param->channel_num != (aud_param->chs - 1))
+	{
 		int ch_num = aud_param->chs;
 		int ch_msk = (1 << (ch_num / 2)) - 1;
 
 		pr_info(AUD "aout notify channel num: %d\n", ch_num);
-		audio_param->channel_num = ch_num - 1;
+	
+		audio_param->channel_num = (ch_num - 1);
+
 		if ((cmd == CT_PCM) && ch_num && (ch_num % 2 == 0))
 			hdev->aud_output_ch = ((ch_num << 4) & 0xf0) | (ch_msk & 0xf);
 		else
 			hdev->aud_output_ch = 0;
+		
 		hdev->audio_param_update_flag = 1;
 	}
 
-	if (audio_param->layout != aud_param->layout) {
+	if (audio_param->layout != aud_param->layout)
+	{
 		audio_param->layout = aud_param->layout;
 		hdev->audio_param_update_flag = 1;
 	}
 
-	if (hdev->tx_aud_cfg == 2) {
+	if (hdev->tx_aud_cfg == 2)
+	{	
 		pr_info(AUD "auto mode\n");
+		
 		/* Detect whether Rx is support current audio format */
 		for (i = 0; i < prxcap->AUD_count; i++) {
 			if (prxcap->RxAudioCap[i].audio_format_code == cmd)
 				audio_check = 1;
 		}
+		
 		/* sink don't support current audio mode */
 		if (!audio_check && cmd != CT_PCM) {
-			pr_info("Sink not support this audio format %lu\n",
-				cmd);
-			hdev->hwop.cntlconfig(hdev, CONF_AUDIO_MUTE_OP,
-					      AUDIO_MUTE);
+			pr_info("Sink not support this audio format %lu\n", cmd);
+			hdev->hwop.cntlconfig(hdev, CONF_AUDIO_MUTE_OP, AUDIO_MUTE);
 			hdev->audio_param_update_flag = 0;
 		}
+
 	}
 	if (hdev->audio_param_update_flag == 0)
 		;
