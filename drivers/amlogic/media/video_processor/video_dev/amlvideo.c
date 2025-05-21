@@ -551,19 +551,21 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *p)
 	u32 index;
 	struct vframe_s *vf;
 	struct vivi_dev *dev = video_drvdata(file);
+
 	while ((vf = vfq_peek(&dev->q_omx)))
 	{
 		index = (u32)vf->pts_us64;
+
+		// pr_info("[cpm-code] vidioc_qbuf: vf index: [%lu] pts: [%llu]\n", index, vf->pts_us64);
+
 		vfq_push(&dev->q_ready, vfq_pop(&dev->q_omx));
+
 		ATRACE_COUNTER(dev->v4l2_dev.name, vfq_level(&dev->q_omx));
 		ATRACE_COUNTER(dev->v4l2_dev.name, vfq_level(&dev->q_ready));
-		vf_notify_receiver(
-				dev->vf_provider_name,
-				VFRAME_EVENT_PROVIDER_VFRAME_READY,
-				NULL);
 
-		if (p->index == index)
-			break;
+		vf_notify_receiver(dev->vf_provider_name, VFRAME_EVENT_PROVIDER_VFRAME_READY, NULL);
+
+		if (p->index == index) break;
 	}
 	return 0;
 }
@@ -586,7 +588,6 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p)
 
 	dev->vf = vf_get(dev->vf_receiver_name);
 	if (!dev->vf) {
-		/* printk("%s, %s, %d\n", __FILE__, __FUNCTION__, __LINE__); */
 		mutex_unlock(&dev->vf_mutex);
 		return -EAGAIN;
 	}
@@ -596,24 +597,23 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p)
 		mutex_unlock(&dev->vf_mutex);
 		return -EAGAIN;
 	}
+
 	dev->vf->omx_index = dev->frame_num;
+
 	if (dev->vf->type & VIDTYPE_V4L_EOS) {
 		ret = -EAGAIN;
 		goto dqbuf_done;
 	}
+
 	dev->am_parm.signal_type = dev->vf->signal_type;
-	dev->am_parm.master_display_colour
-		= dev->vf->prop.master_display_colour;
+	dev->am_parm.master_display_colour = dev->vf->prop.master_display_colour;
+
 	if (dev->vf->hdr10p_data_size > 0 && dev->vf->hdr10p_data_buf) {
 		if (dev->vf->hdr10p_data_size <= 128) {
-			dev->am_parm.hdr10p_data_size =
-					dev->vf->hdr10p_data_size;
-			memcpy(dev->am_parm.hdr10p_data_buf,
-					dev->vf->hdr10p_data_buf,
-					dev->vf->hdr10p_data_size);
+			dev->am_parm.hdr10p_data_size = dev->vf->hdr10p_data_size;
+			memcpy(dev->am_parm.hdr10p_data_buf, dev->vf->hdr10p_data_buf, dev->vf->hdr10p_data_size);
 		} else {
-			pr_info("amlvideo: hdr10+ data size is %d, skip it!\n",
-					dev->vf->hdr10p_data_size);
+			pr_info("amlvideo: hdr10+ data size is %d, skip it!\n", dev->vf->hdr10p_data_size);
 			dev->am_parm.hdr10p_data_size = 0;
 		}
 	} else {
@@ -623,32 +623,41 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p)
 	if (!dev->vf->pts_us64)
 		dev->vf->pts_us64 = ((u64)dev->vf->pts * 100) / 9;
 
+	int ptsBranch = 0;
+
 	if (dev->vf->pts_us64) {
 		dev->first_frame = 1;
 		pts_us64 = dev->vf->pts_us64;
+		ptsBranch = 1;
 	} else if (dev->first_frame == 0) {
 		dev->first_frame = 1;
 		pts_us64 = 0;
+		ptsBranch = 2;
 	} else {
 		pts_tmp = DUR2PTS(dev->vf->duration) * 100;
 		do_div(pts_tmp, 9);
-		pts_us64 = dev->last_pts_us64
-			+ pts_tmp;
+		pts_us64 = dev->last_pts_us64 + pts_tmp;
 		pts_tmp = pts_us64*9;
 		do_div(pts_tmp, 100);
 		dev->vf->pts = pts_tmp;
-		/*AMLVIDEO_WARN("pts= %d, dev->vf->duration= %d\n",*/
-			/*dev->vf->pts, (DUR2PTS(dev->vf->duration)));*/
+		/* AMLVIDEO_WARN("pts= %d, dev->vf->duration= %d\n", dev->vf->pts, (DUR2PTS(dev->vf->duration))); */
+		ptsBranch = 3;
 	}
+
 	next_vf = vf_peek(dev->vf_receiver_name);
 	dev->vf->next_vf_pts_valid = next_vf != NULL;
+
 	if (dev->vf->next_vf_pts_valid)
 		dev->vf->next_vf_pts = next_vf->pts;
 
 	p->timestamp.tv_sec = pts_us64 >> 32;
 	p->timestamp.tv_usec = pts_us64 & 0xFFFFFFFF;
+
+	// pr_info("[cpm-code] vidioc_dqbuf: vf index [%lu] pts [%llu] branch: [%d]\n", dev->vf->index, pts_us64, ptsBranch);
+
 	dev->last_pts_us64 = pts_us64;
 	dev->vf->pts_us64 = omx_freerun_index;
+
 	vfq_push(&dev->q_omx, dev->vf);
 	ATRACE_COUNTER(dev->v4l2_dev.name, vfq_level(&dev->q_omx));
 
@@ -659,6 +668,7 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p)
 		p->timecode.type = dev->vf->width;
 		p->timecode.flags = dev->vf->height;
 	}
+
 dqbuf_done:
 	p->index = omx_freerun_index++;
 	p->sequence = dev->frame_num++;
