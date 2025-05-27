@@ -538,6 +538,9 @@ int pts_checkin_offset_us64(u8 type, u32 offset, u64 us)
 	u64 pts_val;
 
 	pts_val = div64_u64(us * 9, 100);
+
+	pr_info("[cpm-code] check in offset [%lu] pts [%llu]\n", offset, us);
+
 	return pts_checkin_offset_inline(type, offset, (u32) pts_val, us);
 }
 EXPORT_SYMBOL(pts_checkin_offset_us64);
@@ -702,86 +705,99 @@ EXPORT_SYMBOL(pts_lookup);
 // caution: only supports this use case - audio logic removed as not needed in this setup.
 static int pts_lookup_offset_inline_locked(u8 type, u32 offset, u32 *val, u32 *frame_size, u32 pts_margin, u64 *us64)
 {
-	struct pts_table_s *ptable;
-
 	if (type != PTS_TYPE_VIDEO) return -EINVAL;
 
-	ptable = &pts_table[type];
+	struct pts_table_s *ptable = &pts_table[type];
 
 	if (unlikely(ptable->status != PTS_RUNNING)) return -1;
 
-	// check cache first for exact match
-	if ((ptable->lookup_cache_valid) &&
-	    (ptable->lookup_cache_offset == offset))
-	{
-		*val = ptable->lookup_cache_pts;
-		*us64 = ptable->lookup_cache_pts_us64;
-		return 0;
-	}
-
 	if (list_empty(&ptable->valid_list)) return -1;
 
-	// find nearest value (prefer lower when between two values)
+	// Find nearest value
 	struct pts_rec_s *best_match = NULL;
+	struct pts_rec_s *next_match = NULL;
 	struct pts_rec_s *rec = NULL;
 	struct pts_rec_s *next = NULL;
 
-	// remove obsolete entries and find if-any "preceding" match for the passed offset.
+	// remove obsolete entries and find preceding match
 	list_for_each_entry_safe(rec, next, &ptable->valid_list, list)
 	{
 		// remove entries that are too old
-		if (OFFSET_DIFF(offset, rec->offset) > PTS_VALID_OFFSET_TO_CHECK)
+		if (OFFSET_DIFF(offset, rec->offset) > 0)
 		{
 			list_move_tail(&rec->list, &ptable->free_list);
 			continue;
 		}
 
-		// if this entry is before or at our target offset
+		// if this entry is before or at target offset
 		if (!OFFSET_LATER(rec->offset, offset))
 			best_match = rec;
-		else
-			break; // We've gone past our target offset
+		else {
+			// This is the first entry after our target
+			next_match = rec;
+			break; // past target offset
+		}
 	}
 
-	// if we found a match
+	// if match found
 	if (best_match)
 	{
 		*val = best_match->val;
 		*us64 = best_match->pts_us64;
 		*frame_size = best_match->size;
 
-		// Update cache
+		// update cache
 		ptable->lookup_cache_pts = *val;
 		ptable->lookup_cache_pts_us64 = *us64;
 		ptable->lookup_cache_offset = offset;
 		ptable->lookup_cache_valid = true;
 
-		// handle first lookup case
-		if (!ptable->first_lookup_ok) ptable->first_lookup_ok = 1;
+		// first lookup
+		ptable->first_lookup_ok |= 1;
+
+		pr_info("[cpm-code] check out best match offset [%lu] pts [%llu]\n", offset, best_match->pts_us64);
 
 		// move to free list
 		list_move_tail(&best_match->list, &ptable->free_list);
 		return 0;
-
 	}
-	else
+	else if (next_match) // if no preceding match but we have a later entry
 	{
-		// handle first lookup failure case
-		if (!ptable->first_lookup_ok)
-		{
-			*val = ptable->first_checkin_pts;
-			*us64 = ptable->first_checkin_pts_us64;
+		*val = next_match->val;
+		*us64 = next_match->pts_us64;
+		*frame_size = next_match->size;
 
-			ptable->first_lookup_ok = 1;
-			ptable->first_lookup_is_fail = 1;
+		// update cache
+		ptable->lookup_cache_pts = *val;
+		ptable->lookup_cache_pts_us64 = *us64;
+		ptable->lookup_cache_offset = offset;
+		ptable->lookup_cache_valid = true;
 
-			if (timestamp_vpts_get() == 0)
-				timestamp_firstvpts_set(1);
-			else
-				timestamp_firstvpts_set(timestamp_vpts_get());
+		// first lookup
+		ptable->first_lookup_ok |= 1;
 
-			return 0;
-		}
+		pr_info("[cpm-code] check out next match offset [%lu] pts [%llu]\n", offset, next_match->pts_us64);
+
+		// move to free list
+		list_move_tail(&next_match->list, &ptable->free_list);
+		return 0;
+	}
+
+	// Handle first lookup failure
+	if (!ptable->first_lookup_ok)
+	{
+		*val = ptable->first_checkin_pts;
+		*us64 = ptable->first_checkin_pts_us64;
+
+		ptable->first_lookup_ok = 1;
+		ptable->first_lookup_is_fail = 1;
+
+		if (!timestamp_vpts_get())
+			timestamp_firstvpts_set(1);
+		else
+			timestamp_firstvpts_set(timestamp_vpts_get());
+
+		return 0;
 	}
 
 	return -1;
