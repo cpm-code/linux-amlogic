@@ -93,7 +93,7 @@ enum {
 	SNDRV_HWDEP_IFACE_VX,		/* Digigram VX cards */
 	SNDRV_HWDEP_IFACE_MIXART,	/* Digigram miXart cards */
 	SNDRV_HWDEP_IFACE_USX2Y,	/* Tascam US122, US224 & US428 usb */
-	SNDRV_HWDEP_IFACE_EMUX_WAVETABLE, /* EmuX wavetable */	
+	SNDRV_HWDEP_IFACE_EMUX_WAVETABLE, /* EmuX wavetable */
 	SNDRV_HWDEP_IFACE_BLUETOOTH,	/* Bluetooth audio */
 	SNDRV_HWDEP_IFACE_USX2Y_PCM,	/* Tascam US122, US224 & US428 rawusb pcm */
 	SNDRV_HWDEP_IFACE_PCXHR,	/* Digigram PCXHR */
@@ -380,7 +380,7 @@ struct snd_mask {
 
 struct snd_pcm_hw_params {
 	unsigned int flags;
-	struct snd_mask masks[SNDRV_PCM_HW_PARAM_LAST_MASK - 
+	struct snd_mask masks[SNDRV_PCM_HW_PARAM_LAST_MASK -
 			       SNDRV_PCM_HW_PARAM_FIRST_MASK + 1];
 	struct snd_mask mres[5];	/* reserved masks */
 	struct snd_interval intervals[SNDRV_PCM_HW_PARAM_LAST_INTERVAL -
@@ -580,46 +580,48 @@ enum {
 struct channel_speaker_allocation {
 	unsigned int index;
 	unsigned int channels;
+	unsigned int sample_present;
 	unsigned int speakers[8];
 };
 
 static struct channel_speaker_allocation __maybe_unused channel_allocations[] = {
-// CEA CA Index                      channel:   7,    6,   5,   4,   3,    2,   1,   0         XBMC AE          hdmi_speak_location
-{ .index = 0x00, .channels = 2, .speakers = {                                  FR,  FL } }, // AE_CH_LAYOUT_2_0 CA_FR_FL
-{ .index = 0x01, .channels = 3, .speakers = {                            LFE,  FR,  FL } }, // AE_CH_LAYOUT_2_1 CA_LFE_FR_FL
-{ .index = 0x02, .channels = 3, .speakers = {                       FC,        FR,  FL } }, // AE_CH_LAYOUT_3_0 CA_FC_FR_FL
-{ .index = 0x03, .channels = 4, .speakers = {                       FC,  LFE,  FR,  FL } }, // AE_CH_LAYOUT_3_1 CA_FC_LFE_FR_FL
-{ .index = 0x04, .channels = 3, .speakers = {                  RC,             FR,  FL } }, // 3.0              CA_RC_FR_FL
-{ .index = 0x05, .channels = 4, .speakers = {                  RC,       LFE,  FR,  FL } }, // 3.1              CA_RC_LFE_FR_FL
-{ .index = 0x06, .channels = 4, .speakers = {                  RC,  FC,        FR,  FL } }, // 4.0              CA_RC_FC_FR_FL
-{ .index = 0x07, .channels = 5, .speakers = {                  RC,  FC,  LFE,  FR,  FL } }, // 4.1              CA_RC_FC_LFE_FR_FL
-{ .index = 0x08, .channels = 4, .speakers = {             RR,  RL,             FR,  FL } }, // AE_CH_LAYOUT_4_0 CA_RR_RL_FR_FL
-{ .index = 0x09, .channels = 5, .speakers = {             RR,  RL,       LFE,  FR,  FL } }, // AE_CH_LAYOUT_4_1 CA_RR_RL_LFE_FR_FL
-{ .index = 0x0A, .channels = 5, .speakers = {             RR,  RL,  FC,        FR,  FL } }, // AE_CH_LAYOUT_5_0 CA_RR_RL_FC_FR_FL
-{ .index = 0x0B, .channels = 6, .speakers = {             RR,  RL,  FC,  LFE,  FR,  FL } }, // AE_CH_LAYOUT_5_1 RR_RL_FC_LFE_FR_FL
-{ .index = 0x0C, .channels = 5, .speakers = {        RC,  RR,  RL,             FR,  FL } }, // 5.0              CA_RC_RR_RL_FR_FL
-{ .index = 0x0D, .channels = 6, .speakers = {        RC,  RR,  RL,       LFE,  FR,  FL } }, // 5.1              CA_RC_RR_RL_LFE_FR_FL
-{ .index = 0x0E, .channels = 6, .speakers = {        RC,  RR,  RL,  FC,        FR,  FL } }, // 6.0              CA_RC_RR_RL_FC_FR_FL
-{ .index = 0x0F, .channels = 7, .speakers = {        RC,  RR,  RL,  FC,  LFE,  FR,  FL } }, // 6.1              CA_RC_RR_RL_FC_LFE_FR_FL
-{ .index = 0x10, .channels = 6, .speakers = { RRC,  RLC,  RR,  RL,             FR,  FL } }, // 6.0              CA_RRC_RLC_RR_RL_FR_FL
-{ .index = 0x11, .channels = 7, .speakers = { RRC,  RLC,  RR,  RL,       LFE,  FR,  FL } }, // 6.1              CA_RRC_RLC_RR_RL_LFE_FR_FL
-{ .index = 0x12, .channels = 7, .speakers = { RRC,  RLC,  RR,  RL,  FC,        FR,  FL } }, // AE_CH_LAYOUT_7_0 CA_RRC_RLC_RR_RL_FC_FR_FL
-{ .index = 0x13, .channels = 8, .speakers = { RRC,  RLC,  RR,  RL,  FC,  LFE,  FR,  FL } }, // AE_CH_LAYOUT_7_1 CA_RRC_RLC_RR_RL_FC_LFE_FR_FL
-{ .index = 0x14, .channels = 4, .speakers = { FRC,  FLC,                       FR,  FL } }, // 4.0              CA_FRC_FLC_FR_FL
-{ .index = 0x15, .channels = 5, .speakers = { FRC,  FLC,                 LFE,  FR,  FL } }, // 4.1              CA_FRC_FLC_LFE_FR_FL
-{ .index = 0x16, .channels = 5, .speakers = { FRC,  FLC,            FC,        FR,  FL } }, // 5.0              CA_FRC_FLC_FC_FR_FL
-{ .index = 0x17, .channels = 6, .speakers = { FRC,  FLC,            FC,  LFE,  FR,  FL } }, // 5.1              CA_FRC_FLC_FC_LFE_FR_FL
-{ .index = 0x18, .channels = 5, .speakers = { FRC,  FLC,       RC,             FR,  FL } }, // 5.0              CA_FRC_FLC_RC_FR_FL
-{ .index = 0x19, .channels = 6, .speakers = { FRC,  FLC,       RC,       LFE,  FR,  FL } }, // 5.1              CA_FRC_FLC_RC_LFE_FR_FL
-{ .index = 0x1A, .channels = 6, .speakers = { FRC,  FLC,       RC,  FC,        FR,  FL } }, // 6.0              CA_FRC_FLC_RC_FC_FR_FL
-{ .index = 0x1B, .channels = 7, .speakers = { FRC,  FLC,       RC,  FC,  LFE,  FR,  FL } }, // 6.1              CA_FRC_FLC_RC_FC_LFE_FR_FL
-{ .index = 0x1C, .channels = 6, .speakers = { FRC,  FLC,  RR,  RL,             FR,  FL } }, // 6.0              CA_FRC_FLC_RR_RL_FR_FL
-{ .index = 0x1D, .channels = 7, .speakers = { FRC,  FLC,  RR,  RL,       LFE,  FR,  FL } }, // 6.1              CA_FRC_FLC_RR_RL_LFE_FR_FL
-{ .index = 0x1E, .channels = 7, .speakers = { FRC,  FLC,  RR,  RL,  FC,        FR,  FL } }, // 7.0              CA_FRC_FLC_RR_RL_FC_FR_FL
-{ .index = 0x1F, .channels = 8, .speakers = { FRC,  FLC,  RR,  RL,  FC,  LFE,  FR,  FL } }, // 7.1              CA_FRC_FLC_RR_RL_FC_LFE_FR_FL
+//                                                sample_present bit:   3     3    2    2    1     1    0    0
+// CEA CA Index                                              channel:   7,    6,   5,   4,   3,    2,   1,   0         XBMC AE          hdmi_speak_location
+{ .index = 0x00, .channels = 2, .sample_present = 0x01, .speakers = {                                  FR,  FL } }, // AE_CH_LAYOUT_2_0 CA_FR_FL
+{ .index = 0x01, .channels = 3, .sample_present = 0x03, .speakers = {                            LFE,  FR,  FL } }, // AE_CH_LAYOUT_2_1 CA_LFE_FR_FL
+{ .index = 0x02, .channels = 3, .sample_present = 0x03, .speakers = {                       FC,        FR,  FL } }, // AE_CH_LAYOUT_3_0 CA_FC_FR_FL
+{ .index = 0x03, .channels = 4, .sample_present = 0x03, .speakers = {                       FC,  LFE,  FR,  FL } }, // AE_CH_LAYOUT_3_1 CA_FC_LFE_FR_FL
+{ .index = 0x04, .channels = 3, .sample_present = 0x05, .speakers = {                  RC,             FR,  FL } }, // 3.0              CA_RC_FR_FL
+{ .index = 0x05, .channels = 4, .sample_present = 0x07, .speakers = {                  RC,       LFE,  FR,  FL } }, // 3.1              CA_RC_LFE_FR_FL
+{ .index = 0x06, .channels = 4, .sample_present = 0x07, .speakers = {                  RC,  FC,        FR,  FL } }, // 4.0              CA_RC_FC_FR_FL
+{ .index = 0x07, .channels = 5, .sample_present = 0x07, .speakers = {                  RC,  FC,  LFE,  FR,  FL } }, // 4.1              CA_RC_FC_LFE_FR_FL
+{ .index = 0x08, .channels = 4, .sample_present = 0x05, .speakers = {             RR,  RL,             FR,  FL } }, // AE_CH_LAYOUT_4_0 CA_RR_RL_FR_FL
+{ .index = 0x09, .channels = 5, .sample_present = 0x07, .speakers = {             RR,  RL,       LFE,  FR,  FL } }, // AE_CH_LAYOUT_4_1 CA_RR_RL_LFE_FR_FL
+{ .index = 0x0A, .channels = 5, .sample_present = 0x07, .speakers = {             RR,  RL,  FC,        FR,  FL } }, // AE_CH_LAYOUT_5_0 CA_RR_RL_FC_FR_FL
+{ .index = 0x0B, .channels = 6, .sample_present = 0x07, .speakers = {             RR,  RL,  FC,  LFE,  FR,  FL } }, // AE_CH_LAYOUT_5_1 RR_RL_FC_LFE_FR_FL
+{ .index = 0x0C, .channels = 5, .sample_present = 0x0D, .speakers = {        RC,  RR,  RL,             FR,  FL } }, // 5.0              CA_RC_RR_RL_FR_FL
+{ .index = 0x0D, .channels = 6, .sample_present = 0x0F, .speakers = {        RC,  RR,  RL,       LFE,  FR,  FL } }, // 5.1              CA_RC_RR_RL_LFE_FR_FL
+{ .index = 0x0E, .channels = 6, .sample_present = 0x0F, .speakers = {        RC,  RR,  RL,  FC,        FR,  FL } }, // 6.0              CA_RC_RR_RL_FC_FR_FL
+{ .index = 0x0F, .channels = 7, .sample_present = 0x0F, .speakers = {        RC,  RR,  RL,  FC,  LFE,  FR,  FL } }, // 6.1              CA_RC_RR_RL_FC_LFE_FR_FL
+{ .index = 0x10, .channels = 6, .sample_present = 0x0D, .speakers = { RRC,  RLC,  RR,  RL,             FR,  FL } }, // 6.0              CA_RRC_RLC_RR_RL_FR_FL
+{ .index = 0x11, .channels = 7, .sample_present = 0x0F, .speakers = { RRC,  RLC,  RR,  RL,       LFE,  FR,  FL } }, // 6.1              CA_RRC_RLC_RR_RL_LFE_FR_FL
+{ .index = 0x12, .channels = 7, .sample_present = 0x0F, .speakers = { RRC,  RLC,  RR,  RL,  FC,        FR,  FL } }, // AE_CH_LAYOUT_7_0 CA_RRC_RLC_RR_RL_FC_FR_FL
+{ .index = 0x13, .channels = 8, .sample_present = 0x0F, .speakers = { RRC,  RLC,  RR,  RL,  FC,  LFE,  FR,  FL } }, // AE_CH_LAYOUT_7_1 CA_RRC_RLC_RR_RL_FC_LFE_FR_FL
+{ .index = 0x14, .channels = 4, .sample_present = 0x09, .speakers = { FRC,  FLC,                       FR,  FL } }, // 4.0              CA_FRC_FLC_FR_FL
+{ .index = 0x15, .channels = 5, .sample_present = 0x11, .speakers = { FRC,  FLC,                 LFE,  FR,  FL } }, // 4.1              CA_FRC_FLC_LFE_FR_FL
+{ .index = 0x16, .channels = 5, .sample_present = 0x11, .speakers = { FRC,  FLC,            FC,        FR,  FL } }, // 5.0              CA_FRC_FLC_FC_FR_FL
+{ .index = 0x17, .channels = 6, .sample_present = 0x11, .speakers = { FRC,  FLC,            FC,  LFE,  FR,  FL } }, // 5.1              CA_FRC_FLC_FC_LFE_FR_FL
+{ .index = 0x18, .channels = 5, .sample_present = 0x0D, .speakers = { FRC,  FLC,       RC,             FR,  FL } }, // 5.0              CA_FRC_FLC_RC_FR_FL
+{ .index = 0x19, .channels = 6, .sample_present = 0x0F, .speakers = { FRC,  FLC,       RC,       LFE,  FR,  FL } }, // 5.1              CA_FRC_FLC_RC_LFE_FR_FL
+{ .index = 0x1A, .channels = 6, .sample_present = 0x0F, .speakers = { FRC,  FLC,       RC,  FC,        FR,  FL } }, // 6.0              CA_FRC_FLC_RC_FC_FR_FL
+{ .index = 0x1B, .channels = 7, .sample_present = 0x0F, .speakers = { FRC,  FLC,       RC,  FC,  LFE,  FR,  FL } }, // 6.1              CA_FRC_FLC_RC_FC_LFE_FR_FL
+{ .index = 0x1C, .channels = 6, .sample_present = 0x0D, .speakers = { FRC,  FLC,  RR,  RL,             FR,  FL } }, // 6.0              CA_FRC_FLC_RR_RL_FR_FL
+{ .index = 0x1D, .channels = 7, .sample_present = 0x0F, .speakers = { FRC,  FLC,  RR,  RL,       LFE,  FR,  FL } }, // 6.1              CA_FRC_FLC_RR_RL_LFE_FR_FL
+{ .index = 0x1E, .channels = 7, .sample_present = 0x0F, .speakers = { FRC,  FLC,  RR,  RL,  FC,        FR,  FL } }, // 7.0              CA_FRC_FLC_RR_RL_FC_FR_FL
+{ .index = 0x1F, .channels = 8, .sample_present = 0x0F, .speakers = { FRC,  FLC,  RR,  RL,  FC,  LFE,  FR,  FL } }, // 7.1              CA_FRC_FLC_RR_RL_FC_LFE_FR_FL
 };
 
-// Other CEA channel layouts not yet supported: 
+// Other CEA channel layouts not yet supported:
 /*
 { .index = 0x20, .channels = 6, .speakers = {       FCH,  RR,  RL,  FC,        FR,  FL } }
 { .index = 0x21, .channels = 7, .speakers = {       FCH,  RR,  RL,  FC,  LFE,  FR,  FL } }
@@ -936,7 +938,7 @@ typedef int __bitwise snd_ctl_elem_iface_t;
 #define SNDRV_CTL_ELEM_ACCESS_INACTIVE		(1<<8)	/* control does actually nothing, but may be updated */
 #define SNDRV_CTL_ELEM_ACCESS_LOCK		(1<<9)	/* write lock */
 #define SNDRV_CTL_ELEM_ACCESS_OWNER		(1<<10)	/* write lock owner */
-#define SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK	(1<<28)	/* kernel use a TLV callback */ 
+#define SNDRV_CTL_ELEM_ACCESS_TLV_CALLBACK	(1<<28)	/* kernel use a TLV callback */
 #define SNDRV_CTL_ELEM_ACCESS_USER		(1<<29) /* user space element */
 /* bits 30 and 31 are obsoleted (for indirect access) */
 
