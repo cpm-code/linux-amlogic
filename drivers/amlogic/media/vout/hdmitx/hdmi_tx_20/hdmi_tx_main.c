@@ -2923,17 +2923,17 @@ int hdmitx_ext_get_audio_status(void)
 	return !!hdmitx_device.tx_aud_cfg;
 }
 
-void hdmitx_ext_set_i2s_mask(char ch_num, char ch_msk)
+void hdmitx_ext_set_i2s_mask(char i2s_mask)
 {
 	struct hdmitx_dev *hdev = &hdmitx_device;
 	static unsigned int update_flag = -1;
 
-	if (ch_msk == 0) {
-		pr_info("err chn msk, must larger than 0\n");
+	if (i2s_mask == 0) {
+		pr_info("err i2s mask, must larger than 0\n");
 		return;
 	}
 	
-	hdev->i2s_mask = ch_msk;
+	hdev->i2s_mask = i2s_mask;
 	
 	if (update_flag != hdev->i2s_mask)
 	{

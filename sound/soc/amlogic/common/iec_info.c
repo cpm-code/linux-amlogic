@@ -348,7 +348,7 @@ void spdif_notify_to_hdmitx(struct snd_pcm_substream *substream,
 	memset(&aud_param, 0, sizeof(aud_param));
 
 	//0 signals audio is coming from spdif rather than i2s
-	hdmitx_ext_set_i2s_mask(0x0, 0x0);
+	hdmitx_ext_set_i2s_mask(0x0);
 
 	aud_param.rate = substream->runtime->rate;
 	aud_param.size = substream->runtime->sample_bits;

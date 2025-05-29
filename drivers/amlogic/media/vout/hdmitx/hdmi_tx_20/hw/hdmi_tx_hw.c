@@ -2519,7 +2519,7 @@ static void set_aud_chnls(struct hdmitx_dev *hdev,
 
 	pr_info(HW "set channel status\n");
 
-	// the audio setting bellow are only used for I2S audio IEC60958-3 frame insertion 
+	// the audio setting bellow are only used for I2S audio IEC60958-3 frame insertion
 	//data32  = 0;
 	//data32 |= (0 << 7);
 	//data32 |= (0 << 6);
@@ -2542,11 +2542,11 @@ static void set_aud_chnls(struct hdmitx_dev *hdev,
 	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS6, 0xcd);
 	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS7, 0x2f);
 	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS8, 0xf0);
-	
+
 	for (i = 0; i < 9; i++)
 		/* First, set all status to 0 */
 		hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS0+i, 0x00);
-	
+
 	/* set default 48k 2ch pcm */
 	if ((audio_param->type == CT_PCM) && (audio_param->channel_num == CC_2CH))
 	{
@@ -2556,16 +2556,16 @@ static void set_aud_chnls(struct hdmitx_dev *hdev,
 	{
 		hdmitx_wr_reg(HDMITX_DWC_FC_AUDSV, 0); // Same!
 	}
-	
+
 	switch (audio_param->type) {
-		
+
 		case CT_AC_3:
 		case CT_DOLBY_D:
 		case CT_DST:
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS3, 0x01); // CSB 20  /* bit7:4 CSB 22:21 2nd right sub */ /* bit3:0 CSB 22:21 1st right sub */
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS5, 0x02); // CSB 21  /* bit7:4 CSB 22:21 2nd left  sub */ /* bit3:0 CSB 22:21 1st left sub  */
 			break;
-		
+
 		default:
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS3, 0x42); // CSB 20  /* bit7:4 CSB 22:21 2nd right sub */ /* bit3:0 CSB 22:21 1st right sub */
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS4, 0x86); //         /* bit?:? CSB 22:21 4th right sub */ /* bit?"? CSB 22:21 3rd right sub */
@@ -2573,13 +2573,13 @@ static void set_aud_chnls(struct hdmitx_dev *hdev,
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS6, 0x75); //         /* bit?:? CSB 22:21 4th left  sub */ /* bit?? CSB 22:21 3rd left sub   */
 			break;
 	}
-	
+
 	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCHNLS7, aud_csb_sampfreq[audio_param->sample_rate], 0, 4); // CSB 27:24
 	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCHNLS7, 0x0, 6, 2); // CSB 31:30
 	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCHNLS7, 0x0, 4, 2); // CSB 29:28
-	
+
 	switch (audio_param->sample_size) {
-		
+
 		case SS_16BITS:
 			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCHNLS8, 0x2, 0, 4); /*CSB 35:32*/
 			break;
@@ -2597,13 +2597,11 @@ static void set_aud_chnls(struct hdmitx_dev *hdev,
 	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCHNLS8, aud_csb_ori_sampfreq[audio_param->sample_rate], 4, 4);  /* CSB 39:36 */
 }
 
-#define GET_OUTCHN_MSK(a)	((a) & 0xf)
-
 static void set_aud_info_pkt(struct hdmitx_dev *hdev, struct hdmitx_audpara *audio_param)
 {
 
 	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, 0, 0, 4); // CT [3:0] (Coding Type) - [0000] Refer to stream
-	
+
 	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF1, 0, 0, 3); // SF [2:0] (Sampling Frequency) - [000] Refer to stream
 	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF1, 0, 4, 2); // SS [5:4] (Sampling Size) - [00] Refer to stream
 
@@ -2615,9 +2613,9 @@ static void set_aud_info_pkt(struct hdmitx_dev *hdev, struct hdmitx_audpara *aud
 
 	// Set sample_present
 	hdmitx_wr_reg(HDMITX_DWC_FC_AUDSSTAT, channel_allocations[audio_param->layout].sample_present);
-	
+
   // Set the audio packet layout to be sent in the packet :: https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/bridge/synopsys/dw-hdmi.c
-	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, (audio_param->channel_num > CC_2CH), 0, 1); // aud_packet_layout  [  0] 
+	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, (audio_param->channel_num > CC_2CH), 0, 1); // aud_packet_layout  [  0]
 
 	switch (audio_param->type)
 	{
@@ -2769,12 +2767,12 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 	pr_info(HW "set audio\n");
 
 	memcpy(&hdmiaud_config_data, audio_param, sizeof(struct hdmitx_audpara));
-	
+
 	if (hsty_hdmiaud_config_loc > 7)
 		hsty_hdmiaud_config_loc = 0;
-	
+
 	memcpy(&hsty_hdmiaud_config_data[hsty_hdmiaud_config_loc++], &hdmiaud_config_data, sizeof(struct hdmitx_audpara));
-	
+
 	if (hsty_hdmiaud_config_num < 0xfffffff0)
 		hsty_hdmiaud_config_num++;
 	else
@@ -2782,7 +2780,7 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 
 	audio_mute_op(hdev->tx_aud_cfg);
 
-	// PCM & multi channel use I2S 
+	// PCM & multi channel use I2S
 	if ((audio_param->type == CT_PCM) && (audio_param->channel_num > CC_2CH))
 		hdev->tx_aud_src = 1; // I2S
 	else
@@ -2793,19 +2791,19 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 		hdev->tx_aud_src = 1;
 
 	pr_info(HW "hdmitx tx_aud_src = %d, audio_param->channel_num = %u, hdev->i2s_mask = %u\n", hdev->tx_aud_src, audio_param->channel_num, hdev->i2s_mask);
-	
+
 	/* config IP */
 	/* Configure audio */
 	/* I2S Sampler config */
-	data32 = 0;	
-	data32 |= (1 << 3); // [  3] fifo_empty_mask: 0=enable int; 1=mask int.	
+	data32 = 0;
+	data32 |= (1 << 3); // [  3] fifo_empty_mask: 0=enable int; 1=mask int.
 	data32 |= (1 << 2); // [  2] fifo_full_mask:  0=enable int; 1=mask int.
 	hdmitx_wr_reg(HDMITX_DWC_AUD_INT, data32);
 
-	data32 = 0;	
+	data32 = 0;
 	data32 |= (1 << 4); // [  4] fifo_overrun_mask: 0=enable int; 1=mask int. Enable it later when audio starts.
 	hdmitx_wr_reg(HDMITX_DWC_AUD_INT1,  data32);
-	
+
 	data32 = 0;
 	data32 |= (0 << 7);                // [  7] sw_audio_fifo_rst
 	data32 |= (hdev->tx_aud_src << 5); // [  5] 0=select SPDIF; 1=select I2S.
@@ -2824,12 +2822,12 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 	hdmitx_wr_reg(HDMITX_DWC_AUD_CONF2, data32);
 
 	/* spdif sampler config */
-	
+
 	data32 = 0;
-	data32 |= (1 << 3);  // [  3] SPDIF fifo_empty_mask: 0=enable int; 1=mask int. 
+	data32 |= (1 << 3);  // [  3] SPDIF fifo_empty_mask: 0=enable int; 1=mask int.
 	data32 |= (1 << 2);  // [  2] SPDIF fifo_full_mask: 0=enable int; 1=mask int.
 	hdmitx_wr_reg(HDMITX_DWC_AUD_SPDIFINT, data32);
-		
+
 	data32 = 0;
 	data32 |= (0 << 4); // [  4] SPDIF fifo_overrun_mask: 0=enable int; 1=mask int.
 	hdmitx_wr_reg(HDMITX_DWC_AUD_SPDIFINT1, data32);
@@ -2843,20 +2841,20 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 	set_aud_samp_pkt(hdev, audio_param);
 
 	set_aud_chnls(hdev, audio_param);
-	
+
 	hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, hdev->tx_aud_src, 5, 1); // [  5] 0=select SPDIF; 1=select I2S.
-	
+
 	if (hdev->tx_aud_src == 1) // I2S
-	{	
-		if (hdev->i2s_mask) 
+	{
+		if (hdev->i2s_mask)
 			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, hdev->i2s_mask, 0, 4);  // [3:0] i2s_in_en?
 		else
 			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, 0xf, 0, 4);             // [3:0] i2s_in_en?
-		
+
 		/* Enable audi2s_fifo_overrun interrupt */
 		hdmitx_wr_reg(HDMITX_DWC_AUD_INT1,
 		hdmitx_rd_reg(HDMITX_DWC_AUD_INT1) & (~(1<<4)));
-		
+
 		/* Wait for TX I2S decoder to settle */
 		msleep(20);
 	}
@@ -2868,7 +2866,7 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 	set_aud_fifo_rst();
 	udelay(10);
 	hdmitx_wr_reg(HDMITX_DWC_AUD_N1, hdmitx_rd_reg(HDMITX_DWC_AUD_N1));
-	
+
 	/* double confirm that ACR packet is enabled simultaneously with audio sample packet */
 	data32 = hdmitx_rd_reg(HDMITX_DWC_FC_PACKET_TX_EN);
 	if ((data32 & 0x9) == 0x8) {

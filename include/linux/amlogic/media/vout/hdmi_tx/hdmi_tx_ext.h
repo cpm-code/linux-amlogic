@@ -37,13 +37,12 @@ int hdmitx_ext_get_audio_status(void);
 
 /*
  * For I2S interface, there are four input ports
- * I2S_0/I2S_1/I2S_2/I2S_3
- * ch_num: must be 2/4/6/8
- * ch_msk: Mask for channel_num
- * 2ch via I2S_0, set ch_num = 2 and ch_msk = 1
- * 4ch via I2S_1/I2S_2, set set ch_num = 4 and ch_msk = 6
+ * I2S_3 / I2S_2 / I2S_1 / I2S_0
+ * i2s_mask: mask for were the channel are on i2s
+ * 2ch via I2S_0         i2s_mask = [0001] 0x1 
+ * 4ch via I2S_2 / I2S_1 i2s_mask = [0110] 0x6
  */
-void hdmitx_ext_set_i2s_mask(char ch_num, char ch_msk);
+void hdmitx_ext_set_i2s_mask(char i2s_mask);
 
 /*
  * get I2S mask

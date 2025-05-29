@@ -1176,7 +1176,6 @@ static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream,
 	int ret = 0, i;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct aml_tdm *p_tdm = snd_soc_dai_get_drvdata(cpu_dai);
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm_chmap *chmap;
 	struct snd_kcontrol *kctl;
 	struct snd_pcm_chmap *info;
@@ -1210,18 +1209,14 @@ static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream,
 
 			i2s_to_hdmitx_ctrl(separated, p_tdm->id);
 
-			if (runtime->channels > 6) {
-				hdmitx_ext_set_i2s_mask(runtime->channels, 0xf);  // 15 (0-15 - 16 lines mask)
-			}
-			else if (runtime->channels > 4) {
-				hdmitx_ext_set_i2s_mask(runtime->channels, 0x7);  // 7 (0-7 - 8 lines mask)
-			}
-			else if (runtime->channels > 2) {
-				hdmitx_ext_set_i2s_mask(runtime->channels, 0x3);  // 3 (0-3 - 4 lines mask)
-			}
-			else {
-				hdmitx_ext_set_i2s_mask(runtime->channels, 0x1);  // 1 (0-1 - 2 Lines mask)
-			}
+			if (runtime->channels > 6)
+				hdmitx_ext_set_i2s_mask(0xf);  // [1111]
+			else if (runtime->channels > 4)
+				hdmitx_ext_set_i2s_mask(0x7);  // [0111]
+			else if (runtime->channels > 2)
+				hdmitx_ext_set_i2s_mask(0x3);  // [0011]
+			else
+				hdmitx_ext_set_i2s_mask(0x1);  // [0001]
 
 			aout_notifier_call_chain(AOUT_EVENT_IEC_60958_PCM, &aud_param);
 		}
@@ -1978,18 +1973,16 @@ static void parse_samesrc_channel_mask(struct aml_tdm *p_tdm)
 
 	/* channel mask */
 	np = of_get_child_by_name(node, "Channel_Mask");
-	if (np == NULL) {
-		pr_info("No channel mask node %s\n",
-				"Channel_Mask");
+	if (np == NULL)
+	{
+		pr_info("No channel mask node %s\n", "Channel_Mask");
 		return;
 	}
 
-	/* If spdif is same source to i2s,
-	 * it can be muxed to i2s 2 channels
-	 */
-	ret = of_property_read_string(np,
-			"Spdif_samesource_Channel_Mask", &str);
-	if (ret) {
+	/* If spdif is same source to i2s, it can be muxed to i2s 2 channels */
+	ret = of_property_read_string(np, "Spdif_samesource_Channel_Mask", &str);
+	if (ret)
+	{
 		pr_err("error:read Spdif_samesource_Channel_Mask\n");
 		return;
 	}
@@ -2005,15 +1998,15 @@ static void parse_i2s_hdmitx_channel_mask(struct aml_tdm *p_tdm)
 	const char *str = NULL;
 	int ret = 0;
 
-	ret = of_property_read_string(node,
-			"i2s_hdmitx_channel_mask", &str);
+	ret = of_property_read_string(node, "i2s_hdmitx_channel_mask", &str);
 	if (ret)
 		return;
 
 	p_tdm->i2s_hdmitx_mask = check_channel_mask(str);
 	pr_debug("i2s_hdmitx_mask: %#x\n", p_tdm->i2s_hdmitx_mask);
+
 #ifdef CONFIG_AMLOGIC_HDMITX
-	hdmitx_ext_set_i2s_mask(2, 1 << p_tdm->i2s_hdmitx_mask);
+	hdmitx_ext_set_i2s_mask(1 << p_tdm->i2s_hdmitx_mask);
 #endif
 }
 

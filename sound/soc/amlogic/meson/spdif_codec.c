@@ -207,22 +207,22 @@ static const struct soc_enum hdmi_out_channel_mask_texts_enum =
 static int aml_get_hdmi_out_channel_mask(struct snd_kcontrol *kcontrol,
 			  struct snd_ctl_elem_value *ucontrol)
 {
-	char channel_mask = hdmitx_ext_get_i2s_mask();
+	char i2s_mask = hdmitx_ext_get_i2s_mask();
 	int index = 0;
 
-	if (channel_mask == 0x1)
+	if (i2s_mask == 0x1)
 		index = 1;
-	else if (channel_mask == 0x2)
+	else if (i2s_mask == 0x2)
 		index = 2;
-	else if (channel_mask == 0x4)
+	else if (i2s_mask == 0x4)
 		index = 3;
-	else if (channel_mask == 0x8)
+	else if (i2s_mask == 0x8)
 		index = 4;
-	else if (channel_mask == 0x3)
+	else if (i2s_mask == 0x3)
 		index = 5;
-	else if (channel_mask == 0x7)
+	else if (i2s_mask == 0x7)
 		index = 6;
-	else if (channel_mask == 0xf)
+	else if (i2s_mask == 0xf)
 		index = 7;
 	else
 		index = 0;
@@ -236,19 +236,19 @@ static int aml_set_hdmi_out_channel_mask(struct snd_kcontrol *kcontrol,
 	int index = ucontrol->value.integer.value[0];
 
 	if (index == 1)
-		hdmitx_ext_set_i2s_mask(2, 0x1);
+		hdmitx_ext_set_i2s_mask(0x1);
 	else if (index == 2)
-		hdmitx_ext_set_i2s_mask(2, 0x2);
+		hdmitx_ext_set_i2s_mask(0x2);
 	else if (index == 3)
-		hdmitx_ext_set_i2s_mask(2, 0x4);
+		hdmitx_ext_set_i2s_mask(0x4);
 	else if (index == 4)
-		hdmitx_ext_set_i2s_mask(2, 0x8);
+		hdmitx_ext_set_i2s_mask(0x8);
 	else if (index == 5)
-		hdmitx_ext_set_i2s_mask(4, 0x3);
+		hdmitx_ext_set_i2s_mask(0x3);
 	else if (index == 6)
-		hdmitx_ext_set_i2s_mask(6, 0x7);
+		hdmitx_ext_set_i2s_mask(0x7);
 	else if (index == 7)
-		hdmitx_ext_set_i2s_mask(8, 0xf);
+		hdmitx_ext_set_i2s_mask(0xf);
 	return 0;
 }
 #endif
