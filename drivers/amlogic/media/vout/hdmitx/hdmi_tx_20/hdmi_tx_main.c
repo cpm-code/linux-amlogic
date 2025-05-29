@@ -2933,11 +2933,11 @@ void hdmitx_ext_set_i2s_mask(char ch_num, char ch_msk)
 		return;
 	}
 	
-	hdev->aud_output_ch = ch_msk & 0xf;
+	hdev->i2s_mask = ch_msk;
 	
-	if (update_flag != hdev->aud_output_ch)
+	if (update_flag != hdev->i2s_mask)
 	{
-		update_flag = hdev->aud_output_ch;
+		update_flag = hdev->i2s_mask;
 		hdmitx_set_audio(hdev, &(hdev->cur_audio_param));
 	}
 }
@@ -2946,7 +2946,7 @@ char hdmitx_ext_get_i2s_mask(void)
 {
 	struct hdmitx_dev *hdev = &hdmitx_device;
 
-	return hdev->aud_output_ch & 0xf;
+	return hdev->i2s_mask;
 }
 
 static ssize_t show_vid_mute(struct device *dev,
@@ -5938,9 +5938,9 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 		audio_param->channel_num = (ch_num - 1);
 
 		if ((cmd == CT_PCM) && ch_num && (ch_num % 2 == 0))
-			hdev->aud_output_ch = ch_msk & 0xf;
+			hdev->i2s_mask = ch_msk;
 		else
-			hdev->aud_output_ch = 0;
+			hdev->i2s_mask = 0;
 		
 		hdev->audio_param_update_flag = 1;
 	}

@@ -34,7 +34,7 @@ struct am_hdmi_data {
 	unsigned int  cs; /* rgb, y444, y422, y420 */
 	unsigned int  cr; /* limit, full */
 	struct hdmi_pwr_ctl *pwr_ctl;
-	unsigned int aud_output_ch;
+	unsigned int i2s_mask;
 	unsigned int tx_aud_cfg; /* 0, off; 1, on */
 	unsigned int tmds_clk_div40;
 	unsigned int VIC[VIC_MAX_NUM];

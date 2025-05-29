@@ -2789,10 +2789,10 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 		hdev->tx_aud_src = 0; // SPDIF
 
 	// Set then I2S - is this needed given above?
-	if (hdev->aud_output_ch)
+	if (hdev->i2s_mask)
 		hdev->tx_aud_src = 1;
 
-	pr_info(HW "hdmitx tx_aud_src = %d, audio_param->channel_num = %u, hdev->aud_output_ch = %u\n", hdev->tx_aud_src, audio_param->channel_num, hdev->aud_output_ch);
+	pr_info(HW "hdmitx tx_aud_src = %d, audio_param->channel_num = %u, hdev->i2s_mask = %u\n", hdev->tx_aud_src, audio_param->channel_num, hdev->i2s_mask);
 	
 	/* config IP */
 	/* Configure audio */
@@ -2848,12 +2848,10 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
 	
 	if (hdev->tx_aud_src == 1) // I2S
 	{	
-		unsigned int ch_msk = GET_OUTCHN_MSK(hdev->aud_output_ch);
-
-		if (ch_msk) 
-			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, ch_msk, 0, 4);  // [3:0] i2s_in_en?
+		if (hdev->i2s_mask) 
+			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, hdev->i2s_mask, 0, 4);  // [3:0] i2s_in_en?
 		else
-			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, 0xf, 0, 4);     // [3:0] i2s_in_en?
+			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, 0xf, 0, 4);             // [3:0] i2s_in_en?
 		
 		/* Enable audi2s_fifo_overrun interrupt */
 		hdmitx_wr_reg(HDMITX_DWC_AUD_INT1,
