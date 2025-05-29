@@ -2356,7 +2356,7 @@ void hdmitx_ext_set_i2s_mask(char ch_num, char ch_msk)
 	}
 	if (ch_msk == 0)
 		return;
-	hdev->aud_output_ch = (ch_num << 4) + ch_msk;
+	hdev->aud_output_ch = ch_msk;
 	if (update_flag != hdev->aud_output_ch) {
 		update_flag = hdev->aud_output_ch;
 		hdmitx_set_audio(hdev, &hdev->cur_audio_param);

@@ -2933,7 +2933,7 @@ void hdmitx_ext_set_i2s_mask(char ch_num, char ch_msk)
 		return;
 	}
 	
-	hdev->aud_output_ch = ((ch_num << 4) & 0xf0) | (ch_msk & 0xf);
+	hdev->aud_output_ch = ch_msk & 0xf;
 	
 	if (update_flag != hdev->aud_output_ch)
 	{
@@ -5938,7 +5938,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 		audio_param->channel_num = (ch_num - 1);
 
 		if ((cmd == CT_PCM) && ch_num && (ch_num % 2 == 0))
-			hdev->aud_output_ch = ((ch_num << 4) & 0xf0) | (ch_msk & 0xf);
+			hdev->aud_output_ch = ch_msk & 0xf;
 		else
 			hdev->aud_output_ch = 0;
 		
