@@ -2932,9 +2932,9 @@ void hdmitx_ext_set_i2s_mask(char i2s_mask)
 		pr_info("err i2s mask, must larger than 0\n");
 		return;
 	}
-	
+
 	hdev->i2s_mask = i2s_mask;
-	
+
 	if (update_flag != hdev->i2s_mask)
 	{
 		update_flag = hdev->i2s_mask;
@@ -5918,8 +5918,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 
 	if (audio_param->type != cmd) {
 		audio_param->type = cmd;
-		pr_info(AUD "aout notify format %s\n",
-			aud_type_string[audio_param->type & 0xff]);
+		pr_info(AUD "aout notify format %s\n", aud_type_string[audio_param->type & 0xff]);
 		hdev->audio_param_update_flag = 1;
 	}
 
@@ -5930,18 +5929,8 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 
 	if (audio_param->channel_num != (aud_param->chs - 1))
 	{
-		int ch_num = aud_param->chs;
-		int ch_msk = (1 << (ch_num / 2)) - 1;
-
-		pr_info(AUD "aout notify channel num: %d\n", ch_num);
-	
-		audio_param->channel_num = (ch_num - 1);
-
-		if ((cmd == CT_PCM) && ch_num && (ch_num % 2 == 0))
-			hdev->i2s_mask = ch_msk;
-		else
-			hdev->i2s_mask = 0;
-		
+		audio_param->channel_num = (aud_param->chs - 1);
+		pr_info(AUD "aout notify channel num: %d\n", audio_param->channel_num);
 		hdev->audio_param_update_flag = 1;
 	}
 
@@ -5952,15 +5941,15 @@ static int hdmitx_notify_callback_a(struct notifier_block *block,
 	}
 
 	if (hdev->tx_aud_cfg == 2)
-	{	
+	{
 		pr_info(AUD "auto mode\n");
-		
+
 		/* Detect whether Rx is support current audio format */
 		for (i = 0; i < prxcap->AUD_count; i++) {
 			if (prxcap->RxAudioCap[i].audio_format_code == cmd)
 				audio_check = 1;
 		}
-		
+
 		/* sink don't support current audio mode */
 		if (!audio_check && cmd != CT_PCM) {
 			pr_info("Sink not support this audio format %lu\n", cmd);
