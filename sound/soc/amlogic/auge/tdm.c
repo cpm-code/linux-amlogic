@@ -1170,8 +1170,7 @@ static struct snd_kcontrol *aml_dai_tdm_chmap_kctrl_get(struct snd_pcm_substream
 	return NULL;
 }
 
-static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream,
-			       struct snd_soc_dai *cpu_dai)
+static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream, struct snd_soc_dai *cpu_dai)
 {
 	int ret = 0, i;
 	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -1192,18 +1191,18 @@ static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream,
 
 	bit_depth = snd_pcm_format_width(runtime->format);
 
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+	{
 		struct frddr *fr = p_tdm->fddr;
 		enum frddr_dest dst;
 		unsigned int fifo_id;
 
-		if (p_tdm->samesource_sel != SHAREBUFFER_NONE &&
-		    spdif_get_codec() != AUD_CODEC_TYPE_MULTI_LPCM)
+		if (p_tdm->samesource_sel != SHAREBUFFER_NONE && spdif_get_codec() != AUD_CODEC_TYPE_MULTI_LPCM)
 			tdm_sharebuffer_prepare(substream, p_tdm);
 
 		/* i2s source to hdmix */
-		if (p_tdm->i2s2hdmitx) {
-
+		if (p_tdm->i2s2hdmitx)
+		{
 			if (p_tdm->chipinfo)
 				separated = p_tdm->chipinfo->separate_tohdmitx_en;
 
@@ -1222,11 +1221,7 @@ static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream,
 		}
 
 		fifo_id = aml_frddr_get_fifo_id(fr);
-		aml_tdm_fifo_ctrl(p_tdm->actrl,
-			bit_depth,
-			substream->stream,
-			p_tdm->id,
-			fifo_id);
+		aml_tdm_fifo_ctrl(p_tdm->actrl, bit_depth, substream->stream, p_tdm->id, fifo_id);
 
 		switch (p_tdm->id) {
 			case 0:
@@ -1243,11 +1238,7 @@ static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream,
 				return -EINVAL;
 		}
 
-		aml_frddr_set_format(fr,
-			runtime->channels,
-			runtime->rate,
-			bit_depth - 1,
-			tdmout_get_frddr_type(bit_depth));
+		aml_frddr_set_format(fr, runtime->channels, runtime->rate, bit_depth - 1, tdmout_get_frddr_type(bit_depth));
 		aml_frddr_select_dst(fr, dst);
 
 		// Alsa Channel Mapping API handling
@@ -1278,7 +1269,9 @@ static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream,
 		}
 		return ret;
 
-	} else {
+	}
+	else
+	{
 
 		struct toddr *to = p_tdm->tddr;
 		enum toddr_src src = aml_tdm_id2src(p_tdm->id);
@@ -1299,8 +1292,7 @@ static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream,
 			toddr_type = 4;
 			break;
 		default:
-			dev_err(p_tdm->dev, "invalid bit_depth: %d\n",
-					bit_depth);
+			dev_err(p_tdm->dev, "invalid bit_depth: %d\n", bit_depth);
 			return -EINVAL;
 		}
 
@@ -2022,24 +2014,27 @@ static int aml_tdm_platform_probe(struct platform_device *pdev)
 	int ret = 0;
 
 	p_tdm = devm_kzalloc(dev, sizeof(struct aml_tdm), GFP_KERNEL);
+
 	if (!p_tdm)
 		return -ENOMEM;
 
 	/* match data */
-	p_chipinfo = (struct tdm_chipinfo *)
-		of_device_get_match_data(dev);
-	if (!p_chipinfo) {
+	p_chipinfo = (struct tdm_chipinfo *) of_device_get_match_data(dev);
+
+	if (!p_chipinfo)
+	{
 		dev_warn_once(dev, "check whether to update tdm chipinfo\n");
 		return -ENOMEM;
 	}
+
 	p_tdm->chipinfo = p_chipinfo;
 	p_tdm->id = p_chipinfo->id;
+
 	if (!p_chipinfo->lane_cnt)
 		p_chipinfo->lane_cnt = LANE_MAX1;
 
 	p_tdm->lane_cnt = p_chipinfo->lane_cnt;
-	pr_info("%s, tdm ID = %u, lane_cnt = %d\n", __func__,
-			p_tdm->id, p_tdm->lane_cnt);
+	pr_info("%s, tdm ID = %u, lane_cnt = %d\n", __func__, p_tdm->id, p_tdm->lane_cnt);
 
 	/* get audio controller */
 	node_prt = of_get_parent(node);
@@ -2048,101 +2043,81 @@ static int aml_tdm_platform_probe(struct platform_device *pdev)
 
 	pdev_parent = of_find_device_by_node(node_prt);
 	of_node_put(node_prt);
-	actrl = (struct aml_audio_controller *)
-				platform_get_drvdata(pdev_parent);
+	actrl = (struct aml_audio_controller *) platform_get_drvdata(pdev_parent);
 	p_tdm->actrl = actrl;
 
 	/* get tdm mclk sel configs */
-	ret = of_property_read_u32(node, "dai-tdm-clk-sel",
-			&p_tdm->clk_sel);
+	ret = of_property_read_u32(node, "dai-tdm-clk-sel", &p_tdm->clk_sel);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Can't retrieve dai-tdm-clk-sel\n");
 		return -ENXIO;
 	}
 
 	/* default no same source */
-	if (p_tdm->chipinfo &&
-		p_tdm->chipinfo->same_src_fn) {
+	if (p_tdm->chipinfo && p_tdm->chipinfo->same_src_fn) {
 		int ss = 0;
 
-		ret = of_property_read_u32(node, "samesource_sel",
-				&ss);
+		ret = of_property_read_u32(node, "samesource_sel", &ss);
 		if (ret < 0)
 			p_tdm->samesource_sel = SHAREBUFFER_NONE;
 		else {
 			p_tdm->samesource_sel = ss;
 
-			pr_info("TDM id %d samesource_sel:%d\n",
-				p_tdm->id,
-				p_tdm->samesource_sel);
+			pr_info("TDM id %d samesource_sel:%d\n", p_tdm->id, p_tdm->samesource_sel);
 		}
 	}
-	/* default no acodec_adc */
-	if (p_tdm->chipinfo &&
-		p_tdm->chipinfo->adc_fn) {
 
-		ret = of_property_read_u32(node, "acodec_adc",
-				&p_tdm->acodec_adc);
+	/* default no acodec_adc */
+	if (p_tdm->chipinfo && p_tdm->chipinfo->adc_fn)
+	{
+		ret = of_property_read_u32(node, "acodec_adc", &p_tdm->acodec_adc);
 		if (ret < 0)
 			p_tdm->acodec_adc = 0;
 		else
 			pr_info("TDM id %d supports ACODEC_ADC\n", p_tdm->id);
 	}
 
-	ret = of_property_read_u32(node, "i2s2hdmi",
-			&p_tdm->i2s2hdmitx);
+	ret = of_property_read_u32(node, "i2s2hdmi", &p_tdm->i2s2hdmitx);
 	if (ret < 0)
 		p_tdm->i2s2hdmitx = 0;
 	else
-		pr_info("TDM id %d i2s2hdmi:%d\n",
-			p_tdm->id,
-			p_tdm->i2s2hdmitx);
+		pr_info("TDM id %d i2s2hdmi:%d\n", p_tdm->id, p_tdm->i2s2hdmitx);
 
-	if (p_tdm->id == TDM_LB) {
-		ret = of_property_read_u32(node, "lb-src-sel",
-				&p_tdm->tdmin_lb_src);
-		if (ret < 0 || (p_tdm->tdmin_lb_src > 7)) {
-			dev_err(&pdev->dev, "invalid lb-src-sel:%d\n",
-				p_tdm->tdmin_lb_src);
+	if (p_tdm->id == TDM_LB)
+	{
+		ret = of_property_read_u32(node, "lb-src-sel", &p_tdm->tdmin_lb_src);
+		if (ret < 0 || (p_tdm->tdmin_lb_src > 7))
+		{
+			dev_err(&pdev->dev, "invalid lb-src-sel:%d\n", p_tdm->tdmin_lb_src);
 			return -EINVAL;
 		}
-		pr_info("TDM id %d lb-src-sel:%d\n",
-			p_tdm->id,
-			p_tdm->tdmin_lb_src);
+		pr_info("TDM id %d lb-src-sel:%d\n", p_tdm->id, p_tdm->tdmin_lb_src);
 	}
 
 	/* get tdm lanes info. if not, set to default 0 */
-	ret = of_parse_tdm_lane_slot_in(node,
-			&p_tdm->setting.lane_mask_in);
+	ret = of_parse_tdm_lane_slot_in(node, &p_tdm->setting.lane_mask_in);
 	if (ret < 0)
 		p_tdm->setting.lane_mask_in = 0x0;
 
-	ret = of_parse_tdm_lane_slot_out(node,
-			&p_tdm->setting.lane_mask_out);
+	ret = of_parse_tdm_lane_slot_out(node, &p_tdm->setting.lane_mask_out);
 	if (ret < 0)
 		p_tdm->setting.lane_mask_out = 0x1;
 
 	/* get tdm lanes oe info. if not, set to default 0 */
-	ret = of_parse_tdm_lane_oe_slot_in(node,
-			&p_tdm->setting.lane_oe_mask_in);
+	ret = of_parse_tdm_lane_oe_slot_in(node, &p_tdm->setting.lane_oe_mask_in);
 	if (ret < 0)
 		p_tdm->setting.lane_oe_mask_in = 0x0;
 
-	ret = of_parse_tdm_lane_oe_slot_out(node,
-			&p_tdm->setting.lane_oe_mask_out);
+	ret = of_parse_tdm_lane_oe_slot_out(node, &p_tdm->setting.lane_oe_mask_out);
 	if (ret < 0)
 		p_tdm->setting.lane_oe_mask_out = 0x0;
 
 	/* get tdm lanes lb info. if not, set to default 0 */
-	ret = of_parse_tdm_lane_lb_slot_in(node,
-			&p_tdm->setting.lane_lb_mask_in);
+	ret = of_parse_tdm_lane_lb_slot_in(node, &p_tdm->setting.lane_lb_mask_in);
 	if (ret < 0)
 		p_tdm->setting.lane_lb_mask_in = 0x0;
 
-	dev_info(&pdev->dev,
-	    "lane_mask_out = %x, lane_oe_mask_out = %x\n",
-	    p_tdm->setting.lane_mask_out,
-	    p_tdm->setting.lane_oe_mask_out);
+	dev_info(&pdev->dev, "lane_mask_out = %x, lane_oe_mask_out = %x\n", p_tdm->setting.lane_mask_out, p_tdm->setting.lane_oe_mask_out);
 
 	p_tdm->clk = devm_clk_get(&pdev->dev, "clk_srcpll");
 	if (IS_ERR(p_tdm->clk))
@@ -2152,7 +2127,8 @@ static int aml_tdm_platform_probe(struct platform_device *pdev)
 	if (IS_ERR(p_tdm->mclk))
 		dev_warn(&pdev->dev, "Can't retrieve mclk\n");
 
-	if (!IS_ERR(p_tdm->mclk) && !IS_ERR(p_tdm->clk)) {
+	if (!IS_ERR(p_tdm->mclk) && !IS_ERR(p_tdm->clk))
+	{
 		ret = clk_set_parent(p_tdm->mclk, p_tdm->clk);
 		if (ret)
 			dev_warn(dev, "can't set tdm parent clock\n");
@@ -2160,7 +2136,8 @@ static int aml_tdm_platform_probe(struct platform_device *pdev)
 
 	/* clk tree style after SM1, instead of legacy prop */
 	p_tdm->mclk2pad = devm_clk_get(&pdev->dev, "mclk_pad");
-	if (!IS_ERR(p_tdm->mclk2pad)) {
+	if (!IS_ERR(p_tdm->mclk2pad))
+	{
 		ret = clk_set_parent(p_tdm->mclk2pad, p_tdm->mclk);
 		if (ret) {
 			dev_err(&pdev->dev, "Can't set tdm mclk_pad parent\n");
@@ -2168,19 +2145,20 @@ static int aml_tdm_platform_probe(struct platform_device *pdev)
 		}
 		clk_prepare_enable(p_tdm->mclk2pad);
 		p_tdm->mclk_pad = -1;
-	} else {
+	}
+	else
+	{
 		/* mclk pad ctrl */
-		ret = of_property_read_u32(node, "mclk_pad",
-					   &p_tdm->mclk_pad);
+		ret = of_property_read_u32(node, "mclk_pad", &p_tdm->mclk_pad);
 		if (ret < 0) {
 			/* No mclk in defalut if chip needs mclk pad mux. */
 			p_tdm->mclk_pad = -1;
-			dev_warn_once(&pdev->dev,
-				      "neither mclk_pad nor mclk2pad set\n");
+			dev_warn_once(&pdev->dev, "neither mclk_pad nor mclk2pad set\n");
 		}
 	}
 
-	if (p_tdm->chipinfo && (!p_tdm->chipinfo->no_mclkpad_ctrl)) {
+	if (p_tdm->chipinfo && (!p_tdm->chipinfo->no_mclkpad_ctrl))
+	{
 		ret = aml_tdm_set_clk_pad(p_tdm);
 		if (ret)
 			dev_warn_once(&pdev->dev, "clk_pad set failed\n");
@@ -2191,22 +2169,18 @@ static int aml_tdm_platform_probe(struct platform_device *pdev)
 		meson_clk_measure((1<<16) | 0x67);
 
 	p_tdm->pin_ctl = devm_pinctrl_get_select(dev, "tdm_pins");
-	if (IS_ERR(p_tdm->pin_ctl)) {
+	if (IS_ERR(p_tdm->pin_ctl))
+	{
 		dev_info(dev, "aml_tdm_get_pins error!\n");
-		/*return PTR_ERR(p_tdm->pin_ctl);*/
 	}
 
-	ret = of_property_read_u32(node, "start_clk_enable",
-				&p_tdm->start_clk_enable);
+	ret = of_property_read_u32(node, "start_clk_enable", &p_tdm->start_clk_enable);
 	if (ret < 0)
 		p_tdm->start_clk_enable = 0;
 	else
-		pr_info("TDM id %d output clk enable:%d\n",
-			p_tdm->id, p_tdm->start_clk_enable);
+		pr_info("TDM id %d output clk enable:%d\n", p_tdm->id, p_tdm->start_clk_enable);
 
-	ret = of_property_read_u32(node,
-				   "ctrl_gain",
-				   &p_tdm->ctrl_gain_enable);
+	ret = of_property_read_u32(node, "ctrl_gain", &p_tdm->ctrl_gain_enable);
 	if (ret < 0)
 		p_tdm->ctrl_gain_enable = 0;
 
@@ -2219,12 +2193,13 @@ static int aml_tdm_platform_probe(struct platform_device *pdev)
 
 	/* spdif same source with i2s */
 	parse_samesrc_channel_mask(p_tdm);
+
 	/* support fixing 2 channel I2S to HDMITX */
 	parse_i2s_hdmitx_channel_mask(p_tdm);
 
-	ret = devm_snd_soc_register_component(dev, &aml_tdm_component,
-					 &aml_tdm_dai[p_tdm->id], 1);
-	if (ret) {
+	ret = devm_snd_soc_register_component(dev, &aml_tdm_component, &aml_tdm_dai[p_tdm->id], 1);
+	if (ret)
+	{
 		dev_err(dev, "devm_snd_soc_register_component failed\n");
 		return ret;
 	}
@@ -2232,13 +2207,11 @@ static int aml_tdm_platform_probe(struct platform_device *pdev)
 	if (p_tdm->ctrl_gain_enable)
 		aml_tdmout_auto_gain_enable(p_tdm->id);
 
-	ret = of_property_read_u32(node, "clk_tuning_enable",
-				&p_tdm->clk_tuning_enable);
+	ret = of_property_read_u32(node, "clk_tuning_enable", &p_tdm->clk_tuning_enable);
 	if (ret < 0)
 		p_tdm->clk_tuning_enable = 0;
 	else
-		pr_info("TDM id %d tuning clk enable:%d\n",
-			p_tdm->id, p_tdm->clk_tuning_enable);
+		pr_info("TDM id %d tuning clk enable:%d\n", p_tdm->id, p_tdm->clk_tuning_enable);
 
 #ifdef CONFIG_AMLOGIC_LEGACY_EARLY_SUSPEND
 	tdm_register_early_suspend_hdr(p_tdm->id, pdev);
