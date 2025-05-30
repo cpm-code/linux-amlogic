@@ -340,45 +340,42 @@ void iec_get_channel_status_info(
 		 ((chsts->chstat1_r >> 8) & 0xf) << 24 | chsts->chstat0_r);
 }
 
-void spdif_notify_to_hdmitx(struct snd_pcm_substream *substream,
-			    enum aud_codec_types codec_type)
+void spdif_notify_to_hdmitx(struct snd_pcm_substream *substream, enum aud_codec_types codec_type)
 {
 	struct aud_para aud_param;
 
 	memset(&aud_param, 0, sizeof(aud_param));
 
-	//0 signals audio is coming from spdif rather than i2s
+	// 0 signals audio is coming from spdif rather than i2s
 	hdmitx_ext_set_i2s_mask(0x0);
 
 	aud_param.rate = substream->runtime->rate;
 	aud_param.size = substream->runtime->sample_bits;
 	aud_param.chs  = substream->runtime->channels;
 
-	if (codec_type == AUD_CODEC_TYPE_AC3) {
-		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_AC_3,
-					 &aud_param);
-	} else if (codec_type == AUD_CODEC_TYPE_DTS) {
-		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS,
-					 &aud_param);
-	} else if (codec_type == AUD_CODEC_TYPE_EAC3) {
-		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DOBLY_DIGITAL_PLUS,
-					 &aud_param);
-	} else if (codec_type == AUD_CODEC_TYPE_DTS_HD) {
+	if (codec_type == AUD_CODEC_TYPE_AC3)
+		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_AC_3, &aud_param);
+	else if (codec_type == AUD_CODEC_TYPE_DTS)
+		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS, &aud_param);
+	else if (codec_type == AUD_CODEC_TYPE_EAC3)
+		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DOBLY_DIGITAL_PLUS, &aud_param);
+	else if (codec_type == AUD_CODEC_TYPE_DTS_HD)
+	{
 		aud_param.fifo_rst = 1;
-		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS_HD,
-					 &aud_param);
-	} else if (codec_type == AUD_CODEC_TYPE_TRUEHD) {
-		aud_param.fifo_rst = 1;
-		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_MAT_MLP,
-					 &aud_param);
-	} else if (codec_type == AUD_CODEC_TYPE_DTS_HD_MA) {
-		aud_param.fifo_rst = 1;
-		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS_HD_MA,
-					 &aud_param);
-	} else {
-		aout_notifier_call_chain(AOUT_EVENT_IEC_60958_PCM,
-					 &aud_param);
+		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS_HD, &aud_param);
 	}
+	else if (codec_type == AUD_CODEC_TYPE_TRUEHD)
+	{
+		aud_param.fifo_rst = 1;
+		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_MAT_MLP, &aud_param);
+	}
+	else if (codec_type == AUD_CODEC_TYPE_DTS_HD_MA)
+	{
+		aud_param.fifo_rst = 1;
+		aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS_HD_MA, &aud_param);
+	}
+	else
+		aout_notifier_call_chain(AOUT_EVENT_IEC_60958_PCM, &aud_param);
 }
 
 #ifdef CONFIG_AMLOGIC_HDMITX
