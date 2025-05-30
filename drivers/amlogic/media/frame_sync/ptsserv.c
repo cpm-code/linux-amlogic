@@ -539,7 +539,7 @@ int pts_checkin_offset_us64(u8 type, u32 offset, u64 us)
 
 	pts_val = div64_u64(us * 9, 100);
 
-	pr_info("[cpm-code] check in offset [%lu] pts [%llu]\n", offset, us);
+	// pr_info("[cpm-code] check in offset [%lu] pts [%llu]\n", offset, us);
 
 	return pts_checkin_offset_inline(type, offset, (u32) pts_val, us);
 }
@@ -755,7 +755,7 @@ static int pts_lookup_offset_inline_locked(u8 type, u32 offset, u32 *val, u32 *f
 		// first lookup
 		ptable->first_lookup_ok |= 1;
 
-		pr_info("[cpm-code] check out best match offset [%lu] pts [%llu]\n", offset, best_match->pts_us64);
+		// pr_info("[cpm-code] check out best match offset [%lu] pts [%llu]\n", offset, best_match->pts_us64);
 
 		// move to free list
 		list_move_tail(&best_match->list, &ptable->free_list);
@@ -776,7 +776,7 @@ static int pts_lookup_offset_inline_locked(u8 type, u32 offset, u32 *val, u32 *f
 		// first lookup
 		ptable->first_lookup_ok |= 1;
 
-		pr_info("[cpm-code] check out next match offset [%lu] pts [%llu]\n", offset, next_match->pts_us64);
+		// pr_info("[cpm-code] check out next match offset [%lu] pts [%llu]\n", offset, next_match->pts_us64);
 
 		// move to free list
 		list_move_tail(&next_match->list, &ptable->free_list);
