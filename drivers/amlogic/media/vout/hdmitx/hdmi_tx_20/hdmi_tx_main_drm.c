@@ -2344,28 +2344,7 @@ int hdmitx_ext_get_audio_status(void)
 void hdmitx_ext_set_i2s_mask(char i2s_mask)
 {
 	struct hdmitx_dev *hdev = &hdmitx_device;
-	static unsigned int update_flag = -1;
-
-	if (!((ch_num == 2) || (ch_num == 4) || (ch_num == 6) || (ch_num == 8)))
-	{
-		hdev->i2s_mask = 0;
-		if (update_flag != hdev->i2s_mask)
-		{
-			update_flag = hdev->i2s_mask;
-			hdmitx_set_audio(hdev, &hdev->cur_audio_param);
-		}
-	}
-	
-	if (i2s_mask == 0)
-		return;
-	
 	hdev->i2s_mask = i2s_mask;
-	
-	if (update_flag != hdev->i2s_mask)
-	{
-		update_flag = hdev->i2s_mask;
-		hdmitx_set_audio(hdev, &hdev->cur_audio_param);
-	}
 }
 
 char hdmitx_ext_get_i2s_mask(void)
