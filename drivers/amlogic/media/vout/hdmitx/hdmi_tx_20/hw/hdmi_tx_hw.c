@@ -2756,8 +2756,7 @@ struct hdmitx_audpara hdmiaud_config_data;
 struct hdmitx_audpara hsty_hdmiaud_config_data[8];
 unsigned int hsty_hdmiaud_config_loc, hsty_hdmiaud_config_num;
 
-static int hdmitx_set_audmode(struct hdmitx_dev *hdev,
-	struct hdmitx_audpara *audio_param)
+static int hdmitx_set_audmode(struct hdmitx_dev *hdev, struct hdmitx_audpara *audio_param)
 {
 	unsigned int data32;
 
