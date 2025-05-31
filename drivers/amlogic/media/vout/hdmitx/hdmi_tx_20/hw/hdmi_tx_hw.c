@@ -2841,10 +2841,7 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev, struct hdmitx_audpara *au
 
 	if (hdev->tx_aud_src == 1) // I2S
 	{
-		if (hdev->i2s_mask)
-			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, hdev->i2s_mask, 0, 4);  // [3:0] i2s_in_en?
-		else
-			hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, 0xf, 0, 4);             // [3:0] i2s_in_en?
+		hdmitx_set_reg_bits(HDMITX_DWC_AUD_CONF0, hdev->i2s_mask, 0, 4);  // [3:0] i2s_in_en?
 
 		/* Enable audi2s_fifo_overrun interrupt */
 		hdmitx_wr_reg(HDMITX_DWC_AUD_INT1,
