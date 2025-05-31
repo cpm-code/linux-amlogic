@@ -2779,8 +2779,8 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev, struct hdmitx_audpara *au
 
 	audio_mute_op(hdev->tx_aud_cfg);
 
-	// PCM & multi channel use I2S
-	if ((audio_param->type == CT_PCM) && (audio_param->channel_num > CC_2CH))
+	// PCM use I2S
+	if (audio_param->type == CT_PCM)
 		hdev->tx_aud_src = 1; // I2S
 	else
 		hdev->tx_aud_src = 0; // SPDIF
