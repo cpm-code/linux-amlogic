@@ -2785,10 +2785,6 @@ static int hdmitx_set_audmode(struct hdmitx_dev *hdev, struct hdmitx_audpara *au
 	else
 		hdev->tx_aud_src = 0; // SPDIF
 
-	// Set then I2S - is this needed given above?
-	if (hdev->i2s_mask)
-		hdev->tx_aud_src = 1;
-
 	pr_info(HW "hdmitx tx_aud_src = %d, audio_param->channel_num = %u, hdev->i2s_mask = %u\n", hdev->tx_aud_src, audio_param->channel_num, hdev->i2s_mask);
 
 	/* config IP */
