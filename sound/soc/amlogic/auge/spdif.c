@@ -1286,7 +1286,6 @@ static void aml_dai_spdif_shutdown(
 	}
 }
 
-
 static int aml_dai_spdif_prepare(
 	struct snd_pcm_substream *substream,
 	struct snd_soc_dai *cpu_dai)
@@ -1299,7 +1298,8 @@ static int aml_dai_spdif_prepare(
 
 	bit_depth = snd_pcm_format_width(runtime->format);
 
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+	{
 		struct frddr *fr = p_spdif->fddr;
 		enum frddr_dest dst;
 		struct iec958_chsts chsts;
@@ -1317,17 +1317,11 @@ static int aml_dai_spdif_prepare(
 		}
 
 		fifo_id = aml_frddr_get_fifo_id(fr);
-		aml_frddr_set_format(fr,
-			runtime->channels,
-			runtime->rate,
-			bit_depth - 1,
-			spdifout_get_frddr_type(bit_depth));
+		aml_frddr_set_format(fr, runtime->channels, runtime->rate, bit_depth - 1, spdifout_get_frddr_type(bit_depth));
 		aml_frddr_select_dst(fr, dst);
 
 		/* check channel status info, and set them */
-		iec_get_channel_status_info(&chsts,
-					    p_spdif->codec_type,
-					    runtime->rate);
+		iec_get_channel_status_info(&chsts, p_spdif->codec_type, runtime->rate);
 		spdif_set_channel_status_info(&chsts, p_spdif->id);
 
 		/* TOHDMITX_CTRL0
@@ -1338,23 +1332,22 @@ static int aml_dai_spdif_prepare(
 
 		if (p_spdif->codec_type == AUD_CODEC_TYPE_TRUEHD ||
 		    p_spdif->codec_type == AUD_CODEC_TYPE_DTS_HD ||
-		    p_spdif->codec_type == AUD_CODEC_TYPE_DTS_HD_MA) {
-			aml_spdif_enable(p_spdif->actrl,
-				substream->stream, p_spdif->id, false);
+		    p_spdif->codec_type == AUD_CODEC_TYPE_DTS_HD_MA)
+		{
+			aml_spdif_enable(p_spdif->actrl, substream->stream, p_spdif->id, false);
 			if (p_spdif->samesource_sel != SHAREBUFFER_NONE)
-				spdif_sharebuffer_trigger(p_spdif, runtime->channels,
-							  SNDRV_PCM_TRIGGER_STOP);
-			aml_spdif_mute(p_spdif->actrl,
-				substream->stream, p_spdif->id, false);
+				spdif_sharebuffer_trigger(p_spdif, runtime->channels, SNDRV_PCM_TRIGGER_STOP);
+			aml_spdif_mute(p_spdif->actrl, substream->stream, p_spdif->id, false);
 		}
 
-		if (get_spdif_to_hdmitx_id() == p_spdif->id) {
-			/* notify to hdmitx */
+		if (get_spdif_to_hdmitx_id() == p_spdif->id) /* notify to hdmitx */
 			spdif_notify_to_hdmitx(substream, p_spdif->codec_type);
-		}
+
 		if (p_spdif->samesource_sel != SHAREBUFFER_NONE)
 			spdif_sharebuffer_prepare(substream, p_spdif);
-	} else {
+	}
+	else
+	{
 		struct toddr *to = p_spdif->tddr;
 		struct toddr_fmt fmt;
 		unsigned int msb, lsb, toddr_type;
