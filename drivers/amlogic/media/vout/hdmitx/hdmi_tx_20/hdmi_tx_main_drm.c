@@ -2371,7 +2371,6 @@ void hdmitx_ext_set_i2s_mask(char i2s_mask)
 char hdmitx_ext_get_i2s_mask(void)
 {
 	struct hdmitx_dev *hdev = &hdmitx_device;
-
 	return hdev->i2s_mask;
 }
 
