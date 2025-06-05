@@ -24,6 +24,7 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/clk.h>
+#include <sound/asound.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/initval.h>
@@ -1193,12 +1194,17 @@ static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream, struct snd_s
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 	{
+
+		int sample_present = channel_allocations[runtime->layout].sample_present;
+
 		struct frddr *fr = p_tdm->fddr;
 		enum frddr_dest dst;
 		unsigned int fifo_id;
 
 		if (p_tdm->samesource_sel != SHAREBUFFER_NONE && spdif_get_codec() != AUD_CODEC_TYPE_MULTI_LPCM)
 			tdm_sharebuffer_prepare(substream, p_tdm);
+
+		char i2s_mask = 0x0;
 
 		/* i2s source to hdmix */
 		if (p_tdm->i2s2hdmitx)
@@ -1208,14 +1214,12 @@ static int aml_dai_tdm_prepare(struct snd_pcm_substream *substream, struct snd_s
 
 			i2s_to_hdmitx_ctrl(separated, p_tdm->id);
 
-			if (runtime->channels > 6)
-				hdmitx_ext_set_i2s_mask(0xf);  // [1111]
-			else if (runtime->channels > 4)
-				hdmitx_ext_set_i2s_mask(0x7);  // [0111]
-			else if (runtime->channels > 2)
-				hdmitx_ext_set_i2s_mask(0x3);  // [0011]
-			else
-				hdmitx_ext_set_i2s_mask(0x1);  // [0001]
+			if      (sample_present > 0x8) i2s_mask = 0xf;  // [1111]
+			else if (sample_present > 0x4) i2s_mask = 0x7;  // [0111]
+			else if (sample_present > 0x2) i2s_mask = 0x3;  // [0011]
+			else                           i2s_mask = 0x1;  // [0001]
+
+			hdmitx_ext_set_i2s_mask(i2s_mask);
 
 			aout_notifier_call_chain(AOUT_EVENT_IEC_60958_PCM, &aud_param);
 		}
