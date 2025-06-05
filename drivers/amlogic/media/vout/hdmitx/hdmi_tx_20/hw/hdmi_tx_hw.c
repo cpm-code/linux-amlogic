@@ -2512,65 +2512,35 @@ static unsigned char aud_csb_ori_sampfreq[FS_MAX + 1] = {
 	[FS_192K] = 0x1, /* FS_192K */
 };
 
-static void set_aud_chnls(struct hdmitx_dev *hdev,
-	struct hdmitx_audpara *audio_param)
+static void set_aud_chnls(struct hdmitx_dev *hdev, struct hdmitx_audpara *audio_param)
 {
 	int i;
 
 	pr_info(HW "set channel status\n");
 
-	// the audio setting bellow are only used for I2S audio IEC60958-3 frame insertion
-	//data32  = 0;
-	//data32 |= (0 << 7);
-	//data32 |= (0 << 6);
-	//data32 |= (0 << 5);
-	//data32 |= (1 << 4);
-	//data32 |= (0 << 3);
-	//data32 |= (0 << 2);
-	//data32 |= (0 << 1);
-	//data32 |= (1 << 0);
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSV,  data32);
-
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSU,  0);
-
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS0, 0x01);
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS1, 0x23);
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS2, 0x45);
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS3, 0x67);
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS4, 0x89);
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS5, 0xab);
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS6, 0xcd);
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS7, 0x2f);
-	//hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS8, 0xf0);
-
 	for (i = 0; i < 9; i++)
 		/* First, set all status to 0 */
 		hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS0+i, 0x00);
 
-	/* set default 48k 2ch pcm */
-	if ((audio_param->type == CT_PCM) && (audio_param->channel_num == CC_2CH))
-	{
-		hdmitx_wr_reg(HDMITX_DWC_FC_AUDSV, 0);
-	}
+	if (audio_param->type == CT_PCM)
+		hdmitx_wr_reg(HDMITX_DWC_FC_AUDSV, ~(channel_allocations[audio_param->layout].sample_valid) & 0xFF);
 	else
-	{
-		hdmitx_wr_reg(HDMITX_DWC_FC_AUDSV, 0); // Same!
-	}
+		hdmitx_wr_reg(HDMITX_DWC_FC_AUDSV, 0);
 
 	switch (audio_param->type) {
 
 		case CT_AC_3:
 		case CT_DOLBY_D:
 		case CT_DST:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS3, 0x01); // CSB 20  /* bit7:4 CSB 22:21 2nd right sub */ /* bit3:0 CSB 22:21 1st right sub */
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS5, 0x02); // CSB 21  /* bit7:4 CSB 22:21 2nd left  sub */ /* bit3:0 CSB 22:21 1st left sub  */
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS3, 0x01); // 0b00000001 CSB 20  /* bit7:4 CSB 22:21 2nd right sub */ /* bit3:0 CSB 22:21 1st right sub */
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS5, 0x02); // 0b00000010 CSB 21  /* bit7:4 CSB 22:21 2nd left  sub */ /* bit3:0 CSB 22:21 1st left sub  */
 			break;
 
 		default:
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS3, 0x42); // CSB 20  /* bit7:4 CSB 22:21 2nd right sub */ /* bit3:0 CSB 22:21 1st right sub */
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS4, 0x86); //         /* bit?:? CSB 22:21 4th right sub */ /* bit?"? CSB 22:21 3rd right sub */
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS5, 0x31); // CSB 21  /* bit7:4 CSB 22:21 2nd left  sub */ /* bit3:0 CSB 22:21 1st left sub  */
-			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS6, 0x75); //         /* bit?:? CSB 22:21 4th left  sub */ /* bit?? CSB 22:21 3rd left sub   */
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS3, 0x42); // 0b01000010 CSB 20  /* bit7:4 CSB 22:21 2nd right sub */ /* bit3:0 CSB 22:21 1st right sub */
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS4, 0x86); // 0b10000110         /* bit?:? CSB 22:21 4th right sub */ /* bit?"? CSB 22:21 3rd right sub */
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS5, 0x31); // 0b00110001 CSB 21  /* bit7:4 CSB 22:21 2nd left  sub */ /* bit3:0 CSB 22:21 1st left sub  */
+			hdmitx_wr_reg(HDMITX_DWC_FC_AUDSCHNLS6, 0x75); // 0b01110101         /* bit?:? CSB 22:21 4th left  sub */ /* bit?? CSB 22:21 3rd left sub   */
 			break;
 	}
 
