@@ -578,10 +578,11 @@ enum {
 #define FCH	SNDRV_CHMAP_TFC  // Front Center High
 
 struct channel_speaker_allocation {
-	unsigned int index;
-	unsigned int channels;
-	unsigned int sample_present;
-	unsigned int speakers[8];
+	unsigned char index;
+	unsigned char channels;
+	unsigned char sample_present;
+	unsigned char sample_valid;
+	unsigned char speakers[8];
 };
 
 static struct channel_speaker_allocation __maybe_unused channel_allocations[] = {
