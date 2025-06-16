@@ -176,20 +176,14 @@ static void hdmi_tx_construct_aud_packet(
 #endif
 }
 
-int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device,
-	struct hdmitx_audpara *audio_param)
+int hdmitx_set_audio(struct hdmitx_dev *hdmitx_device, struct hdmitx_audpara *audio_param)
 {
-	int i, ret = -1;
-	unsigned char AUD_DB[32];
-	unsigned char CHAN_STAT_BUF[24*2];
+	int ret = -1;
+	unsigned char AUD_DB[32] = {0};
+	unsigned char CHAN_STAT_BUF[24*2] = {0};
 
-	for (i = 0; i < 32; i++)
-		AUD_DB[i] = 0;
-
-	for (i = 0; i < (24*2); i++)
-		CHAN_STAT_BUF[i] = 0;
-
-	if (hdmitx_device->hwop.setaudmode(hdmitx_device, audio_param) >= 0) {
+	if (hdmitx_device->hwop.setaudmode(hdmitx_device, audio_param) >= 0)
+	{
 		// Not used for anything - keep for log statements
 		hdmi_tx_construct_aud_packet(audio_param, AUD_DB, CHAN_STAT_BUF);
 		// empty function - does nothing
