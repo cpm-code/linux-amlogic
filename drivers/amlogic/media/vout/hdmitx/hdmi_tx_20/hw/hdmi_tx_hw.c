@@ -2587,8 +2587,6 @@ static void set_aud_info_pkt(struct hdmitx_dev *hdev, struct hdmitx_audpara *aud
 	                                           // DM_INH [  4] (Down mix enable)
 	                                           // LSV    [3:0] (Level shift value (for down mixing))
 
-	hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, ~(channel_allocations[audio_param->layout].sample_present) & 0xF, 4, 4); // aud_packet_sampflat [7:4]
-
 	switch (audio_param->type)
 	{
 		case CT_MAT:       // passthrough HBR - high bit rate
@@ -2602,6 +2600,7 @@ static void set_aud_info_pkt(struct hdmitx_dev *hdev, struct hdmitx_audpara *aud
 			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDICONF0, audio_param->channel_num, 4, 3); // CC [6:4] (Channel Count)
 			hdmitx_wr_reg(HDMITX_DWC_FC_AUDICONF2, audio_param->layout);                  // CA [7:0] (Channel Allocation)
 			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, (audio_param->channel_num > CC_2CH), 0, 1); // [0]   aud_packet_layout.
+			hdmitx_set_reg_bits(HDMITX_DWC_FC_AUDSCONF, ~(channel_allocations[audio_param->layout].sample_present) & 0xF, 4, 4); // aud_packet_sampflat [7:4]
 			set_spdif_reg(0, 0);
 			break;
 		case CT_AC_3:      // passthrough
