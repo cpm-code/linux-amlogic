@@ -40,7 +40,7 @@
 #define FLAG_3D_SYNC_DIS        (1 << 23)
 #define FLAG_3D_SYNC_EN         (1 << 22)
 #define FLAG_VLOCK_DIS          (1 << 21)
-#define FLAG_VLOCK_EN          (1 << 20)
+#define FLAG_VLOCK_EN           (1 << 20)
 #define FLAG_VE_DNLP_EN         (1 << 19)
 #define FLAG_VE_DNLP_DIS        (1 << 18)
 #define FLAG_VADJ1_CON			(1 << 17)
@@ -103,27 +103,27 @@
 #define PQ_USER_BLK_EN             (1 << 0)
 
 /*white balance latch*/
-#define MTX_BYPASS_RGB_OGO			(1 << 0)
-#define MTX_RGB2YUVL_RGB_OGO		(1 << 1)
+#define MTX_BYPASS_RGB_OGO         (1 << 0)
+#define MTX_RGB2YUVL_RGB_OGO       (1 << 1)
 
-#define UNKNOWN_SOURCE		0
-#define HDR10_SOURCE		1
-#define HDR10PLUS_SOURCE	2
-#define DOVI_SOURCE			3
-#define PRIMESL_SOURCE		4
-#define HLG_SOURCE			5
-#define SDR_SOURCE			6
-#define MVC_SOURCE           7
-#define CUVA_HDR_SOURCE      8
-#define CUVA_HLG_SOURCE      9
-#define SDR_BT2020_SOURCE      10
+#define UNKNOWN_SOURCE      0
+#define HDR10_SOURCE        1
+#define HDR10PLUS_SOURCE    2
+#define DOVI_SOURCE         3
+#define PRIMESL_SOURCE      4
+#define HLG_SOURCE          5
+#define SDR_SOURCE          6
+#define MVC_SOURCE          7
+#define CUVA_HDR_SOURCE     8
+#define CUVA_HLG_SOURCE     9
+#define SDR_BT2020_SOURCE  10
 
 #define DNLP_PARAM_RD_UPDATE 0x1
-#define DNLP_CV_RD_UPDATE 0x2
-#define WB_PARAM_RD_UPDATE 0x4
-#define LC_CUR_RD_UPDATE 0x8
-#define LC_PARAM_RD_UPDATE 0x10
-#define LC_CUR2_RD_UPDATE 0x20
+#define DNLP_CV_RD_UPDATE    0x2
+#define WB_PARAM_RD_UPDATE   0x4
+#define LC_CUR_RD_UPDATE     0x8
+#define LC_PARAM_RD_UPDATE  0x10
+#define LC_CUR2_RD_UPDATE   0x20
 
 enum cm_hist_e {
 	CM_HUE_HIST = 0,
@@ -603,15 +603,7 @@ struct hdr_metadata_info_s {
 
 extern void vpp_vd_adj1_saturation_hue(signed int sat_val,
 	signed int hue_val, struct vframe_s *vf);
-extern void vpp_vd_adj2_saturation_hue(signed int sat_val,
-	signed int hue_val);
-int amvecm_set_contrast1(int val);
-int amvecm_set_contrast2(int val);
-signed int amvecm_get_contrast1(void);
-signed int amvecm_get_contrast2(void);
-int amvecm_set_brightness2(int val);
-signed int amvecm_get_brightness1(void);
-extern unsigned int vecm_latch_flag;
+extern int amvecm_set_brightness2(int val); // For compatibility for now
 extern void amvecm_sharpness_enable(int sel);
 extern int metadata_read_u32(uint32_t *value);
 extern int metadata_wait(struct vframe_s *vf);
