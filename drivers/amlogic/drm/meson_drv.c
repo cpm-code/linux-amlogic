@@ -48,6 +48,15 @@
 #define DRIVER_NAME "meson"
 #define DRIVER_DESC "Amlogic Meson DRM driver"
 
+static void am_meson_fb_output_poll_changed(struct drm_device *dev)
+{
+#ifdef CONFIG_DRM_MESON_EMULATE_FBDEV
+	struct meson_drm *priv = dev->dev_private;
+
+	drm_fbdev_cma_hotplug_event(priv->fbdev);
+#endif
+}
+
 int am_meson_atomic_check(struct drm_device *dev,
 			  struct drm_atomic_state *state)
 {
@@ -68,7 +77,8 @@ int am_meson_atomic_check(struct drm_device *dev,
 	return ret;
 }
 
-static const struct drm_mode_config_funcs meson_mode_config_funcs = {	
+static const struct drm_mode_config_funcs meson_mode_config_funcs = {
+	.output_poll_changed = am_meson_fb_output_poll_changed,
 	.atomic_check        = drm_atomic_helper_check,
 	.atomic_commit       = drm_atomic_helper_commit,
 #ifdef CONFIG_DRM_MESON_USE_ION

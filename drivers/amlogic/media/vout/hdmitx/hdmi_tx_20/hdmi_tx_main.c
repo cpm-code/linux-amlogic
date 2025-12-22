@@ -3372,16 +3372,19 @@ static ssize_t show_hdmi_hdr_status(struct device *dev,
 			return pos;
 		}
 		if ((hdev->hdr_color_feature == C_BT2020) &&
-		    ((hdev->hdr_transfer_feature == T_BT2020_10) ||
-		    (hdev->hdr_transfer_feature == T_HLG))) {
+		    (hdev->hdr_transfer_feature == T_HLG)) {
 			pos += snprintf(buf + pos, PAGE_SIZE,
 				"HDR10-GAMMA_HLG");
 			return pos;
 		}
 	}
 
-	/* default is SDR */
-	pos += snprintf(buf + pos, PAGE_SIZE, "SDR");
+	if ((hdev->hdr_color_feature == C_BT2020) &&
+		(hdev->hdr_transfer_feature == T_BT2020_10))
+		pos += snprintf(buf + pos, PAGE_SIZE, "SDR BT2020-10");
+	else
+		/* default is SDR */
+		pos += snprintf(buf + pos, PAGE_SIZE, "SDR");
 
 	return pos;
 }
@@ -3872,6 +3875,24 @@ static ssize_t _show_dv_cap(struct device *dev,
 		pos += snprintf(buf+pos, PAGE_SIZE, "%02x",
 		dv->rawdata[i]);
 	pos += snprintf(buf + pos, PAGE_SIZE, "\n");
+	pos += snprintf(buf + pos, PAGE_SIZE,
+		"Length: %d\n", dv->length);
+	pos += snprintf(buf + pos, PAGE_SIZE,
+		"tmaxLUM: %dnti\n", dv->tmaxLUM);
+	pos += snprintf(buf + pos, PAGE_SIZE,
+		"tmaxPQ: %dpqi\n", dv->tmaxPQ);
+	pos += snprintf(buf + pos, PAGE_SIZE,
+		"Rx: %drxi\n", dv->Rx);
+	pos += snprintf(buf + pos, PAGE_SIZE,
+		"Ry: %dryi\n", dv->Ry);
+	pos += snprintf(buf + pos, PAGE_SIZE,
+		"Gx: %dgxi\n", dv->Gx);
+	pos += snprintf(buf + pos, PAGE_SIZE,
+		"Gy: %dgyi\n", dv->Gy);
+	pos += snprintf(buf + pos, PAGE_SIZE,
+		"Bx: %dbxi\n", dv->Bx);
+	pos += snprintf(buf + pos, PAGE_SIZE,
+		"By: %dbyi\n", dv->By);
 	return pos;
 }
 

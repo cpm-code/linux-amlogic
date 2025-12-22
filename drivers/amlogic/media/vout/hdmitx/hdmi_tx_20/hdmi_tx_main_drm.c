@@ -58,6 +58,7 @@
 #include <linux/amlogic/media/vout/hdmi_tx/hdmi_tx_ddc.h>
 #include <linux/amlogic/media/vout/hdmi_tx/hdmi_tx_module.h>
 #include <linux/amlogic/media/vout/hdmi_tx/hdmi_config.h>
+#include <linux/amlogic/media/amdolbyvision/dolby_vision.h>
 #include "hw/tvenc_conf.h"
 #include "hw/common.h"
 #include "hw/hw_clk.h"
@@ -5159,6 +5160,9 @@ static void hdmitx_hpd_plugin_handler(struct work_struct *work)
 	cancel_delayed_work(&hdev->work_cedst);
 	if (hdev->cedst_policy)
 		queue_delayed_work(hdev->cedst_wq, &hdev->work_cedst, 0);
+
+	// Set toogle flag for DV on plugin.
+	dolby_vision_set_toggle_flag(1);
 }
 
 static void clear_rx_vinfo(struct hdmitx_dev *hdev)
