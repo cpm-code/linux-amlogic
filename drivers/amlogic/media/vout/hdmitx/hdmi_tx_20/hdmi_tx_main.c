@@ -2841,7 +2841,7 @@ static ssize_t show_config(struct device *dev,
 	else if (hdev->flag_3dss)
 		conf = "SidebySide";
 	else if (hdev->flag_3dtb)
-		conf = "TopButtom";
+		conf = "TopBottom";
 	else
 		conf = "off";
 	pos += snprintf(buf+pos, PAGE_SIZE, "3D config: %s\n", conf);
