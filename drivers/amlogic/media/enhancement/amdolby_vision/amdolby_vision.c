@@ -2035,26 +2035,6 @@ static void apply_stb_core_settings
   update_flag_more = update_bk;
 }
 
-static void osd_bypass(int bypass)
-{
-  static u32 osd_backup_ctrl;
-  static u32 osd_backup_eotf;
-  static u32 osd_backup_mtx;
-
-  if (bypass) {
-    osd_backup_ctrl = VSYNC_RD_DV_REG(VIU_OSD1_CTRL_STAT);
-    osd_backup_eotf = VSYNC_RD_DV_REG(VIU_OSD1_EOTF_CTL);
-    osd_backup_mtx = VSYNC_RD_DV_REG(VPP_MATRIX_CTRL);
-    VSYNC_WR_DV_REG_BITS(VIU_OSD1_EOTF_CTL, 0, 31, 1);
-    VSYNC_WR_DV_REG_BITS(VIU_OSD1_CTRL_STAT, 0, 3, 1);
-    VSYNC_WR_DV_REG_BITS(VPP_MATRIX_CTRL, 0, 7, 1);
-  } else {
-    VSYNC_WR_DV_REG(VPP_MATRIX_CTRL, osd_backup_mtx);
-    VSYNC_WR_DV_REG(VIU_OSD1_CTRL_STAT, osd_backup_ctrl);
-    VSYNC_WR_DV_REG(VIU_OSD1_EOTF_CTL, osd_backup_eotf);
-  }
-}
-
 static u32 viu_eotf_ctrl_backup;
 static u32 xvycc_lut_ctrl_backup;
 static u32 inv_lut_ctrl_backup;
@@ -2122,92 +2102,6 @@ static void video_effect_bypass(int bypass)
   }
 }
 
-static void osd_path_enable(int on)
-{
-  u32 i = 0;
-  u32 addr_port;
-  u32 data_port;
-  struct hdr_osd_lut_s *lut = &hdr_osd_reg.lut_val;
-
-  if (!on) {
-    enable_osd_path(0, 0);
-    VSYNC_WR_DV_REG(VIU_OSD1_EOTF_CTL, 0);
-    VSYNC_WR_DV_REG(VIU_OSD1_OETF_CTL, 0);
-
-  } else {
-    enable_osd_path(1, -1);
-
-    if ((hdr_osd_reg.viu_osd1_eotf_ctl & 0x80000000) != 0) {
-      addr_port = VIU_OSD1_EOTF_LUT_ADDR_PORT;
-      data_port = VIU_OSD1_EOTF_LUT_DATA_PORT;
-      VSYNC_WR_DV_REG(addr_port, 0);
-
-      for (i = 0; i < 16; i++)
-        VSYNC_WR_DV_REG(data_port, lut->r_map[i * 2] | (lut->r_map[i * 2 + 1] << 16));
-
-      VSYNC_WR_DV_REG(data_port, lut->r_map[EOTF_LUT_SIZE - 1] | (lut->g_map[0] << 16));
-
-      for (i = 0; i < 16; i++)
-        VSYNC_WR_DV_REG(data_port, lut->g_map[i * 2 + 1] | (lut->b_map[i * 2 + 2] << 16));
-
-      for (i = 0; i < 16; i++)
-        VSYNC_WR_DV_REG(data_port, lut->b_map[i * 2] | (lut->b_map[i * 2 + 1] << 16));
-
-      VSYNC_WR_DV_REG(data_port, lut->b_map[EOTF_LUT_SIZE - 1]);
-
-      /* load eotf matrix */
-      VSYNC_WR_DV_REG(VIU_OSD1_EOTF_COEF00_01, hdr_osd_reg.viu_osd1_eotf_coef00_01);
-      VSYNC_WR_DV_REG(VIU_OSD1_EOTF_COEF02_10, hdr_osd_reg.viu_osd1_eotf_coef02_10);
-      VSYNC_WR_DV_REG(VIU_OSD1_EOTF_COEF11_12, hdr_osd_reg.viu_osd1_eotf_coef11_12);
-      VSYNC_WR_DV_REG(VIU_OSD1_EOTF_COEF20_21, hdr_osd_reg.viu_osd1_eotf_coef20_21);
-      VSYNC_WR_DV_REG(VIU_OSD1_EOTF_COEF22_RS, hdr_osd_reg.viu_osd1_eotf_coef22_rs);
-      VSYNC_WR_DV_REG(VIU_OSD1_EOTF_CTL, hdr_osd_reg.viu_osd1_eotf_ctl);
-    }
-
-    /* restore oetf lut */
-    if ((hdr_osd_reg.viu_osd1_oetf_ctl & 0xe0000000) != 0) {
-      addr_port = VIU_OSD1_OETF_LUT_ADDR_PORT;
-      data_port = VIU_OSD1_OETF_LUT_DATA_PORT;
-
-      for (i = 0; i < 20; i++) {
-        VSYNC_WR_DV_REG(addr_port, i);
-        VSYNC_WR_DV_REG(data_port, lut->or_map[i * 2] | (lut->or_map[i * 2 + 1] << 16));
-      }
-
-      VSYNC_WR_DV_REG(addr_port, 20);
-      VSYNC_WR_DV_REG(data_port, lut->or_map[41 - 1] | (lut->og_map[0] << 16));
-
-      for (i = 0; i < 20; i++) {
-        VSYNC_WR_DV_REG(addr_port, 21 + i);
-        VSYNC_WR_DV_REG(data_port, lut->og_map[i * 2 + 1] | (lut->og_map[i * 2 + 2] << 16));
-      }
-
-      for (i = 0; i < 20; i++) {
-        VSYNC_WR_DV_REG(addr_port, 41 + i);
-        VSYNC_WR_DV_REG(data_port, lut->ob_map[i * 2] | (lut->ob_map[i * 2 + 1] << 16));
-      }
-
-      VSYNC_WR_DV_REG(addr_port, 61);
-      VSYNC_WR_DV_REG(data_port, lut->ob_map[41 - 1]);
-      VSYNC_WR_DV_REG(VIU_OSD1_OETF_CTL, hdr_osd_reg.viu_osd1_oetf_ctl);
-    }
-  }
-
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_PRE_OFFSET0_1, hdr_osd_reg.viu_osd1_matrix_pre_offset0_1);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_PRE_OFFSET2, hdr_osd_reg.viu_osd1_matrix_pre_offset2);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_COEF00_01, hdr_osd_reg.viu_osd1_matrix_coef00_01);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_COEF02_10, hdr_osd_reg.viu_osd1_matrix_coef02_10);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_COEF11_12, hdr_osd_reg.viu_osd1_matrix_coef11_12);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_COEF20_21, hdr_osd_reg.viu_osd1_matrix_coef20_21);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_COEF22_30, hdr_osd_reg.viu_osd1_matrix_coef22_30);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_COEF31_32, hdr_osd_reg.viu_osd1_matrix_coef31_32);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_COEF40_41, hdr_osd_reg.viu_osd1_matrix_coef40_41);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_COLMOD_COEF42, hdr_osd_reg.viu_osd1_matrix_colmod_coef42);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_OFFSET0_1, hdr_osd_reg.viu_osd1_matrix_offset0_1);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_OFFSET2, hdr_osd_reg.viu_osd1_matrix_offset2);
-  VSYNC_WR_DV_REG(VIU_OSD1_MATRIX_CTRL, hdr_osd_reg.viu_osd1_matrix_ctrl);
-}
-
 static inline void destroy_context(void)
 {
 	if (!p_funcs_stb) return;
@@ -2251,49 +2145,7 @@ void enable_dolby_vision(int enable)
 
 			dolby_vision_core1_on = core1;
 
-			if (is_meson_txlx()) {
-
-				vpp_data_conv_para0_backup = VSYNC_RD_DV_REG(VPP_DAT_CONV_PARA0);
-				vpp_data_conv_para1_backup = VSYNC_RD_DV_REG(VPP_DAT_CONV_PARA1);
-				setting_update_count = 0;
-
-				if (efuse_mode == 1) memset(dma_vaddr, 0x0, 8 * STB_DMA_TBL_SIZE);
-				osd_bypass(1);
-				if (core3) VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 1, 3, 1); // core3 enable
-
-				VSYNC_WR_DV_REG_BITS(VIU_MISC_CTRL1, !core1, 16, 1); // core1
-				VSYNC_WR_DV_REG_BITS(VIU_MISC_CTRL1, !core1, 16, 1); // core1 (again?)
-				VSYNC_WR_DV_REG_BITS(VIU_MISC_CTRL1, !core2, 18, 1); // core2
-
-				if (dolby_vision_flags & FLAG_CERTIFICAION) {
-					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 7, 0, 3);   // bypass dither/PPS/SR/CM/EO/OE/vadj2/mtx/gainoff
-					video_effect_bypass(1);
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x08000800); // u12 to s12 (before vadj1) s12 to u12 (before post blend)
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000); // 12->10 before vadj2 10->12 after gainoff
-				} else {
-					if (dolby_vision_flags & FLAG_BYPASS_VPP) video_effect_bypass(1);
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x20002000); // 12->10 before vadj1 10->12 before post blend
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000); // 12->10 before vadj2 10->12 after gainoff
-				}
-
-				VSYNC_WR_DV_REG(VPP_DUMMY_DATA1, 0x80200);
-				VSYNC_WR_DV_REG(VPP_MATRIX_CTRL, 0);
-
-				if (dvll) {
-					u32 *reg = (u32 *)&dovi_setting.dm_reg3;
-					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x8000800); // input u12 -0x800 to s12
-					VSYNC_WR_DV_REG(VPP_VADJ_CTRL, 0);              // bypass vadj
-					VSYNC_WR_DV_REG(VPP_GAINOFF_CTRL0, 0);          // bypass gainoff
-					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 1, 1, 2);  // enable wm tp vks - bypass gainoff to vks
-					enable_rgb_to_yuv_matrix_for_dvll(1, &reg[18], 12);
-				} else {
-					enable_rgb_to_yuv_matrix_for_dvll(0, NULL, 12);
-				}
-
-				last_dolby_vision_ll_policy = dolby_vision_ll_policy;
-				pr_info("Dolby Vision STB cores turn on\n");
-
-			} else if (is_meson_box2()) {
+			if (is_meson_box2()) {
 
 				hdr_osd_off();
 				hdr_vd1_off();
@@ -2359,45 +2211,6 @@ void enable_dolby_vision(int enable)
 
 				if (!dolby_vision_core1_on) frame_count = 0;
 
-			} else {
-				VSYNC_WR_DV_REG(VPP_DOLBY_CTRL,
-					 (0x0 << 21) |  // cm_datx4_mode
-					 (0x0 << 20) |  // reg_front_cti_bit_mode
-					 (0x0 << 17) |  // vpp_clip_ext_mode 19:17
-					 ((core3 ? (1 << 0) : (0 << 0)) << 16) | // vpp_dolby2_en core3
-					 (0x0 << 15) |  // mat_xvy_dat_mode
-					 (0x1 << 14) |  // vpp_ve_din_mode
-					 (0x1 << 12) |  // mat_vd2_dat_mode 13:12
-					 (0x3 << 8)  |  // vpp_dpath_sel 10:8
-					 0x1f);         // vpp_uns2s_mode 7:0
-
-				VSYNC_WR_DV_REG_BITS(VIU_MISC_CTRL1,
-					 (0 << 2) | // 23-20 ext mode
-					 ((dolby_vision_flags & FLAG_CERTIFICAION) ? (0 << 1) : (1 << 1)) | // 19 osd2 enable
-					 !core2,    // 18 core2 bypass
-					 18, 6);
-
-				VSYNC_WR_DV_REG_BITS(VIU_MISC_CTRL1, !core1, 16, 1); // core1
-
-				if ((dolby_vision_flags & FLAG_BYPASS_VPP) || (dolby_vision_flags & FLAG_CERTIFICAION))
-					video_effect_bypass(1);
-
-				VSYNC_WR_DV_REG(VPP_MATRIX_CTRL, 0);
-				VSYNC_WR_DV_REG(VPP_DUMMY_DATA1, 0x20000000);
-
-				if (dvll) {
-					u32 *reg = (u32 *)&dovi_setting.dm_reg3;
-					VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 3, 6, 2); // post matrix
-					enable_rgb_to_yuv_matrix_for_dvll(1, &reg[18], 12);
-				} else {
-					enable_rgb_to_yuv_matrix_for_dvll(0, NULL, 12);
-				}
-
-				last_dolby_vision_ll_policy = dolby_vision_ll_policy;
-
-				// disable osd effect and shadow mode
-				osd_path_enable(0);
-				pr_dolby_dbg("Dolby Vision turn on%s\n", dolby_vision_core1_on ? ", core1 on" : "");
 			}
 
 			dolby_vision_core1_on_cnt = 0;
@@ -2452,24 +2265,10 @@ void enable_dolby_vision(int enable)
 		dolby_vision_wait_count = 0;
 		vsync_count = 0;
 
-	} else {
+	} else { // !enable
 
 		if (dolby_vision_on) {
-			if (is_meson_txlx_stbmode()) {
-
-				VSYNC_WR_DV_REG_BITS(VIU_MISC_CTRL1,
-					(1 << 2) | // core2 bypass
-					(1 << 1) | // vd2 connect to vpp
-					(1 << 0),  // core1 bl bypass
-					16, 3);
-
-				VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 3, 1); // core3 disable
-
-				osd_bypass(0);
-
-				pr_dolby_dbg("Dolby Vision STB cores turn off\n");
-
-			} else if (is_meson_box2()) {
+			if (is_meson_box2()) {
 
 				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL,
 					 (1 << 2) | // core2 bypass
@@ -2501,21 +2300,7 @@ void enable_dolby_vision(int enable)
 
 				pr_dolby_dbg("Dolby Vision G12a turn off\n");
 
-			} else {
-
-				VSYNC_WR_DV_REG_BITS(VIU_MISC_CTRL1,
-					(1 << 2) | // core2 bypass
-					(1 << 1) | // vd2 connect to vpp
-					(1 << 0),  // core1 bl bypass
-					16, 3);
-
-				VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 16, 1); // core3 disable
-
-				// enable osd effect and use default shadow mode
-				osd_path_enable(1);
-
-				pr_dolby_dbg("Dolby Vision turn off\n");
-			}
+			} 
 
 			destroy_context();
 
@@ -5593,6 +5378,15 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	memset(&new_dovi_setting.ext_md, 0, sizeof(struct ext_md_s));
 	new_dovi_setting.video_width = w << 16;
 	new_dovi_setting.video_height = h << 16;
+
+	pr_info("DV CTRL_PATH: src_format=%d dst_format=%d pri_mode=%d\\n",
+		src_format, dst_format, pri_mode);
+	pr_info("DV CTRL_PATH: g_format=%d g_bitdepth=%d graphic_min=%d graphic_max=%d\\n",
+		new_dovi_setting.g_format, new_dovi_setting.g_bitdepth,
+		graphic_min, graphic_max);
+	pr_info("DV CTRL_PATH: use_ll_flag=%d ll_rgb_desired=%d dovi_ll_enable=%d\\n",
+		new_dovi_setting.use_ll_flag, new_dovi_setting.ll_rgb_desired,
+		new_dovi_setting.dovi_ll_enable);
 
 	if (debug_dolby & 0x400) do_gettimeofday(&start);
 
