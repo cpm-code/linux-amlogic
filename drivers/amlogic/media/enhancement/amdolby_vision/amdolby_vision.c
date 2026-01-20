@@ -5360,8 +5360,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		new_dovi_setting.dovi2hdr10_nomapping = 0;
 
 	/* always use rgb setting */
-	new_dovi_setting.g_bitdepth = 8;
-	new_dovi_setting.g_format = G_SDR_RGB;
+	new_dovi_setting.g_bitdepth = 10;
+	new_dovi_setting.g_format = G_HDR_RGB;
 
 	new_dovi_setting.diagnostic_enable = 0;
 	new_dovi_setting.diagnostic_mux_select = 0;
