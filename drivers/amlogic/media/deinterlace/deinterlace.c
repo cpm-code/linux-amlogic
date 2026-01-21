@@ -75,8 +75,6 @@
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 
-extern int multi_di;
-
 #ifdef DET3D
 #include "detect3d.h"
 #endif
@@ -1786,9 +1784,6 @@ unsigned char is_bypass(vframe_t *vf_in)
 	    (di_pre_stru.cur_height > (default_height + 8)) ||
 	    (di_pre_stru.cur_inp_type & VIDTYPE_VIU_444) ||
 	    (di_pre_stru.cur_inp_type & VIDTYPE_RGB_444)))
-		return 1;
-
-	if (di_pre_stru.cur_prog_flag)
 		return 1;
 
 	if ((di_pre_stru.cur_width < 128) || (di_pre_stru.cur_height < 16))
@@ -7573,9 +7568,6 @@ static bool need_bypass(struct vframe_s *vf)
 {
 	needbypass_flag = true;
 
-	if (di_debug_flag & 0x10000) /* for debugging like in is_bypass function */
-		return ((di_debug_flag >> 17) & 0x1);
-
 	if ((is_meson_gxl_package_805X() || is_meson_gxl_package_805Y()) &&
 	    is_progressive(vf))
 		return true;
@@ -8091,8 +8083,6 @@ static void pre_tasklet(unsigned long arg)
 	unsigned int hrtimer_time = 0;
 
 	hrtimer_time = jiffies_to_msecs(jiffies_64 - de_devp->jiffy);
-	if (hrtimer_time > 10)
-		pr_dbg("DI: tasklet schedule cost %ums.\n", hrtimer_time);
 	di_pre_process_irq((struct di_pre_stru_s *)arg);
 }
 
@@ -9314,7 +9304,6 @@ static int di_probe(struct platform_device *pdev)
 	//struct di_device_data_s *di_meson;
 
 	di_pr_info("%s:\n", __func__);
-	multi_di = 0;
 
 #if 1	/*move from init*/
 	ret = alloc_chrdev_region(&di_devno, 0, DI_COUNT, DEVICE_NAME);
@@ -9554,6 +9543,9 @@ static int di_probe(struct platform_device *pdev)
 	dil_set_cpuver_flag(getv1_datal()->mdata->ic_id);
 
 	dil_set_diffver_flag(0);
+
+	if (get_cpu_type() < MESON_CPU_MAJOR_ID_G12A)
+		bypass_all = 1;
 
 	di_pr_info("%s:ok\n", __func__);
 	return ret;
