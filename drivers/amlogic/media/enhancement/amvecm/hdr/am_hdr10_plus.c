@@ -16,9 +16,6 @@
  */
 
 /* Standard Linux headers */
-
-#include <asm/unaligned.h>
-
 #include <linux/types.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -31,6 +28,7 @@
 #include <linux/amlogic/media/vfm/vframe_receiver.h>
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
+#include <linux/unaligned/be_byteshift.h>
 #include <linux/amlogic/media/amvecm/amvecm.h>
 #include <linux/amlogic/media/amvecm/cuva_alg.h>
 #include <linux/amlogic/media/vfm/vframe.h>
@@ -810,6 +808,7 @@ static int parse_sei(char *sei_buf, uint32_t size)
 	uint16_t header;
 	uint8_t nal_unit_type;
 	uint8_t payload_type, payload_size;
+	int ret = 0;
 
 	if (size < 2)
 		return 0;
@@ -832,8 +831,10 @@ static int parse_sei(char *sei_buf, uint32_t size)
 					p_sei[2] == 0x3C &&
 					p_sei[3] == 0x00 &&
 					p_sei[4] == 0x01 &&
-					p_sei[5] == 0x04)
-					parser_hdr10_plus_medata(p_sei, payload_size);
+					p_sei[5] == 0x04) {
+						ret = 1;
+						parser_hdr10_plus_medata(p_sei, payload_size);
+					}
 				else if (p_sei[0] == 0x26 &&
 					p_sei[1] == 0x00 &&
 					p_sei[2] == 0x04 &&
@@ -847,7 +848,7 @@ static int parse_sei(char *sei_buf, uint32_t size)
 		}
 		p += payload_size;
 	}
-	return 0;
+	return ret;
 }
 
 static void hdr10_plus_vf_md_parse(struct vframe_s *vf)
@@ -1018,6 +1019,7 @@ void parser_dynmic_metadata(struct vframe_s *vf)
 	int j;
 	char *meta_buf;
 	int len;
+if (vf) {
 
 	if (vf->source_type == VFRAME_SOURCE_TYPE_HDMI)
 		hdr10_plus_vf_md_parse(vf);
@@ -1040,56 +1042,78 @@ void parser_dynmic_metadata(struct vframe_s *vf)
 				(void *)&req);
 			if (!req.aux_buf)
 				vf_notify_provider_by_name(
+				"vdec.av1.00",
+				VFRAME_EVENT_RECEIVER_GET_AUX_DATA,
+				(void *)&req);
+			if (!req.aux_buf)
+				vf_notify_provider_by_name(
 				"decoder",
 				VFRAME_EVENT_RECEIVER_GET_AUX_DATA,
 				(void *)&req);
 		}
+
 		if (req.aux_buf && req.aux_size &&
 			(debug_csc & 0x10)) {
 			meta_buf = req.aux_buf;
 			pr_csc(0x10,
-				"hdr10 source_type = %d src_fmt = %d metadata(%d):\n",
-				get_vframe_src_fmt(vf),
+				"%s vf signal format = %d source_type = %d metadata(%d):\n",
+				__func__, get_vframe_src_fmt(vf),
 				vf->source_type, req.aux_size);
-			for (i = 0; i < req.aux_size + 8; i += 8) {
-				len = req.aux_size - i;
-				if (len < 8) {
-					pr_csc(0x10, "\t i = %02d", i);
-					for (j = 0; j < len; j++)
-						pr_csc(0x10,
-						"%02x ", meta_buf[i + j]);
-					pr_csc(0x10, "\n");
-				} else {
-					pr_csc(0x10,
-						"\t i = %02d: %02x %02x %02x %02x %02x %02x %02x %02x\n",
-						i,
-						meta_buf[i],
-						meta_buf[i + 1],
-						meta_buf[i + 2],
-						meta_buf[i + 3],
-						meta_buf[i + 4],
-						meta_buf[i + 5],
-						meta_buf[i + 6],
-						meta_buf[i + 7]);
-				}
-			}
+			// for (i = 0; i < req.aux_size + 8; i += 8) {
+			// 	len = req.aux_size - i;
+			// 	if (len < 8) {
+			// 		pr_csc(0x10, "\t i = %02d", i);
+			// 		for (j = 0; j < len; j++)
+			// 			pr_csc(0x10,
+			// 			"%02x ", meta_buf[i + j]);
+			// 		pr_csc(0x10, "\n");
+			// 	} else {
+			// 		pr_csc(0x10,
+			// 			"\t i = %02d: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			// 			i,
+			// 			meta_buf[i],
+			// 			meta_buf[i + 1],
+			// 			meta_buf[i + 2],
+			// 			meta_buf[i + 3],
+			// 			meta_buf[i + 4],
+			// 			meta_buf[i + 5],
+			// 			meta_buf[i + 6],
+			// 			meta_buf[i + 7]);
+			// 	}
+			// }
 		}
 		if (req.aux_buf && req.aux_size) {
 			p = req.aux_buf;
+			vf->src_fmt.md_size = 0;
 			while (p < req.aux_buf
 				+ req.aux_size - 8) {
 				size = get_unaligned_be32(p);
 				p += 4;
 				type = get_unaligned_be32(p);
 				p += 4;
-				if (type == 0x02000000)
-					parse_sei(p, size);
+				pr_csc(0x10, "SEI size %u type 0x%08x signal_type 0x%08x\n",
+				size, type, vf->signal_type);
+				if (type == 0x02000000 && parse_sei(p, size) == 1) {
+					vf->src_fmt.fmt = VFRAME_SIGNAL_FMT_HDR10PLUS;
+				} else if ((type & 0xffff0000) == 0x14000000) {
+					if (p[0] == 0xB5 &&
+						p[1] == 0x00 &&
+						p[2] == 0x3C &&
+						p[3] == 0x00 &&
+						p[4] == 0x01 &&
+						p[5] == 0x04) {
+							parser_hdr10_plus_medata(p, size);
+							vf->src_fmt.fmt = VFRAME_SIGNAL_FMT_HDR10PLUS;
+							vf->type &= 0xffff00ff;
+							vf->type |= 0x00003000;
+					}
+				}
 
 				p += size;
 			}
 		}
 	}
-
+}
 	if (debug_hdr >= 1)
 		debug_hdr--;
 }
