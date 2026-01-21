@@ -601,12 +601,6 @@ store_dbg(struct device *dev,
 		dim_dump_crc_state();
 	} else if (strncmp(buf, "pulldown", 8) == 0) {
 		dim_dump_pulldown_state();
-	} else if (strncmp(buf, "di_debug_flag", 13) == 0) {
-		unsigned long di_debug_flag = 0;
-
-		if (kstrtoul(buf + 13, 16, &di_debug_flag))
-			return count;
-		dimp_set(edi_mp_di_debug_flag, di_debug_flag);
 	} else {
 		pr_info("DI no support cmd %s!!!\n", buf);
 	}
@@ -1338,10 +1332,10 @@ store_config(struct device *dev,
 
 static unsigned char is_progressive(vframe_t *vframe)
 {
-	if (dimp_get(edi_mp_di_debug_flag) & 0x10000) /* for debugging */
-		return (dimp_get(edi_mp_di_debug_flag) >> 17) & 0x1;
+	unsigned char ret = 0;
 
-	return IS_PROG(vframe->type);
+	ret = ((vframe->type & VIDTYPE_TYPEMASK) == VIDTYPE_PROGRESSIVE);
+	return ret;
 }
 
 static unsigned char is_source_change(vframe_t *vframe, unsigned int channel)
@@ -1404,9 +1398,6 @@ unsigned char dim_is_bypass(vframe_t *vf_in, unsigned int ch)
 	struct di_pre_stru_s *ppre = get_pre_stru(ch);
 	unsigned int reason = 0;
 	struct di_ch_s *pch;
-
-	if (dimp_get(edi_mp_di_debug_flag) & 0x10000) /* for debugging */
-		return (dimp_get(edi_mp_di_debug_flag) >> 17) & 0x1;
 
 	/*need bypass*/
 	reason = dim_bypass_check(vf_in);
@@ -3775,12 +3766,14 @@ void dim_pre_de_process(unsigned int channel)
 	/*dbg_set_DI_PRE_CTRL();*/
 	atomic_set(&get_hw_pre()->flg_wait_int, 1);
 	ppre->pre_de_busy = 1;
+	ppre->irq_time[0] = cur_to_usecs();
+	ppre->irq_time[1] = ppre->irq_time[0];
 	di_unlock_irqfiq_restore(irq_flag2);
 	/*reinit pre busy flag*/
 	pch->sum_pre++;
 	dim_dbg_pre_cnt(channel, "s3");
-	ppre->irq_time[0] = cur_to_msecs();
-	ppre->irq_time[1] = cur_to_msecs();
+//	ppre->irq_time[0] = cur_to_msecs();
+//	ppre->irq_time[1] = cur_to_msecs();
 	dim_ddbg_mod_save(EDI_DBG_MOD_PRE_SETE, channel, ppre->in_seq);/*dbg*/
 	dim_tr_ops.pre_set(ppre->di_wr_buf->vframe->index_disp);
 #ifdef CONFIG_AMLOGIC_MEDIA_RDMA
@@ -3872,6 +3865,7 @@ void dim_pre_de_done_buf_config(unsigned int channel, bool flg_timeout)
 				di_hf_hw_release(1);
 				ppre->di_wr_buf->hf_done = false;
 			}
+			ppre->timeout_check = true;
 		} else {
 			if (ppre->di_wr_buf->hf_done) {
 				di_hf_hw_release(1);
@@ -5241,6 +5235,7 @@ unsigned char dim_pre_de_buf_config(unsigned int channel)
 			vframe->width = dimp_get(edi_mp_force_width);
 		if (dimp_get(edi_mp_force_height))
 			vframe->height = dimp_get(edi_mp_force_height);
+		vframe->width = roundup(vframe->width, width_roundup);
 
 		/* backup frame motion info */
 		vframe->combing_cur_lev = dimp_get(edi_mp_cur_lev);/*cur_lev;*/
@@ -6475,11 +6470,11 @@ void dim_irq_pre(void)
 	struct di_pre_stru_s *ppre;
 	struct di_dev_s *de_devp = get_dim_de_devp();
 	struct di_hpre_s  *pre = get_hw_pre();
-
+	u64 ctime;
 	unsigned int data32 = RD(DI_INTR_CTRL);
 	unsigned int mask32 = (data32 >> 16) & 0x3ff;
 	unsigned int flag = 0;
-	unsigned long irq_flg;
+	unsigned long irq_flg = 0;
 
 	if (!sc2_dbg_is_en_pre_irq()) {
 		sc2_dbg_pre_info(data32);
@@ -6488,6 +6483,7 @@ void dim_irq_pre(void)
 	di_lock_irqfiq_save(irq_flg);	//2020-12-10
 	channel = pre->curr_ch;
 	ppre = pre->pres;
+	data32 = RD(DI_INTR_CTRL);
 
 	data32 &= 0x3fffffff;
 	//if ((data32 & 1) == 0 && dimp_get(edi_mp_di_dbg_mask) & 8)
@@ -6504,9 +6500,23 @@ void dim_irq_pre(void)
 			dim_print("irq pre DI IRQ 0x%x ==\n", data32);
 			flag = 0;
 		}
+	} else {
+		PR_WARN("irq:flag 0\n");
 	}
 
-
+	/* check timeout*/
+	ctime = cur_to_usecs() - ppre->irq_time[0];
+	if (ppre->timeout_check) {
+		if (ctime < 300 && flag) {
+			//DIM_DI_WR(DI_INTR_CTRL,
+			//	  (data32 & 0xfffffffb) | (intr_mode << 30));
+			ppre->timeout_check = false;
+			di_unlock_irqfiq_restore(irq_flg);
+			PR_WARN("irq delet %d\n", (unsigned int)ctime);
+			return;
+		}
+		ppre->timeout_check = false;
+	}
 	if (flag) {
 		if (DIM_IS_IC_EF(SC2))
 			opl1()->pre_gl_sw(false);
@@ -6529,10 +6539,10 @@ void dim_irq_pre(void)
 	}
 
 	if (flag) {
-		ppre->irq_time[0] =
-			(cur_to_msecs() - ppre->irq_time[0]);
-
-		dim_tr_ops.pre(ppre->field_count_for_cont, ppre->irq_time[0]);
+		//ppre->irq_time[0] =
+		//	(cur_to_msecs() - ppre->irq_time[0]);
+		dim_tr_ops.pre(ppre->field_count_for_cont,
+			       (unsigned long)ctime);
 
 		/*add from valsi wang.feng*/
 		if (!dim_dbg_cfg_disable_arb()) {
@@ -9945,12 +9955,13 @@ void di_unreg_variable(unsigned int channel)
 	pch->sum_ext_buf_in2 = 0;
 	pch->in_cnt = 0;
 	pch->sumx.need_local = 0;
+	set_bypass2_complete(channel, false);
 	init_completion(&tsk->fcmd[channel].alloc_done);
 	dbg_timer_clear(channel);
 	dbg_reg("ndis_used[%d], nout[%d],flg_realloc[%d]\n",
 		ndis_cnt(pch, QBF_NDIS_Q_USED),
 		ndrd_cnt(pch), mm->sts.flg_realloc);
-	dbg_reg("%s:end\n", __func__);
+	PR_INF("%s:end a\n", __func__);
 }
 
 #ifdef CONFIG_AMLOGIC_MEDIA_RDMA
@@ -10180,9 +10191,6 @@ static unsigned int dim_bypass_check(struct vframe_s *vf)
 {
 	unsigned int reason = 0;
 	unsigned int x, y;
-
-	if (dimp_get(edi_mp_di_debug_flag) & 0x10000) /* for debugging */
-		return (dimp_get(edi_mp_di_debug_flag) >> 17) & 0x1;
 
 	if (dimp_get(edi_mp_di_debug_flag) & 0x100000)
 		reason = 1;

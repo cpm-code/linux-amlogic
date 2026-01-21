@@ -1797,6 +1797,7 @@ struct di_ch_s {
 	/************************/
 	/*bypass_state*/
 	bool bypass_state;
+	atomic_t	vf_get_idle;/* 1: idle, other: busy */
 
 	/*video_peek_cnt*/
 	unsigned int sum[EDI_SUM_NUB + 1];
@@ -2097,6 +2098,7 @@ struct di_data_l_s {
 	unsigned char hf_src_cnt;//
 	unsigned char hf_owner;	//
 	bool	hf_busy;//
+	unsigned int ic_sub_ver;
 };
 
 /**************************************
@@ -2731,6 +2733,10 @@ static inline void p_ref_set_buf(struct di_buf_s *buf,
 	atomic_set(&buf->blk_buf->p_ref_mem, set);
 }
 
+#define DIM_IS_REV(cc1, cc2)	is_ic_sub_ver((get_datal()->mdata->ic_id), \
+					DI_IC_ID_##cc1, \
+					(get_datal()->ic_sub_ver), \
+					DI_IC_REV_##cc2)
 #define DIM_IS_IC(cc)		is_ic_named((get_datal()->mdata->ic_id), \
 					DI_IC_ID_##cc)
 #define DIM_IS_IC_EF(cc)	is_ic_after_eq((get_datal()->mdata->ic_id), \

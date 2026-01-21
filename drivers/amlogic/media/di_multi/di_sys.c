@@ -69,8 +69,6 @@
 
 static di_dev_t *di_pdev;
 
-extern int multi_di;
-
 struct di_dev_s *get_dim_de_devp(void)
 {
 	return di_pdev;
@@ -3658,7 +3656,7 @@ static const struct di_meson_data  data_tm2_vb = {
 };
 
 static const struct di_meson_data  data_sc2 = {
-	.name = "dim_sc2",
+	.name = "dim_sc2",//sc2c ic_sub_ver=1,DI_IC_REV_SUB
 	.ic_id	= DI_IC_ID_SC2,
 };
 
@@ -3745,7 +3743,6 @@ static int dim_probe(struct platform_device *pdev)
 	struct di_data_l_s *pdata;
 
 	PR_INF("%s:\n", __func__);
-	multi_di = 1;
 
 	/*move from init to here*/
 	di_pdev = kzalloc(sizeof(*di_pdev), GFP_KERNEL);
@@ -3810,8 +3807,14 @@ static int dim_probe(struct platform_device *pdev)
 	}
 	pdata = (struct di_data_l_s *)di_pdev->data_l;
 	pdata->mdata = match->data;
-	PR_INF("match name: %s:id[%d]\n", pdata->mdata->name,
-	       pdata->mdata->ic_id);
+	if (DIM_IS_IC(SC2) &&
+	    (get_meson_cpu_version(MESON_CPU_VERSION_LVL_MINOR) >= 0xC))
+		pdata->ic_sub_ver = DI_IC_REV_SUB;
+	else
+		pdata->ic_sub_ver = DI_IC_REV_MAJOR;
+
+	PR_INF("match name: %s:id[%d]:ver[%d]\n", pdata->mdata->name,
+	       pdata->mdata->ic_id, pdata->ic_sub_ver);
 
 	ret = of_reserved_mem_device_init(&pdev->dev);
 	if (ret != 0)

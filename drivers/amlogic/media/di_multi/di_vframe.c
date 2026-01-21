@@ -522,20 +522,28 @@ struct vframe_s *di_vf_l_get(unsigned int channel)
 		return NULL;
 	}
 	/**************************/
+	if (!atomic_dec_and_test(&pch->vf_get_idle)) {	/* check */
+		PR_WARN("get busy\n");
+		return NULL;
+	}
 	vframe_ret = ndrd_qout(pch);
-	if ((!vframe_ret) || (!vframe_ret->private_data)) {
+	if (!vframe_ret || !vframe_ret->private_data) {
 		dbg_nq("%s:bypass?\n", __func__);
 		didbg_vframe_out_save(channel, vframe_ret, 3);
+		atomic_set(&pch->vf_get_idle, 1);	/* check set */
 		return vframe_ret;
 	}
 	ndis1 = (struct dim_ndis_s *)vframe_ret->private_data;
-	if (!ndis1) /*is bypass*/
+	if (!ndis1) {/*is bypass*/
+		atomic_set(&pch->vf_get_idle, 1);	/* check set */
 		return vframe_ret;
+	}
 	ndis2 = ndis_move(pch, QBF_NDIS_Q_USED, QBF_NDIS_Q_DISPLAY);
 	if (ndis1 != ndis2)
 		PR_ERR("%s:\n", __func__);
 	didbg_vframe_out_save(channel, vframe_ret, 4);
 	dim_tr_ops.post_get(vframe_ret->index_disp);
+	atomic_set(&pch->vf_get_idle, 1); /* check set */
 	return vframe_ret;
 }
 
@@ -741,8 +749,12 @@ struct vframe_s *di_vf_l_peek(unsigned int channel)
 		return NULL;
 	}
 	/**************************/
+	if (!atomic_dec_and_test(&pch->vf_get_idle)) {	/* check */
+		PR_WARN("peek busy\n");
+		return NULL;
+	}
 	vframe_ret = ndrd_qpeekvfm(pch);
-
+	atomic_set(&pch->vf_get_idle, 1);	/* check set */
 	if (vframe_ret) {
 		dim_tr_ops.post_peek(9);
 	} else {
@@ -844,7 +856,7 @@ static int di_receiver_event_fun(int type, void *data, void *arg)
 		dev_vframe_reg_first(&pch->itf);
 		pch->sum_reg_cnt++;
 		dbg_ev("reg:%s[%d]\n", provider_name, pch->sum_reg_cnt);
-
+		atomic_set(&pch->vf_get_idle, 1);	/* check set */
 		dim_api_reg(DIME_REG_MODE_VFM, pch);
 
 		dev_vframe_reg(&pch->itf);
@@ -1110,6 +1122,7 @@ static struct vframe_s *di_vf_get(void *arg)
 	unsigned int ch = *(int *)arg;
 	struct di_ch_s *pch;
 	struct vframe_s *vfm;
+	static bool is_bypass_check;
 
 	/*struct vframe_s *vfm;*/
 	pch = get_chdata(ch);
@@ -1126,10 +1139,18 @@ static struct vframe_s *di_vf_get(void *arg)
 	/*pvfm = get_dev_vframe(ch);*/
 
 	if (is_bypss2_complete(ch)) {
+		if (!is_bypass_check) {
+			PR_INF("%s:to pass\n", __func__);
+			is_bypass_check = true;
+		}
 		vfm = dim_nbypass_get(pch);
 		if (vfm)
 			return vfm;
 		return pw_vf_get(ch);
+	}
+	if (is_bypass_check) {
+		PR_INF("%s:from pass\n", __func__);
+		is_bypass_check = false;
 	}
 	sum_pst_g_inc(ch);
 

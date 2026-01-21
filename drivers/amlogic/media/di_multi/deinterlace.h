@@ -118,6 +118,9 @@
 	((src) == VFRAME_SOURCE_TYPE_COMP)	||	\
 	((src) == VFRAME_SOURCE_TYPE_HDMI))
 
+#define VFMT_IS_I(vftype) ((vftype) & VIDTYPE_INTERLACE_BOTTOM)
+#define VFMT_IS_P(vftype) (((vftype) & VIDTYPE_INTERLACE_BOTTOM) == 0)
+
 #define VFMT_IS_I_FIELD(vftype) ((vftype) & VIDTYPE_INTERLACE_BOTTOM	&& \
 			      (vftype) & VIDTYPE_VIU_FIELD)
 
@@ -537,7 +540,7 @@ struct di_pre_stru_s {
 //	bool vdin_source; /* ary 2020-06-12: no*/
 	int cma_release_req;
 	/* for performance debug */
-	unsigned long irq_time[2];
+	u64 irq_time[2];
 	/* combing adaptive */
 	struct combing_status_s *mtn_status;
 	bool combing_fix_en;
@@ -549,6 +552,7 @@ struct di_pre_stru_s {
 	struct vframe_s		vfm_cpy;
 	unsigned int		h_size; //real di h_size
 	unsigned int		v_size;	//real di v_size
+	bool timeout_check;
 };
 
 struct dim_fmt_s;
@@ -854,22 +858,4 @@ void dpre_vdoing(unsigned int ch);
 //#define TMP_TEST	(1)
 
 //#define TMP_MASK_FOR_T7 (1)
-
-#include "di_data_l.h"
-#define VFMT_IS_I(vftype)                                     \
-	({                                                          \
-		int ret = (vftype) & VIDTYPE_INTERLACE_BOTTOM;            \
-		if (dimp_get(edi_mp_di_debug_flag) & 0x10000)             \
-			ret = !((dimp_get(edi_mp_di_debug_flag) >> 17) & 0x1);  \
-		ret;                                                      \
-	})
-
-#define VFMT_IS_P(vftype)                                     \
-({                                                            \
-		int ret = ((vftype) & VIDTYPE_INTERLACE_BOTTOM) == 0;     \
-		if (dimp_get(edi_mp_di_debug_flag) & 0x10000)             \
-			ret = (dimp_get(edi_mp_di_debug_flag) >> 17) & 0x1;     \
-		ret;                                                      \
-})
-
 #endif
