@@ -5656,15 +5656,27 @@ static void bypass_hdr_process(
 			((sink_hdr_support(vinfo) &
 			(HDR_SUPPORT | HLG_SUPPORT)) &&
 			(!vinfo_lcd_support()))) {
-			if (get_hdr_type() & HLG_FLAG)
-				hdr_func(OSD1_HDR,
-					 SDR_HLG | hdr_ex, vinfo, NULL);
-			else
-				hdr_func(OSD1_HDR,
-					 SDR_HDR | hdr_ex, vinfo, NULL);
-			pr_csc(1, "\t osd sdr->hdr/hlg\n");
-		} else
+			/*
+			 * When HDR/HLG video is playing and we're in the passthrough
+			 * path, keep OSD in HDR domain as-is.
+			 */
+			if (source_type &&
+			    source_type[vd_path] != HDRTYPE_SDR &&
+			    source_type[vd_path] != HDRTYPE_SDR2020) {
+				hdr_func(OSD1_HDR, HDR_BYPASS | hdr_ex, vinfo, NULL);
+				pr_info("\t osd hdr_bypass (hdr/hlg video)\n");
+			} else {
+				if (get_hdr_type() & HLG_FLAG)
+					hdr_func(OSD1_HDR,
+						 SDR_HLG | hdr_ex, vinfo, NULL);
+				else
+					hdr_func(OSD1_HDR,
+						 SDR_HDR | hdr_ex, vinfo, NULL);
+				pr_info("\t osd sdr->hdr/hlg\n");
+			}
+		} else {
 			hdr_func(OSD1_HDR, HDR_BYPASS | hdr_ex, vinfo, NULL);
+		}
 		return;
 	}
 	/*vpp matrix mux read*/
