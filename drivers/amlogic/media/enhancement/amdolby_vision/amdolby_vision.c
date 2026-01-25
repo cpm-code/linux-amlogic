@@ -2300,7 +2300,7 @@ void enable_dolby_vision(int enable)
 
 				pr_dolby_dbg("Dolby Vision G12a turn off\n");
 
-			} 
+			}
 
 			destroy_context();
 
