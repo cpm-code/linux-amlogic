@@ -795,6 +795,13 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		ret = copy_to_user(argp, &vsync_timestamp, sizeof(s32));
 		break;
+	case FBIO_WAITFORVSYNC_ALWAYS:
+		if (info->node < osd_meson_dev.viu1_osd_count)
+			vsync_timestamp = (s32)osd_wait_vsync_event();
+		else
+			vsync_timestamp = (s32)osd_wait_vsync_event_viu2();
+		ret = copy_to_user(argp, &vsync_timestamp, sizeof(s32));
+		break;
 	case FBIO_WAITFORVSYNC_64:
 		if (get_vpu_mem_pd_vmod(VPU_VIU_VD1)) {
 			if (info->node < osd_meson_dev.viu1_osd_count)
@@ -804,6 +811,13 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		} else {
 			vsync_timestamp_64 = 0;
 		}
+		ret = copy_to_user(argp, &vsync_timestamp_64, sizeof(s64));
+		break;
+	case FBIO_WAITFORVSYNC_ALWAYS_64:
+		if (info->node < osd_meson_dev.viu1_osd_count)
+			vsync_timestamp_64 = osd_wait_vsync_event();
+		else
+			vsync_timestamp_64 = osd_wait_vsync_event_viu2();
 		ret = copy_to_user(argp, &vsync_timestamp_64, sizeof(s64));
 		break;
 	case FBIOGET_OSD_SCALE_AXIS:

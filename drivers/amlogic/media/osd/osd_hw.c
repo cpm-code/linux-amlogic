@@ -605,6 +605,23 @@ static void osd_put_fenceobj(struct fence *fence)
 static int pxp_mode;
 s64 timestamp[VIU_COUNT];
 
+s64 osd_get_vsync_timestamp(int viu)
+{
+	if (viu < 0 || viu >= VIU_COUNT)
+		return 0;
+	return timestamp[viu];
+}
+
+s64 osd_get_vsync_period_ns(void)
+{
+	const struct vinfo_s *vinfo = get_current_vinfo();
+
+	if (!vinfo || vinfo->sync_duration_num == 0)
+		return 0;
+	return div_s64((s64)vinfo->sync_duration_den * (s64)1000000000,
+		       (s64)vinfo->sync_duration_num);
+}
+
 static unsigned int osd_h_filter_mode = 1;
 #define BYTE_32_ALIGNED(x)	(((x) + 31) & ~31)
 #define BYTE_16_ALIGNED(x)	(((x) + 15) & ~15)

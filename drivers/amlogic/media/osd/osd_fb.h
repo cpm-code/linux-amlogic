@@ -31,6 +31,18 @@
 #define INVALID_BPP_ITEM {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define FBIO_WAITFORVSYNC          _IOW('F', 0x20, __u32)
 #define FBIO_WAITFORVSYNC_64       _IOW('F', 0x21, __u32)
+/* AML extension: always wait for VSYNC (even while VD1/HW decode is active). */
+#define FBIO_WAITFORVSYNC_ALWAYS    _IOW('F', 0x22, __u32)
+#define FBIO_WAITFORVSYNC_ALWAYS_64 _IOW('F', 0x23, __u32)
+
+/* AML extension: wait until (next VSYNC - offset_us) and return next VSYNC timestamp (ns). */
+struct fb_vsync_early_request {
+	__s32 offset_us;
+	__s32 reserved;
+	__s64 next_vsync_ts;
+};
+
+#define FBIO_WAITFORVSYNC_EARLY_64 _IOWR('F', 0x24, struct fb_vsync_early_request)
 
 struct osd_fb_dev_s {
 	struct mutex lock;
