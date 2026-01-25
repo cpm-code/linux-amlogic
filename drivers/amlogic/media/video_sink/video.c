@@ -6838,6 +6838,7 @@ static void video_vf_unreg_provider(void)
 	ulong flags;
 	bool layer1_used = false;
 	bool layer2_used = false;
+	bool had_cur_dispbuf2 = false;
 	struct vframe_s *el_vf = NULL;
 	int keeped = 0, ret = 0;
 #ifdef CONFIG_AMLOGIC_MEDIA_VSYNC_RDMA
@@ -6892,8 +6893,12 @@ static void video_vf_unreg_provider(void)
 		cur_dispbuf->video_angle = 0;
 	}
 
-	if (cur_dispbuf2)
-		need_disable_vd2 = true;
+	/*
+	 * For Dolby Vision FEL, VD2/EL teardown can race with keep-frame.
+	 * If we successfully keep the current frame, do not disable VD2
+	 * immediately (it can blank output even though keep_ret=1).
+	 */
+	had_cur_dispbuf2 = (cur_dispbuf2 != NULL);
 	if (is_dolby_vision_enable()) {
 		if (cur_dispbuf2 == &vf_local2)
 			cur_dispbuf2 = NULL;
@@ -6962,6 +6967,12 @@ static void video_vf_unreg_provider(void)
 	if (cur_dispbuf)
 		keeped = vf_keep_current(
 			cur_dispbuf, el_vf);
+	if (had_cur_dispbuf2) {
+		if (keeped > 0)
+			need_disable_vd2 = false;
+		else
+			need_disable_vd2 = true;
+	}
 
 	pr_info("video_vf_unreg_provider: vd1 used: %s, vd2 used: %s, keep_ret:%d, black_out:%d, cur_dispbuf:%p\n",
 		layer1_used ? "true" : "false",
