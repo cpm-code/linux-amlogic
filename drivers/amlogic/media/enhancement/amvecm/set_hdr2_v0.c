@@ -2728,7 +2728,7 @@ enum hdr_process_sel hdr_func(
 				oft_pre_out = bypass_pre;
 				oft_post_out = bypass_pos;
 			} else {
-				coeff_in = rgb2ycbcr_709;
+				coeff_in = rgb2ycbcr_ncl2020;
 				oft_pre_in = rgb2yuvpre;
 				oft_post_in = rgb2yuvpos;
 				oft_pre_out = bypass_pre;
