@@ -44,6 +44,21 @@ struct fb_vsync_early_request {
 
 #define FBIO_WAITFORVSYNC_EARLY_64 _IOWR('F', 0x24, struct fb_vsync_early_request)
 
+/* AML extension: query vsync timing without waiting.
+ * All timestamps are CLOCK_MONOTONIC in ns.
+ */
+struct fb_vsync_timing_request {
+	__s64 now_ts;
+	__s64 last_vsync_ts;
+	__s64 next_vsync_ts;
+	__s64 period_ns;
+	__s32 reserved0;
+	__s32 reserved1;
+};
+
+#define FBIO_GET_VSYNC_TIMING_64 \
+	_IOR('F', 0x25, struct fb_vsync_timing_request)
+
 struct osd_fb_dev_s {
 	struct mutex lock;
 	struct fb_info *fb_info;

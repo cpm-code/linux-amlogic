@@ -46,6 +46,10 @@
 #include <linux/cma.h>
 #include <linux/dma-contiguous.h>
 #include <linux/clk.h>
+#include <linux/hrtimer.h>
+#include <linux/math64.h>
+#include <linux/sched.h>
+#include <linux/signal.h>
 #include <linux/amlogic/cpu_version.h>
 /* Amlogic Headers */
 #include <linux/amlogic/media/vout/vinfo.h>
@@ -764,6 +768,8 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 	struct fb_dmabuf_export dmaexp;
 	struct fb_cursor cursor;
 	struct do_hwc_cmd_s do_hwc_cmd;
+	struct fb_vsync_early_request early_req;
+	struct fb_vsync_timing_request timing_req;
 
 	switch (cmd) {
 	case  FBIOPUT_OSD_SRCKEY_ENABLE:
@@ -819,6 +825,112 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		else
 			vsync_timestamp_64 = osd_wait_vsync_event_viu2();
 		ret = copy_to_user(argp, &vsync_timestamp_64, sizeof(s64));
+		break;
+	case FBIO_WAITFORVSYNC_EARLY_64:
+		if (copy_from_user(&early_req, argp, sizeof(early_req))) {
+			ret = -EFAULT;
+			break;
+		}
+		{
+			s64 period_ns = osd_get_vsync_period_ns();
+			s64 last_ts;
+			ktime_t now = ktime_get();
+			s64 next_ts;
+			s64 target_ns;
+			s64 offset_ns;
+			s64 sleep_ns;
+			ktime_t kt;
+
+			if (period_ns <= 0)
+				period_ns = 16666666; /* fallback: 60Hz */
+
+			if (early_req.offset_us < 0)
+				early_req.offset_us = 0;
+			offset_ns = (s64)early_req.offset_us * 1000;
+			if (offset_ns >= period_ns)
+				offset_ns = period_ns - 1;
+
+			if (info->node < osd_meson_dev.viu1_osd_count) {
+				last_ts = osd_get_vsync_timestamp(VIU1);
+				if (last_ts <= 0 || last_ts > now.tv64)
+					last_ts = osd_wait_vsync_event();
+			} else {
+				last_ts = osd_get_vsync_timestamp(VIU2);
+				if (last_ts <= 0 || last_ts > now.tv64)
+					last_ts = osd_wait_vsync_event_viu2();
+			}
+
+			next_ts = last_ts + period_ns;
+			if (next_ts <= now.tv64) {
+				s64 delta = now.tv64 - next_ts;
+				s64 steps = div_s64(delta, period_ns) + 1;
+
+				next_ts += steps * period_ns;
+			}
+
+			target_ns = next_ts - offset_ns;
+			if (target_ns <= now.tv64) {
+				s64 delta = now.tv64 - target_ns;
+				s64 steps = div_s64(delta, period_ns) + 1;
+
+				next_ts += steps * period_ns;
+				target_ns = next_ts - offset_ns;
+			}
+
+			early_req.next_vsync_ts = next_ts;
+			sleep_ns = target_ns - now.tv64;
+			if (sleep_ns > 0) {
+				kt = ktime_set(0, sleep_ns);
+				__set_current_state(TASK_INTERRUPTIBLE);
+				schedule_hrtimeout(&kt, HRTIMER_MODE_REL);
+				__set_current_state(TASK_RUNNING);
+				if (signal_pending(current)) {
+					ret = -ERESTARTSYS;
+					break;
+				}
+			}
+		}
+		ret = copy_to_user(argp, &early_req, sizeof(early_req));
+		break;
+	case FBIO_GET_VSYNC_TIMING_64:
+		memset(&timing_req, 0, sizeof(timing_req));
+		{
+			s64 period_ns = osd_get_vsync_period_ns();
+			ktime_t now = ktime_get();
+			s64 last_ts;
+			s64 next_ts;
+
+			if (period_ns <= 0)
+				period_ns = 16666666; /* fallback: 60Hz */
+
+			if (info->node < osd_meson_dev.viu1_osd_count)
+				last_ts = osd_get_vsync_timestamp(VIU1);
+			else
+				last_ts = osd_get_vsync_timestamp(VIU2);
+
+			/* Do not block here; if no valid last timestamp yet, ask userspace
+			 * to retry/fallback.
+			 */
+			if (last_ts <= 0 || last_ts > now.tv64) {
+				ret = -EAGAIN;
+				break;
+			}
+
+			next_ts = last_ts + period_ns;
+			if (next_ts <= now.tv64) {
+				s64 delta = now.tv64 - next_ts;
+				s64 steps = div_s64(delta, period_ns) + 1;
+
+				next_ts += steps * period_ns;
+			}
+
+			timing_req.now_ts = now.tv64;
+			timing_req.last_vsync_ts = last_ts;
+			timing_req.next_vsync_ts = next_ts;
+			timing_req.period_ns = period_ns;
+		}
+
+		ret = copy_to_user(argp, &timing_req, sizeof(timing_req));
 		break;
 	case FBIOGET_OSD_SCALE_AXIS:
 	case FBIOPUT_OSD_ORDER:
@@ -1545,10 +1657,10 @@ static int osd_open(struct fb_info *info, int arg)
 	if ((osd_meson_dev.has_viu2)
 		&& (fb_index == osd_meson_dev.viu2_index)) {
 		int vpu_clkc_rate;
+
 		if (osd_get_logo_index() != LOGO_DEV_VIU2_OSD0) {
 			/* select mux0, if select mux1, mux0 must be set */
-			if (!osd_meson_dev.vpu_clkc)
-			{
+			if (!osd_meson_dev.vpu_clkc) {
 				struct platform_device *pdev = fbdev->dev;
 				osd_meson_dev.vpu_clkc = devm_clk_get(&pdev->dev, "vpu_clkc");
 			}
@@ -1556,7 +1668,7 @@ static int osd_open(struct fb_info *info, int arg)
 			clk_set_rate(osd_meson_dev.vpu_clkc, CUR_VPU_CLKC_CLK);
 			vpu_clkc_rate = clk_get_rate(osd_meson_dev.vpu_clkc);
 			osd_log_info("vpu clkc clock is %d MHZ\n",
-				vpu_clkc_rate/1000000);
+				vpu_clkc_rate / 1000000);
 		}
 		osd_init_viu2();
 	}
