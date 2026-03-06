@@ -5404,7 +5404,9 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			                &new_dovi_setting);
 
 		// Override the dovi.ko metadata levels with the original from source
-		if (dolby_vision_use_source_meta_levels && (src_format == FORMAT_DOVI))
+		if (dolby_vision_use_source_meta_levels &&
+			(dst_format == FORMAT_DOVI) &&
+			(src_format == FORMAT_DOVI))
 			source_meta_copy(md_buf[current_id], total_md_size, &new_dovi_setting.md_reg3);
 	}
 
