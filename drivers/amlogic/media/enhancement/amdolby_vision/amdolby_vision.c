@@ -5384,6 +5384,13 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	new_dovi_setting.video_width = w << 16;
 	new_dovi_setting.video_height = h << 16;
 
+	// VS10 DV to SDR: zero levels count (ignore the levels)
+	// to prevent metadata from causing incorrect brightness in SDR output.
+	if ((dst_format == FORMAT_SDR) &&
+	    ((src_format == FORMAT_DOVI) ||
+	     (src_format == FORMAT_DOVI_LL)))
+		md_buf[current_id][ETSI_META_OFFSET-1] = 0x00;
+
 	if (debug_dolby & 0x400) do_gettimeofday(&start);
 
 	if (module_installed) {
