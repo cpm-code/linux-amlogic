@@ -29,6 +29,7 @@
 #define DOLBY_VISION_OUTPUT_MODE_SDR10			3
 #define DOLBY_VISION_OUTPUT_MODE_SDR8			4
 #define DOLBY_VISION_OUTPUT_MODE_BYPASS			5
+#define DOLBY_VISION_OUTPUT_MODE_HDR10_TUNNEL		6
 
 /* STB: if sink support DV, always output DV*/
 /*		else always output SDR/HDR */

@@ -2496,7 +2496,8 @@ enum hdr_process_sel hdr_func(
 				hdr_lut_param.ogain_lut[i] =
 					oo_y_lut_sdr_hdr_250[i];
 			else if (output_mode == DOLBY_VISION_OUTPUT_MODE_IPT ||
-			output_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
+			output_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
+			output_mode == DOLBY_VISION_OUTPUT_MODE_HDR10_TUNNEL)
 				hdr_lut_param.ogain_lut[i] =
 					oo_y_lut_sdr_hdr_300[i];
 			if (i < HDR2_EOTF_LUT_SIZE)
@@ -2525,7 +2526,8 @@ enum hdr_process_sel hdr_func(
 				hdr_lut_param.ogain_lut[i] =
 					oo_y_lut_hdr_hdr_2500[i];
 			else if (output_mode == DOLBY_VISION_OUTPUT_MODE_IPT ||
-			output_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
+			output_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
+			output_mode == DOLBY_VISION_OUTPUT_MODE_HDR10_TUNNEL)
 				hdr_lut_param.ogain_lut[i] =
 					oo_y_lut_hdr_hdr_4000[i];
 			if (i < HDR2_EOTF_LUT_SIZE)
@@ -2552,7 +2554,8 @@ enum hdr_process_sel hdr_func(
 				hdr_lut_param.ogain_lut[i] =
 					oo_y_lut_bypass[i];
 			else if (output_mode == DOLBY_VISION_OUTPUT_MODE_IPT ||
-			output_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
+			output_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
+			output_mode == DOLBY_VISION_OUTPUT_MODE_HDR10_TUNNEL)
 				hdr_lut_param.ogain_lut[i] =
 					oo_y_lut_bypass[i];
 			if (i < HDR2_EOTF_LUT_SIZE)
@@ -2579,7 +2582,8 @@ enum hdr_process_sel hdr_func(
 				hdr_lut_param.ogain_lut[i] =
 					oo_y_lut_bypass[i];
 			else if (output_mode == DOLBY_VISION_OUTPUT_MODE_IPT ||
-			output_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
+			output_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
+			output_mode == DOLBY_VISION_OUTPUT_MODE_HDR10_TUNNEL)
 				hdr_lut_param.ogain_lut[i] =
 					oo_y_lut_bypass[i];
 			if (i < HDR2_EOTF_LUT_SIZE)

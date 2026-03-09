@@ -568,14 +568,40 @@ static u32 debug_bypass_vpp_pq;
 
 static bool module_installed;
 
-static const char dv_mode_str[6][12] = {
+static const char dv_mode_str[][16] = {
 	"IPT",
 	"IPT_TUNNEL",
 	"HDR10",
 	"SDR10",
 	"SDR8",
-	"BYPASS"
+	"BYPASS",
+	"HDR10_TUNNEL"
 };
+
+static inline bool is_dolby_vision_tunnel_mode(unsigned int mode)
+{
+	return mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
+		mode == DOLBY_VISION_OUTPUT_MODE_HDR10_TUNNEL;
+}
+
+static inline bool is_dolby_vision_dovi_output_mode(unsigned int mode)
+{
+	return mode == DOLBY_VISION_OUTPUT_MODE_IPT ||
+		is_dolby_vision_tunnel_mode(mode);
+}
+
+static inline bool should_bypass_dolby_core1_hdr10_tunnel(bool dovi_src,
+							  int el_enable)
+{
+	return dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_HDR10_TUNNEL &&
+		dovi_src && !el_enable;
+}
+
+static inline unsigned int get_dolby_vision_core3_mode(unsigned int mode)
+{
+	return mode == DOLBY_VISION_OUTPUT_MODE_HDR10_TUNNEL ?
+		DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL : mode;
+}
 
 #define MAX_PARAM   8
 
@@ -919,7 +945,10 @@ static int stb_dolby_core1_set
   int composer_enable = el_enable;
   u32 run_mode = 0;
   int reg_size = 0;
-  bool bypass_core1 = (!hsize || !vsize || !(dolby_vision_mask & 1));
+	bool hdr10_tunnel_bypass =
+		should_bypass_dolby_core1_hdr10_tunnel(dovi_src, el_enable);
+	bool bypass_core1 = (!hsize || !vsize || !(dolby_vision_mask & 1) ||
+			     hdr10_tunnel_bypass);
 
   if (dolby_vision_on && (dolby_vision_flags & FLAG_DISABE_CORE_SETTING)) return 0;
 
@@ -944,6 +973,8 @@ static int stb_dolby_core1_set
   VSYNC_WR_DV_REG(DOLBY_TV_SWAP_CTRL6, 0xba000000);
 
   if (dolby_vision_flags & FLAG_DISABLE_COMPOSER) composer_enable = 0;
+	if (hdr10_tunnel_bypass)
+		composer_enable = 0;
 
   /* el dly 3, bl dly 1 after de*/
   VSYNC_WR_DV_REG(DOLBY_TV_SWAP_CTRL0, (el_41_mode ? (0x3 << 4) : (0x1 << 8)) | bl_enable << 0 | composer_enable << 1 | el_41_mode << 2);
@@ -960,6 +991,8 @@ static int stb_dolby_core1_set
 
   /* run mode = bypass, when fake frame */
   if (!bl_enable) bypass_flag |= 1;
+	if (hdr10_tunnel_bypass)
+		bypass_flag |= (1 << 12) | (1 << 13);
   if (dolby_vision_flags & FLAG_BYPASS_CSC) bypass_flag |= 1 << 12; /* bypass CSC */
   if (dolby_vision_flags & FLAG_BYPASS_CVM) bypass_flag |= 1 << 13; /* bypass CVM */
   if (need_skip_cvm(0)) bypass_flag |= 1 << 13; /* bypass CVM when tunnel out */
@@ -1251,7 +1284,10 @@ static int dolby_core1_set
   bool set_lut = false;
   u32 *last_dm = (u32 *)&dovi_setting.dm_reg1;
   u32 *last_comp = (u32 *)&dovi_setting.comp_reg;
-  bool bypass_core1 = (!hsize || !vsize || !(dolby_vision_mask & 1));
+	bool hdr10_tunnel_bypass =
+		should_bypass_dolby_core1_hdr10_tunnel(dovi_src, el_enable);
+	bool bypass_core1 = (!hsize || !vsize || !(dolby_vision_mask & 1) ||
+			     hdr10_tunnel_bypass);
   int dolby_copy_core1s0 = (dolby_vision_flags & FLAG_COPY_CORE1S0) && is_meson_tm2_stbmode();
 
   /* G12A: make sure the BL is enable for the very 1st frame*/
@@ -1279,6 +1315,8 @@ static int dolby_core1_set
   if (dolby_vision_on && (dolby_vision_flags & FLAG_DISABE_CORE_SETTING)) return 0;
 
   if (dolby_vision_flags & FLAG_DISABLE_COMPOSER) composer_enable = 0;
+	if (hdr10_tunnel_bypass)
+		composer_enable = 0;
 
   if (force_update_reg & 8) set_lut = true;
 
@@ -1360,6 +1398,8 @@ static int dolby_core1_set
   if (!dovi_src) bypass_flag |= 1 << 0;
 #endif
 
+	if (hdr10_tunnel_bypass)
+		bypass_flag |= (1 << 1) | (1 << 2);
   if (dolby_vision_flags & FLAG_BYPASS_CSC) bypass_flag |= 1 << 1;
   if (dolby_vision_flags & FLAG_BYPASS_CVM) bypass_flag |= 1 << 2;
   if (need_skip_cvm(0)) bypass_flag |= 1 << 2;
@@ -1657,7 +1697,7 @@ static int dolby_core3_set
   int i;
   int vsize_hold = 0x10;
   u32 diag_mode = 0;
-  u32 cur_dv_mode = dolby_vision_mode;
+	u32 cur_dv_mode = get_dolby_vision_core3_mode(dolby_vision_mode);
   u32 *last_dm = (u32 *)&dovi_setting.dm_reg3;
   bool reset = false;
   u32 diag_enable = 0;
@@ -1761,10 +1801,10 @@ static int dolby_core3_set
   VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL4, (0x04 << 16) | vsize_hold);
   VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL5, 0x0000);
 
-  if (cur_dv_mode != DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
-    VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL6, 0);
-  else
-    VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL6, 0x10000000);  /* swap UV */
+	if (!is_dolby_vision_tunnel_mode(cur_dv_mode))
+		VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL6, 0);
+	else
+		VSYNC_WR_DV_REG(DOLBY_CORE3_SWAP_CTRL6, 0x10000000);  /* swap UV */
 
   VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 5, 7);
   VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 4, 4);
@@ -1907,9 +1947,9 @@ int get_mute_type(void)
            (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_SDR10) ||
            (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_HDR10))
     return MUTE_TYPE_YUV;
-  else if ((dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT) ||
-           (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL))
-    return MUTE_TYPE_IPT;
+	else if (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT ||
+		 is_dolby_vision_tunnel_mode(dolby_vision_mode))
+		return MUTE_TYPE_IPT;
   else
     return MUTE_TYPE_NONE;
 }
@@ -2027,7 +2067,7 @@ static void apply_stb_core_settings
         new_dovi_setting.md_reg3.raw_metadata,
         vinfo->width,
         v_size,
-        dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL,
+		is_dolby_vision_tunnel_mode(dolby_vision_mode),
         pps_state);
   }
 
@@ -2129,8 +2169,7 @@ void enable_dolby_vision(int enable)
 	bool core2 = (dolby_vision_mask & 2);
 	bool core3 = (dolby_vision_mask & 4);
 
-	bool dvll = ((dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
-				  dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT) &&
+	bool dvll = (is_dolby_vision_dovi_output_mode(dolby_vision_mode) &&
 				  dovi_setting.diagnostic_enable == 0 &&
 				  dovi_setting.dovi_ll_enable);
 
@@ -2626,7 +2665,8 @@ static void dump_setting
 		dump_reg_range("core3 real reg 2", DOLBY_CORE3_REG_START + 0xf8, DOLBY_CORE3_REG_START + 0xfe);
 	}
 
-	if ((debug_flag & 0x40) && dump_enable && dolby_vision_mode <= DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL) {
+	if ((debug_flag & 0x40) && dump_enable &&
+	    is_dolby_vision_dovi_output_mode(dolby_vision_mode)) {
 
 		dump_u32_buffer("core3_meta", setting->md_reg3.raw_metadata, setting->md_reg3.size, false);
 	}
@@ -2785,7 +2825,8 @@ static enum signal_format_enum get_cur_src_format(void)
 	return ret;
 }
 
-static inline int mode_check(int *mode, unsigned int check_mode, enum signal_format_enum src_format, char* log)
+static inline int mode_check(int *mode, unsigned int check_mode,
+			     enum signal_format_enum src_format, char *log)
 {
   if (dolby_vision_mode != check_mode) {
     if (debug_dolby) {
@@ -4288,12 +4329,14 @@ static void send_hdmi_pkt
 				                      : YUV422_BIT12,
 				                    &vsif, false);
 			} else {
+				u32 tunnel_output =
+					is_dolby_vision_tunnel_mode(dolby_vision_mode) ?
+					RGB_8BIT : YUV422_BIT12;
+
 				vinfo->vout_device->fresh_tx_vsif_pkt(
-				                    EOTF_T_DOLBYVISION,
-				                    (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
-				                      ? RGB_8BIT
-				                      : YUV422_BIT12,
-				                    &vsif, false);
+					EOTF_T_DOLBYVISION,
+					tunnel_output,
+					&vsif, false);
 			}
 		}
 
@@ -4410,13 +4453,16 @@ static void send_hdmi_pkt_ahead
 				                      ? RGB_10_12BIT
 				                      : YUV422_BIT12,
 				                    &vsif, false);
-			else
+			else {
+				u32 tunnel_output =
+					is_dolby_vision_tunnel_mode(dolby_vision_target_mode) ?
+					RGB_8BIT : YUV422_BIT12;
+
 				vinfo->vout_device->fresh_tx_vsif_pkt(
-				                    EOTF_T_DV_AHEAD,
-				                    (dolby_vision_target_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
-				                      ? RGB_8BIT
-				                      : YUV422_BIT12,
-				                    &vsif, false);
+					EOTF_T_DV_AHEAD,
+					tunnel_output,
+					&vsif, false);
+			}
 		}
 		pr_dolby_dbg("send_hdmi_pkt ahead: %s\n", dovi_ll_enable ? "DV-LL" : "DV-Std");
 	}
@@ -5190,8 +5236,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	if (get_hdr_module_status(VD1_PATH) != HDR_MODULE_ON && check_format == FORMAT_SDR)
 	{
 		/* insert 2 SDR frames before send DOVI */
-		if ((dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
-		     dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT) &&
+		if (is_dolby_vision_dovi_output_mode(dolby_vision_mode) &&
 		    (last_current_format == FORMAT_HLG ||
 		     last_current_format == FORMAT_HDR10PLUS))
 		{
@@ -5227,8 +5272,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	if (is_meson_tm2_stbmode()) dolby_vision_run_mode_delay = 0;
 
 	/* check dst format */
-	if (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
-	    dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT)
+	if (is_dolby_vision_dovi_output_mode(dolby_vision_mode))
 		dst_format = FORMAT_DOVI;
 	else if (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_HDR10)
 		dst_format = FORMAT_HDR10;
@@ -5642,7 +5686,7 @@ int dolby_vision_wait_metadata(struct vframe_s *vf)
 				/*dv off->on, delay vframe*/
 				if (dolby_vision_policy == DOLBY_VISION_FOLLOW_SOURCE &&
 				    dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_BYPASS &&
-				    mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL &&
+				    is_dolby_vision_tunnel_mode(mode) &&
 				    dolby_vision_wait_delay > 0 &&
 				    !vf_is_fel(vf))
 				{
@@ -6947,6 +6991,7 @@ static ssize_t amdolby_vision_dv_mode_show(struct class *cla,
 	pr_info("\tSDR10      %d\n", DOLBY_VISION_OUTPUT_MODE_SDR10);
 	pr_info("\tSDR8       %d\n", DOLBY_VISION_OUTPUT_MODE_SDR8);
 	pr_info("\tBYPASS     %d\n", DOLBY_VISION_OUTPUT_MODE_BYPASS);
+	pr_info("\tHDR10_TUNNEL %d\n", DOLBY_VISION_OUTPUT_MODE_HDR10_TUNNEL);
 
 	if (is_dolby_vision_enable())
 		pr_info("current dv_mode = %s\n", dv_mode_str[dolby_vision_mode]);
@@ -6967,7 +7012,7 @@ static ssize_t amdolby_vision_dv_mode_store
 	r = kstrtoint(buf, 0, &val);
 	if (r != 0) return -EINVAL;
 
-	if (val >= 0 && val < 6)
+	if (val >= 0 && val < ARRAY_SIZE(dv_mode_str))
 		set_dolby_vision_mode(val);
 	else if (val & 0x200)
 		dolby_vision_dump_struct();

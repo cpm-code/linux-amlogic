@@ -110,13 +110,14 @@ static const char *output_str[9] = {
 	"BYPASS"
 };
 
-static const char *dv_output_str[6] = {
+static const char *dv_output_str[7] = {
 	"IPT",
 	"TUNNEL",
 	"HDR10",
 	"SDR10",
 	"SDR8",
-	"BYPASS"
+	"BYPASS",
+	"HDR10_TUNNEL"
 };
 
 void hdr_proc(
