@@ -568,7 +568,7 @@ static u32 debug_bypass_vpp_pq;
 
 static bool module_installed;
 
-static const char dv_mode_str[][16] = {
+static const char dv_mode_str[7][16] = {
 	"IPT",
 	"IPT_TUNNEL",
 	"HDR10",
