@@ -917,10 +917,8 @@ static int stb_dolby_core1_set
   if (dolby_vision_flags & FLAG_BYPASS_CVM) bypass_flag |= 1 << 13; /* bypass CVM */
   if (need_skip_cvm(0)) bypass_flag |= 1 << 13; /* bypass CVM when tunnel out */
 
-#ifdef OLD_VERSION
   /* bypass composer to get 12bit when SDR and HDR source */
-  if (!dovi_src) bypass_flag |= 1 << 14; /* bypass composer */
-#endif
+	// bypass_flag |= 1 << 14; /* bypass composer */
 
   if (dolby_vision_run_mode != 0xff) {
     run_mode = dolby_vision_run_mode;
@@ -1217,10 +1215,8 @@ static int dolby_core1_set
   VSYNC_WR_DV_REG(DOLBY_CORE1_REG_START + 4, 4);
   VSYNC_WR_DV_REG(DOLBY_CORE1_REG_START + 2, 1);
 
-#ifdef OLD_VERSION
   /* bypass composer to get 12bit when SDR and HDR source */
-  if (!dovi_src) bypass_flag |= 1 << 0;
-#endif
+	// bypass_flag |= 1 << 0;
 
   if (dolby_vision_flags & FLAG_BYPASS_CSC) bypass_flag |= 1 << 1;
   if (dolby_vision_flags & FLAG_BYPASS_CVM) bypass_flag |= 1 << 2;
