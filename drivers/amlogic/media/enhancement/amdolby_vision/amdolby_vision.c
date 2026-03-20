@@ -1466,12 +1466,7 @@ static int dolby_core3_set
       pr_dolby_error("core3 metadata size %d > 204 !\n", md_count);
     } else {
       for (i = 0; i < md_count; i++) {
-#ifdef FORCE_HDMI_META
-        if (i == 20 && p_core3_md_regs[i] == 0x5140a3e)
-          VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 0x24 + i, (p_core3_md_regs[i] & 0xffffff00) | 0x80);
-        else
-#endif
-          VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 0x24 + i, p_core3_md_regs[i]);
+				VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 0x24 + i, p_core3_md_regs[i]);
       }
       for (; i < (MAX_CORE3_MD_SIZE + 1); i++)
         VSYNC_WR_DV_REG(DOLBY_CORE3_REG_START + 0x24 + i, 0);
