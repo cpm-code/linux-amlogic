@@ -4367,6 +4367,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	static int last_current_format = FORMAT_INVALID;
 	int ret = -1;
 	bool mel_flag = false;
+	bool debug_timing = debug_dolby & 0x400;
 	unsigned long time_use = 0;
 	struct timeval start;
 	struct timeval end;
@@ -4904,7 +4905,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	     (src_format == FORMAT_DOVI_LL)))
 		md_buf[current_id][ETSI_META_OFFSET-1] = 0x00;
 
-	if (debug_dolby & 0x400) do_gettimeofday(&start);
+	if (debug_timing)
+		do_gettimeofday(&start);
 
 	if (module_installed) {
 		flag = p_funcs_stb->control_path(
@@ -4930,10 +4932,10 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			source_meta_copy(md_buf[current_id], total_md_size, &new_dovi_setting.md_reg3);
 	}
 
-	if (debug_dolby & 0x400) {
+	if (debug_timing) {
 		do_gettimeofday(&end);
 		time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-		pr_info("controlpath time: %5ld us\n", time_use);
+		pr_dolby_dbg_msk(0x400, "controlpath time: %5ld us\n", time_use);
 	}
 
 	if (flag >= 0) {
