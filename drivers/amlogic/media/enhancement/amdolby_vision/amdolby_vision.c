@@ -492,6 +492,8 @@ MODULE_PARM_DESC(debug_dolby_frame, "\n debug_dolby_frame\n");
 
 #define dolby_dbg_enabled(mask) unlikely(debug_dolby & (mask))
 
+#define dolby_dump_enabled(mask) (dolby_dbg_enabled(mask) && dump_enable)
+
 #define pr_dolby_error(fmt, args...)\
 	pr_info("DOLBY ERROR: " fmt, ## args)
 
@@ -2898,7 +2900,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 				rpu_size = size + 2;
 			}
 
-			if ((debug_dolby & 4) && dump_enable)
+			if (dolby_dump_enabled(4))
 				dump_buffer("DOLBY: RPU metadata", meta_buf, rpu_size);
 
 			if (!p_funcs_stb) {
@@ -3010,7 +3012,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 
 		p = aux_buf;
 
-		if ((debug_dolby & 0x200) && dump_enable)
+		if (dolby_dump_enabled(0x200))
 			dump_buffer("DOLBY: aux_buf", p, aux_size);
 
 		while (p < aux_buf + aux_size - 8) {
@@ -3074,7 +3076,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 
 			memcpy(meta_buf, (unsigned char *)(&p_atsc_md), size);
 
-			if ((debug_dolby & 4) && dump_enable)
+			if (dolby_dump_enabled(4))
 				dump_buffer("DOLBY: RPU metadata", meta_buf, size);
 
 			if (!p_funcs_stb) {
@@ -3162,7 +3164,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 		pr_dolby_dbg_msk(1, "meta(%d), pts(%lld) -> md(%d), comp(%d)\n",
 					 size, vf ? vf->pts_us64 : 0, *total_md_size, *total_comp_size);
 
-		if ((debug_dolby & 4) && dump_enable)  {
+		if (dolby_dump_enabled(4)) {
 			dump_buffer("DOLBY: parsed ETSI display management metadata", md_buf, *total_md_size);
 			dump_buffer("DOLBY: parsed ETSI composing metadata", comp_buf, *total_comp_size);
 		}
@@ -4247,7 +4249,7 @@ static inline void source_meta_copy(
 		return;
 	}
 
-	if ((debug_dolby & 4) && dump_enable) {
+	if (dolby_dump_enabled(4)) {
 		dump_buffer("DOLBY: original ETSI display management metadata", orig_meta_buffer, orig_meta_size);
 		dump_buffer("DOLBY: reversed ETSI display management metadata", reversed_meta_buffer, reversed_meta_size);
 	}
@@ -4322,7 +4324,7 @@ static inline void source_meta_copy(
 
 	combo_meta_buffer[ETSI_META_OFFSET-1] = num_levels; // update number of levels.
 
-	if ((debug_dolby & 4) && dump_enable)
+	if (dolby_dump_enabled(4))
 		dump_buffer("DOLBY: combined ETSI display management metadata", combo_meta_buffer, combo_meta_size);
 
 	// push back into the core format raw_metadata.
@@ -4447,7 +4449,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 				total_md_size =  vf->src_fmt.md_size;
 				total_comp_size =  vf->src_fmt.comp_size;
 				ret_flags = vf->src_fmt.parse_ret_flags;
-				if ((debug_dolby & 4) && dump_enable) {
+				if (dolby_dump_enabled(4)) {
 					dump_buffer("DOLBY: ETSI display management metadata", md_buf[current_id], total_md_size);
 					dump_buffer("DOLBY: ETSI composing metadata", comp_buf[current_id], total_comp_size);
 				}
@@ -5014,7 +5016,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		new_dovi_setting.video_height = 0;
 		pr_dolby_error("control_path(%d, %d) failed %d\n", src_format, dst_format, flag);
 
-		if ((debug_dolby & 0x2000) && dump_enable && total_md_size > 0)
+		if (dolby_dump_enabled(0x2000) && total_md_size > 0)
 		{
 			dump_buffer("DOLBY: control_path failed, ETSI display management metadata",
 			  md_buf[current_id], total_md_size);
