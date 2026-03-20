@@ -169,9 +169,9 @@ module_param(dolby_vision_wait_delay, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_wait_delay, "\n dolby_vision_wait_delay\n");
 static int dolby_vision_wait_count;
 
-/* reset 1st fake frame (bit 0)*/
-/*   and other fake frames (bit 1)*/
-/*   and other toggle frames (bit 2) */
+/* reset control */
+/* bit 0: reset first toggle-frame update */
+/* bit 1: reset first core1 refresh */
 static uint dolby_vision_reset = (1 << 1) | (1 << 0);
 module_param(dolby_vision_reset, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_reset, "\n dolby_vision_reset\n");
@@ -180,11 +180,6 @@ MODULE_PARM_DESC(dolby_vision_reset, "\n dolby_vision_reset\n");
 static uint dolby_vision_run_mode = 0xff; /* not force */
 module_param(dolby_vision_run_mode, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_run_mode, "\n dolby_vision_run_mode\n");
-
-/* reset control -- end << 8 | start */
-static uint dolby_vision_reset_delay = (2 << 8) | 2;
-module_param(dolby_vision_reset_delay, uint, 0664);
-MODULE_PARM_DESC(dolby_vision_reset_delay, "\n dolby_vision_reset_delay\n");
 
 static unsigned int dv_ll_output_mode = DOLBY_VISION_OUTPUT_MODE_HDR10;
 module_param(dv_ll_output_mode, uint, 0664);
@@ -5730,9 +5725,7 @@ int dolby_vision_process(struct vframe_s *vf,
 
 	} else if (dolby_vision_core1_on && !(dolby_vision_flags & FLAG_CERTIFICAION)) {
 
-		bool reset_flag = (dolby_vision_reset & 2) &&
-		                  (dolby_vision_on_count <= (dolby_vision_reset_delay >> 8)) &&
-		                  (dolby_vision_on_count >= (dolby_vision_reset_delay & 0xff));
+		bool reset_flag = (dolby_vision_reset & 2);
 
 
 		if (dolby_vision_on_count == 0)
