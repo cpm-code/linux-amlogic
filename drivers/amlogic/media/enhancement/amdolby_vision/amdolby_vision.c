@@ -985,10 +985,9 @@ static void adjust_vpotch(void)
 		if (vinfo->sync_duration_den)
 			sync_duration_num = vinfo->sync_duration_num / vinfo->sync_duration_den;
 
-		if (debug_dolby & 2)
-			pr_dolby_dbg("vinfo %d %d %d %d %d %d\n",
-									 vinfo->width, vinfo->height, vinfo->field_height,
-									 vinfo->sync_duration_num, vinfo->sync_duration_den, sync_duration_num);
+		pr_dolby_dbg_msk(2, "vinfo %d %d %d %d %d %d\n",
+								 vinfo->width, vinfo->height, vinfo->field_height,
+								 vinfo->sync_duration_num, vinfo->sync_duration_den, sync_duration_num);
 
 		if (is_small_frame)
 			g_vpotch = 0x60;
@@ -1002,8 +1001,7 @@ static void adjust_vpotch(void)
 
 	} else if (is_meson_sc2()) {
 
-		if (debug_dolby & 2)
-			pr_dolby_dbg("vinfo %d %d %d\n", vinfo->width, vinfo->height, vinfo->field_height);
+		pr_dolby_dbg_msk(2, "vinfo %d %d %d\n", vinfo->width, vinfo->height, vinfo->field_height);
 
 		if (is_small_frame)
 			g_vpotch = 0x60;
@@ -1323,10 +1321,9 @@ static int dolby_core2_set
 	else if (stb_core_setting_update_flag & CP_FLAG_CONST_TC2)
 		set_lut = false;
 
-	if (debug_dolby & 2)
-		pr_dolby_dbg("core2a g_potch %x %x, reset %d, set_lut %d, flag %x\n",
-								 g_hpotch, g_vpotch, reset, set_lut,
-								 stb_core_setting_update_flag);
+	pr_dolby_dbg_msk(2, "core2a g_potch %x %x, reset %d, set_lut %d, flag %x\n",
+						 g_hpotch, g_vpotch, reset, set_lut,
+						 stb_core_setting_update_flag);
 
 	/* core2 metadata program done */
 
@@ -1599,8 +1596,8 @@ static void apply_stb_core_settings
 	if (h_size == 0xffff) h_size = 0;
 	if (v_size == 0xffff) v_size = 0;
 
-	if (stb_core_setting_update_flag != update_flag_more && (debug_dolby & 2))
-		pr_dolby_dbg("%s update setting again %x->%x\n", __func__, stb_core_setting_update_flag, update_flag_more);
+	if (stb_core_setting_update_flag != update_flag_more)
+		pr_dolby_dbg_msk(2, "%s update setting again %x->%x\n", __func__, stb_core_setting_update_flag, update_flag_more);
 
 	stb_core_setting_update_flag |= update_flag_more;
 
@@ -2705,14 +2702,13 @@ void dolby_vision_vf_put(struct vframe_s *vf)
 		for (i = 0; i < 16; i++) {
 			if (dv_vf[i][0] == vf) {
 				if (dv_vf[i][1]) {
-					if (debug_dolby & 2)
-						pr_dolby_dbg("put bl(%p-%lld) with el(%p-%lld)\n",
+					pr_dolby_dbg_msk(2, "put bl(%p-%lld) with el(%p-%lld)\n",
 						             vf, vf->pts_us64,
 						             dv_vf[i][1],
 						             dv_vf[i][1]->pts_us64);
 					dvel_vf_put(dv_vf[i][1]);
-				} else if (debug_dolby & 2) {
-					pr_dolby_dbg("--- put bl(%p-%lld) ---\n", vf, vf->pts_us64);
+				} else {
+					pr_dolby_dbg_msk(2, "--- put bl(%p-%lld) ---\n", vf, vf->pts_us64);
 				}
 				dv_vf[i][0] = NULL;
 				dv_vf[i][1] = NULL;
@@ -2759,18 +2755,16 @@ static int dolby_vision_vf_check(struct vframe_s *vf)
 
 	for (i = 0; i < 16; i++) {
 		if (dv_vf[i][0] == vf) {
-			if (debug_dolby & 2) {
-				if (dv_vf[i][1])
-					pr_dolby_dbg("=== bl(%p-%lld) with el(%p-%lld) toggled ===\n",
-						     vf,
-						     vf->pts_us64,
-						     dv_vf[i][1],
-						     dv_vf[i][1]->pts_us64);
-				else
-					pr_dolby_dbg("=== bl(%p-%lld) toggled ===\n",
-						     vf,
-						     vf->pts_us64);
-			}
+			if (dv_vf[i][1])
+				pr_dolby_dbg_msk(2, "=== bl(%p-%lld) with el(%p-%lld) toggled ===\n",
+					     vf,
+					     vf->pts_us64,
+					     dv_vf[i][1],
+					     dv_vf[i][1]->pts_us64);
+			else
+				pr_dolby_dbg_msk(2, "=== bl(%p-%lld) toggled ===\n",
+					     vf,
+					     vf->pts_us64);
 			return 0;
 		}
 	}
@@ -2825,7 +2819,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 			dolby_vision_clear_buf();
 		}
 		last_play_id = vf->src_fmt.play_id;
-		if (debug_dolby & 2) pr_dolby_dbg("update play id=%d:\n", last_play_id);
+		pr_dolby_dbg_msk(2, "update play id=%d:\n", last_play_id);
 	}
 
 	p = aux_buf;
@@ -2836,8 +2830,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 		type = get_unaligned_be32(p);
 		p += 4;
 
-		if (debug_dolby & 4)
-			pr_dolby_dbg("metadata type=%08x, size=%d:\n", type, size);
+		pr_dolby_dbg_msk(4, "metadata type=%08x, size=%d:\n", type, size);
 
 		if (size == 0 || size > aux_size) {
 			pr_dolby_dbg("invalid aux size %d\n", size);
@@ -2923,7 +2916,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 				}
 				if (metadata_parser) {
 					parser_ready = 1;
-					if (debug_dolby & 1) pr_dolby_dbg("metadata parser init OK\n");
+					pr_dolby_dbg_msk(1, "metadata parser init OK\n");
 				}
 			} else if (module_installed) {
 
@@ -3004,8 +2997,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 			vui_param.color_primaries_i = (vf->signal_type >> 16) & 0xff;
 			vui_param.trans_characteristic_i = (vf->signal_type >> 8) & 0xff;
 			vui_param.matrix_coeff_i = (vf->signal_type) & 0xff;
-			if (debug_dolby & 2)
-				pr_dolby_dbg("vui_param %d, %d, %d, %d, %d, %d\n",
+			pr_dolby_dbg_msk(2, "vui_param %d, %d, %d, %d, %d, %d\n",
 					vui_param.video_fmt_i,
 					vui_param.video_fullrange_b,
 					vui_param.color_description_b,
@@ -3026,16 +3018,14 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 			type = get_unaligned_be32(p);
 			p += 4;
 
-			if (debug_dolby & 2)
-				pr_dolby_dbg("type: 0x%x\n", type);
+			pr_dolby_dbg_msk(2, "type: 0x%x\n", type);
 
 			/*4 byte size + 4 byte type */
 			/*1 byte nal_type + 1 byte (layer_id+temporal_id) */
 			/*1 byte payload type + 1 byte size + payload data */
 			if (type == 0x02000000) {
 				nal_type = ((*p) & 0x7E) >> 1; /*nal unit type*/
-				if (debug_dolby & 2)
-					pr_dolby_dbg("nal_type: %d\n", nal_type);
+				pr_dolby_dbg_msk(2, "nal_type: %d\n", nal_type);
 
 				if (nal_type == PREFIX_SEI_NUT_NAL ||
 					nal_type == SUFFIX_SEI_NUT_NAL) {
@@ -3043,8 +3033,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 					sei_payload_type = *(p + 2);
 					sei_payload_size = *(p + 3);
 
-					if (debug_dolby & 2)
-						pr_dolby_dbg("type %d, size %d\n", sei_payload_type, sei_payload_size);
+					pr_dolby_dbg_msk(2, "type %d, size %d\n", sei_payload_type, sei_payload_size);
 
 					if (sei_payload_type == SEI_TYPE_MASTERING_DISP_COLOUR_VOLUME)
 					{
@@ -3102,8 +3091,7 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 
 				if (metadata_parser) {
 					parser_ready = 1;
-					if (debug_dolby & 1)
-						pr_dolby_dbg("metadata parser init OK\n");
+					pr_dolby_dbg_msk(1, "metadata parser init OK\n");
 				}
 
 			} else {
@@ -3169,9 +3157,8 @@ int parse_sei_and_meta_ext(struct vframe_s *vf,
 
 	if (*total_md_size) {
 
-		if (debug_dolby & 1)
-			pr_dolby_dbg("meta(%d), pts(%lld) -> md(%d), comp(%d)\n",
-			             size, vf ? vf->pts_us64 : 0, *total_md_size, *total_comp_size);
+		pr_dolby_dbg_msk(1, "meta(%d), pts(%lld) -> md(%d), comp(%d)\n",
+					 size, vf ? vf->pts_us64 : 0, *total_md_size, *total_comp_size);
 
 		if ((debug_dolby & 4) && dump_enable)  {
 			dump_buffer("DOLBY: parsed ETSI display management metadata", md_buf, *total_md_size);
@@ -3459,9 +3446,8 @@ static int prepare_vsif_pkt
 	else if (src_format == FORMAT_SDR || src_format == FORMAT_SDR_2020)
 		vsif->vers.ver2.dobly_vision_signal = 5; /*0b0101*/
 
-	if ((debug_dolby & 2))
-		pr_dolby_dbg("src %d, dobly_vision_signal %d\n",
-			     src_format, vsif->vers.ver2.dobly_vision_signal);
+	pr_dolby_dbg_msk(2, "src %d, dobly_vision_signal %d\n",
+			 src_format, vsif->vers.ver2.dobly_vision_signal);
 
 	if (vinfo->vout_device->dv_info &&
 	    vinfo->vout_device->dv_info->sup_backlight_control &&
@@ -3690,9 +3676,8 @@ static void send_hdmi_pkt
 	static int sdr_transition_delay;
 	struct vd_signal_info_s vd_signal;
 
-	if ((debug_dolby & 2))
-		pr_dolby_dbg("[%s]src_format %d, dst %d, last %d:\n",
-		             __func__, src_format, dst_format, last_dst_format);
+	pr_dolby_dbg_msk(2, "[%s]src_format %d, dst %d, last %d:\n",
+			 __func__, src_format, dst_format, last_dst_format);
 
 	if (dst_format == FORMAT_HDR10) {
 		sdr_transition_delay = 0;
@@ -4427,12 +4412,11 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			u32 sei_size = 0;
 			char *sei;
 
-			if (debug_dolby & 1)
-				pr_dolby_dbg("no aux %p %x, el %d from %s, use sei_ptr\n",
-					     req.aux_buf,
-					     req.aux_size,
-					     req.dv_enhance_exist,
-					     dv_provider);
+			pr_dolby_dbg_msk(1, "no aux %p %x, el %d from %s, use sei_ptr\n",
+					 req.aux_buf,
+					 req.aux_size,
+					 req.dv_enhance_exist,
+					 dv_provider);
 
 			sei = (char *)get_sei_from_src_fmt(vf, &sei_size);
 
@@ -4443,12 +4427,11 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			}
 		}
 
-		if (debug_dolby & 1)
-			pr_dolby_dbg("%s get vf %p(%d), fmt %d, aux %p %x, el %d\n",
-				     dv_provider, vf, vf->discard_dv_data, fmt,
-				     req.aux_buf,
-				     req.aux_size,
-				     req.dv_enhance_exist);
+		pr_dolby_dbg_msk(1, "%s get vf %p(%d), fmt %d, aux %p %x, el %d\n",
+				 dv_provider, vf, vf->discard_dv_data, fmt,
+				 req.aux_buf,
+				 req.aux_size,
+				 req.dv_enhance_exist);
 
 		/* parse meta in base layer */
 		if (toggle_mode != 2) {
@@ -4566,8 +4549,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			if (el_vf && ((el_vf->pts_us64 == vf->pts_us64) ||
 			              !(dolby_vision_flags & FLAG_CHECK_ES_PTS)))
 			{
-				if (debug_dolby & 2)
-					pr_dolby_dbg("+++ get bl(%p-%lld) with el(%p-%lld) +++\n",
+				pr_dolby_dbg_msk(2, "+++ get bl(%p-%lld) with el(%p-%lld) +++\n",
 						vf, vf->pts_us64, el_vf, el_vf->pts_us64);
 
 				if (meta_flag_bl) {
@@ -4607,8 +4589,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 					    el_req.aux_size)
 						src_format = FORMAT_DOVI;
 
-					if (debug_dolby & 2)
-						pr_dolby_dbg("el mode:src_fmt:%d,meta_flag_el:%d\n",
+					pr_dolby_dbg_msk(2, "el mode:src_fmt:%d,meta_flag_el:%d\n",
 						             src_format, meta_flag_el);
 
 					if (meta_flag_el && frame_count == 0)
@@ -4630,8 +4611,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 
 		} else if (toggle_mode == 1) {
 
-			if (debug_dolby & 2)
-				pr_dolby_dbg("+++ get bl(%p-%lld) +++ at %u\n", vf, vf->pts_us64, __LINE__);
+			pr_dolby_dbg_msk(2, "+++ get bl(%p-%lld) +++ at %u\n", vf, vf->pts_us64, __LINE__);
 
 			dolby_vision_vf_add(vf, NULL);
 		}
@@ -4654,8 +4634,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 
 			mel_flag = mel_mode;
 
-			if (debug_dolby & 2)
-				pr_dolby_dbg("update el_flag %d, melFlag %d\n", el_flag, mel_flag);
+			pr_dolby_dbg_msk(2, "update el_flag %d, melFlag %d\n", el_flag, mel_flag);
 
 			meta_flag_bl = 0;
 		}
@@ -4972,11 +4951,10 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 			new_dovi_setting.diagnostic_mux_select = 1;
 		}
 
-		if (debug_dolby & 2)
-			pr_dolby_dbg("ll_enable=%d,diagnostic=%d,ll_policy=%d\n",
-				     new_dovi_setting.dovi_ll_enable,
-				     new_dovi_setting.diagnostic_enable,
-				     dolby_vision_ll_policy);
+		pr_dolby_dbg_msk(2, "ll_enable=%d,diagnostic=%d,ll_policy=%d\n",
+				 new_dovi_setting.dovi_ll_enable,
+				 new_dovi_setting.diagnostic_enable,
+				 dolby_vision_ll_policy);
 
 		new_dovi_setting.src_format = src_format;
 		new_dovi_setting.dst_format = dst_format;
@@ -5055,10 +5033,9 @@ bool vf_is_fel(struct vframe_s *vf)
 	fmt = get_vframe_src_fmt(vf);
 
 	if (fmt == VFRAME_SIGNAL_FMT_DOVI) {
-		if (debug_dolby & 0x1)
-			pr_dolby_dbg("dual layer %d, parse ret flags %d\n",
-				     vf->src_fmt.dual_layer,
-				     vf->src_fmt.parse_ret_flags);
+		pr_dolby_dbg_msk(0x1, "dual layer %d, parse ret flags %d\n",
+				 vf->src_fmt.dual_layer,
+				 vf->src_fmt.parse_ret_flags);
 		if (vf->src_fmt.dual_layer && vf->src_fmt.parse_ret_flags != 1)
 			fel = true;
 	}
@@ -5467,13 +5444,12 @@ int dolby_vision_process(struct vframe_s *vf,
 	    (dolby_vision_flags & FLAG_FORCE_HDMI_PKT))
 	{
 
-		if (debug_dolby & 1)
-			pr_dolby_dbg("sink %s,cap 0x%x,video %s,osd %s,vf %p,toggle %d\n",
-				     current_sink_available ? "on" : "off",
-				     current_hdr_cap,
-				     video_turn_off ? "off" : "on",
-				     is_graphics_output_off() ? "off" : "on",
-				     vf, toggle_mode);
+		pr_dolby_dbg_msk(1, "sink %s,cap 0x%x,video %s,osd %s,vf %p,toggle %d\n",
+				 current_sink_available ? "on" : "off",
+				 current_hdr_cap,
+				 video_turn_off ? "off" : "on",
+				 is_graphics_output_off() ? "off" : "on",
+				 vf, toggle_mode);
 
 		/* do not toggle a new el vf */
 		if (toggle_mode == 1) toggle_mode = 0;
@@ -5490,9 +5466,8 @@ int dolby_vision_process(struct vframe_s *vf,
 		}
 	}
 
-	if (debug_dolby & 8)
-		pr_dolby_dbg("vf %p, turn_off %d, video_status %d, toggle %d, flag %x\n",
-		             vf, video_turn_off, video_status, toggle_mode, dolby_vision_flags);
+	pr_dolby_dbg_msk(8, "vf %p, turn_off %d, video_status %d, toggle %d, flag %x\n",
+		         vf, video_turn_off, video_status, toggle_mode, dolby_vision_flags);
 
 	if ((!vf && video_turn_off) || (video_status == -1)) {
 
