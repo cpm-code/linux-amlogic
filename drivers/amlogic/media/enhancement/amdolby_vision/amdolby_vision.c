@@ -968,67 +968,49 @@ static void adjust_vpotch(void)
   const struct vinfo_s *vinfo = get_current_vinfo();
   int sync_duration_num = 60;
 
+  bool is_small_frame;
+
+  if (!vinfo) {
+    g_vpotch = 0x20;
+    return;
+  }
+
+  is_small_frame = (vinfo->width < 1280) && (vinfo->height < 720) && (vinfo->field_height < 720);
+
+  htotal_add = vinfo->width > 1920 ? 0xc0 : 0x140;
+
   if (is_meson_g12()) {
 
-    if (vinfo) {
+    if (vinfo->sync_duration_den)
+      sync_duration_num = vinfo->sync_duration_num / vinfo->sync_duration_den;
 
-      if (vinfo->sync_duration_den)
-        sync_duration_num = vinfo->sync_duration_num / vinfo->sync_duration_den;
+    if (debug_dolby & 2)
+      pr_dolby_dbg("vinfo %d %d %d %d %d %d\n",
+                   vinfo->width, vinfo->height, vinfo->field_height,
+                   vinfo->sync_duration_num, vinfo->sync_duration_den, sync_duration_num);
 
-      if (debug_dolby & 2)
-        pr_dolby_dbg("vinfo %d %d %d %d %d %d\n",
-               vinfo->width, vinfo->height, vinfo->field_height,
-               vinfo->sync_duration_num, vinfo->sync_duration_den, sync_duration_num);
-
-      if (vinfo->width < 1280 && vinfo->height < 720 && vinfo->field_height < 720)
-        g_vpotch = 0x60;
-      else if (vinfo->width == 1280 && vinfo->height == 720)
-        g_vpotch = 0x38;
-      else if (vinfo->width == 1280 && vinfo->height == 720 && vinfo->field_height < 720)
-        g_vpotch = 0x60;
-      else if (vinfo->width == 1920 && vinfo->height == 1080 && sync_duration_num < 30)
-        g_vpotch = 0x60;
-      else if (vinfo->width == 1920 && vinfo->height == 1080 && vinfo->field_height < 1080)
-        g_vpotch = 0x60;
-      else
-        g_vpotch = 0x20;
-
-      if (vinfo->width > 1920)
-        htotal_add = 0xc0;
-      else
-        htotal_add = 0x140;
-
-    } else {
+    if (is_small_frame)
+      g_vpotch = 0x60;
+    else if (vinfo->width == 1280 && vinfo->height == 720)
+      g_vpotch = vinfo->field_height < 720 ? 0x60 : 0x38;
+    else if (vinfo->width == 1920 && vinfo->height == 1080 &&
+             (sync_duration_num < 30 || vinfo->field_height < 1080))
+      g_vpotch = 0x60;
+    else
       g_vpotch = 0x20;
-    }
 
   } else if (is_meson_sc2()) {
 
-    if (vinfo) {
+    if (debug_dolby & 2)
+      pr_dolby_dbg("vinfo %d %d %d\n", vinfo->width, vinfo->height, vinfo->field_height);
 
-      if (debug_dolby & 2)
-        pr_dolby_dbg("vinfo %d %d %d\n", vinfo->width, vinfo->height, vinfo->field_height);
-
-      if (vinfo->width < 1280 && vinfo->height < 720 && vinfo->field_height < 720)
-        g_vpotch = 0x60;
-      else if (vinfo->width <= 1920 && vinfo->height <= 1080 && vinfo->field_height <= 1080)
-        g_vpotch = 0x50;
-      else
-        g_vpotch = 0x20;
-
-      if (vinfo->width > 1920)
-        htotal_add = 0xc0;
-      else
-        htotal_add = 0x140;
-
-    } else {
+    if (is_small_frame)
+      g_vpotch = 0x60;
+    else if (vinfo->width <= 1920 && vinfo->height <= 1080 && vinfo->field_height <= 1080)
+      g_vpotch = 0x50;
+    else
       g_vpotch = 0x20;
-    }
   }
-}
-
-static void adjust_vpotch_tv(void)
-{
 }
 
 static void dolby_core_reset(enum core_type type)
@@ -5986,7 +5968,6 @@ int register_dv_functions(const struct dolby_vision_func_s *func)
 		new_dovi_setting.src_format = FORMAT_SDR;
 
 		adjust_vpotch();
-		adjust_vpotch_tv();
 	}
 	module_installed = true;
 	return ret;
