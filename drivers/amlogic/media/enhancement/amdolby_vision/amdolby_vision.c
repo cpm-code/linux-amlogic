@@ -21,6 +21,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/ktime.h>
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
@@ -4372,9 +4373,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	int ret = -1;
 	bool mel_flag = false;
 	bool debug_timing = dolby_dbg_enabled(0x400);
-	unsigned long time_use = 0;
-	struct timeval start;
-	struct timeval end;
+	u64 start_ns = 0;
+	u64 time_use_us = 0;
 
 	memset(&req, 0, (sizeof(struct provider_aux_req_s)));
 	memset(&el_req, 0, (sizeof(struct provider_aux_req_s)));
@@ -4910,7 +4910,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		md_buf[current_id][ETSI_META_OFFSET-1] = 0x00;
 
 	if (debug_timing)
-		do_gettimeofday(&start);
+		start_ns = ktime_get_ns();
 
 	if (module_installed) {
 		flag = p_funcs_stb->control_path(
@@ -4937,9 +4937,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	}
 
 	if (debug_timing) {
-		do_gettimeofday(&end);
-		time_use = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
-		pr_dolby_dbg_msk(0x400, "controlpath time: %5ld us\n", time_use);
+		time_use_us = div_u64(ktime_get_ns() - start_ns, 1000);
+		pr_dolby_dbg_msk(0x400, "controlpath time: %5llu us\n", time_use_us);
 	}
 
 	if (flag >= 0) {
