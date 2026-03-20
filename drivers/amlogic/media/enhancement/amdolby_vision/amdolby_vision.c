@@ -484,6 +484,12 @@ MODULE_PARM_DESC(debug_dolby_frame, "\n debug_dolby_frame\n");
 			pr_info("DOLBY: " fmt, ## args);\
 	} while (0)
 
+#define pr_dolby_dbg_msk(mask, fmt, args...)\
+	do {\
+		if (unlikely(debug_dolby & (mask)))\
+			pr_info("DOLBY: " fmt, ## args);\
+	} while (0)
+
 #define pr_dolby_error(fmt, args...)\
 	pr_info("DOLBY ERROR: " fmt, ## args)
 
@@ -1523,10 +1529,9 @@ static int is_graphic_changed(void)
   if (osd_graphic_width != new_osd_graphic_width ||
       osd_graphic_height != new_osd_graphic_height) {
 
-    if (debug_dolby & 0x2)
-      pr_dolby_dbg("osd changed %d %d-%d %d\n",
-                   osd_graphic_width, osd_graphic_height,
-                   new_osd_graphic_width, new_osd_graphic_height);
+    pr_dolby_dbg_msk(0x2, "osd changed %d %d-%d %d\n",
+                    osd_graphic_width, osd_graphic_height,
+                    new_osd_graphic_width, new_osd_graphic_height);
 
     /* TODO: g12/tm2/sc2/t7 osd pps is after dolby core2, but */
     /* sometimes osd do crop,should monitor osd size change */
@@ -1539,8 +1544,7 @@ static int is_graphic_changed(void)
 
   if (old_dolby_vision_graphic_max != dolby_vision_graphic_max) {
 
-    if (debug_dolby & 0x2)
-      pr_dolby_dbg("graphic max changed %d-%d\n", old_dolby_vision_graphic_max, dolby_vision_graphic_max);
+    pr_dolby_dbg_msk(0x2, "graphic max changed %d-%d\n", old_dolby_vision_graphic_max, dolby_vision_graphic_max);
 
     if (!is_osd_off) {
       old_dolby_vision_graphic_max = dolby_vision_graphic_max;
@@ -5083,8 +5087,7 @@ int dolby_vision_wait_metadata(struct vframe_s *vf)
 
 	if (dolby_vision_flags & FLAG_CERTIFICAION) {
 
-		if (debug_dolby & 0x1000)
-			pr_dolby_dbg("setting_update_count %d, crc_count %d, flag %x\n",
+		pr_dolby_dbg_msk(0x1000, "setting_update_count %d, crc_count %d, flag %x\n",
 				setting_update_count, crc_count, dolby_vision_flags);
 
 		if (setting_update_count > crc_count &&
@@ -5095,10 +5098,9 @@ int dolby_vision_wait_metadata(struct vframe_s *vf)
 	if (is_dovi_dual_layer_frame(vf)) {
 		el_vf = dvel_vf_peek();
 		while (el_vf) {
-			if (debug_dolby & 2)
-				pr_dolby_dbg("=== peek bl(%p-%lld) with el(%p-%lld) ===\n",
-					     vf, vf->pts_us64,
-					     el_vf, el_vf->pts_us64);
+			pr_dolby_dbg_msk(2, "=== peek bl(%p-%lld) with el(%p-%lld) ===\n",
+					 vf, vf->pts_us64,
+					 el_vf, el_vf->pts_us64);
 			if (el_vf->pts_us64 == vf->pts_us64 ||
 			    !(dolby_vision_flags & FLAG_CHECK_ES_PTS)) {
 				/* found el */
@@ -5106,16 +5108,14 @@ int dolby_vision_wait_metadata(struct vframe_s *vf)
 				break;
 			} else if (el_vf->pts_us64 < vf->pts_us64) {
 
-				if (debug_dolby & 2)
-					pr_dolby_dbg("bl(%p-%lld) => skip el pts(%p-%lld)\n",
+				pr_dolby_dbg_msk(2, "bl(%p-%lld) => skip el pts(%p-%lld)\n",
 					             vf, vf->pts_us64, el_vf, el_vf->pts_us64);
 
 				el_vf = dvel_vf_get();
 				dvel_vf_put(el_vf);
 				vf_notify_provider(DVEL_RECV_NAME, VFRAME_EVENT_RECEIVER_PUT, NULL);
 
-				if (debug_dolby & 2)
-					pr_dolby_dbg("=== get & put el(%p-%lld) ===\n",
+				pr_dolby_dbg_msk(2, "=== get & put el(%p-%lld) ===\n",
 					             el_vf, el_vf->pts_us64);
 
 				el_vf = dvel_vf_peek(); /* skip old el and peek new */
@@ -5127,8 +5127,7 @@ int dolby_vision_wait_metadata(struct vframe_s *vf)
 		}
 		/* need wait el */
 		if (!el_vf) {
-			if (debug_dolby & 2)
-				pr_dolby_dbg("=== bl wait el(%p-%lld) ===\n", vf, vf->pts_us64);
+			pr_dolby_dbg_msk(2, "=== bl wait el(%p-%lld) ===\n", vf, vf->pts_us64);
 			ret = 1;
 		}
 	}
@@ -5194,8 +5193,7 @@ int dolby_vision_wait_metadata(struct vframe_s *vf)
 	}
 
 	if (dolby_vision_wait_init && dolby_vision_wait_count > 0) {
-		if (debug_dolby & 8)
-			pr_dolby_dbg("delay wait %d\n", dolby_vision_wait_count);
+		pr_dolby_dbg_msk(8, "delay wait %d\n", dolby_vision_wait_count);
 
 		if (!get_disable_video_flag(VD1_PATH)) {
 			// update only after app enable video display,
@@ -5207,15 +5205,13 @@ int dolby_vision_wait_metadata(struct vframe_s *vf)
 			// wait init will be on, need reset wait init
 			dolby_vision_wait_init = false;
 			dolby_vision_wait_count = 0;
-			if (debug_dolby & 8)
-				pr_dolby_dbg("clear dolby_vision_wait_on\n");
+			pr_dolby_dbg_msk(8, "clear dolby_vision_wait_on\n");
 		}
 		ret = 1;
 	} else if (dolby_vision_core1_on && dolby_vision_on_count == 0)
 		ret = 1;
 
-	if (debug_dolby & 8)
-		pr_dolby_dbg("dv wait return %d\n", ret);
+	pr_dolby_dbg_msk(8, "dv wait return %d\n", ret);
 
 	return ret;
 }
@@ -5383,8 +5379,7 @@ int dolby_vision_process(struct vframe_s *vf,
 			if (new_dovi_setting.video_width != h_size ||
 				new_dovi_setting.video_height != v_size)
 			{
-				if (debug_dolby & 8)
-					pr_dolby_dbg("stb update disp size %d %d->%d %d\n",
+				pr_dolby_dbg_msk(8, "stb update disp size %d %d->%d %d\n",
 					             new_dovi_setting.video_width,
 					             new_dovi_setting.video_height,
 					             h_size, v_size);
@@ -5392,8 +5387,7 @@ int dolby_vision_process(struct vframe_s *vf,
 		}
 		else if (core1_disp_hsize != h_size || core1_disp_vsize != v_size)
 		{
-			if (debug_dolby & 8)
-				pr_dolby_dbg("stb update display size %d %d->%d %d\n",
+			pr_dolby_dbg_msk(8, "stb update display size %d %d->%d %d\n",
 				             core1_disp_hsize, core1_disp_vsize,
 				             h_size, v_size);
 		}
@@ -5416,8 +5410,7 @@ int dolby_vision_process(struct vframe_s *vf,
 		}
 	}
 
-	if (debug_dolby & 0x1000)
-		pr_dolby_dbg("setting_update_count %d, crc_count %d\n", setting_update_count, crc_count);
+	pr_dolby_dbg_msk(0x1000, "setting_update_count %d, crc_count %d\n", setting_update_count, crc_count);
 
 	if ((dolby_vision_flags & FLAG_CERTIFICAION) &&
 		!(dolby_vision_flags & FLAG_DISABLE_CRC) &&
@@ -5435,8 +5428,7 @@ int dolby_vision_process(struct vframe_s *vf,
 		} else {
 			crc_read_delay++;
 
-			if (debug_dolby & 0x1000)
-				pr_dolby_dbg("crc_read_delay %d, delay_count %d\n", crc_read_delay, delay_count);
+			pr_dolby_dbg_msk(0x1000, "crc_read_delay %d, delay_count %d\n", crc_read_delay, delay_count);
 
 			if (crc_read_delay > delay_count) {
 				tv_dolby_vision_insert_crc(crc_count == 0);
@@ -5636,8 +5628,7 @@ int dolby_vision_process(struct vframe_s *vf,
 		force_set_lut = true;
 		dolby_vision_set_toggle_flag(1);
 
-		if (debug_dolby & 2)
-			pr_dolby_dbg("Need update core2 first %d times\n", dolby_vision_core2_on_cnt);
+		pr_dolby_dbg_msk(2, "Need update core2 first %d times\n", dolby_vision_core2_on_cnt);
 	}
 
 	if (dolby_vision_flags & FLAG_TOGGLE_FRAME)
@@ -6018,8 +6009,7 @@ void tv_dolby_vision_insert_crc(bool print)
 	crc_enable = true; /* (READ_VPP_DV_REG(0x36fb) & 1); */
 	crc = READ_VPP_DV_REG(0x36fd);
 
-	if (debug_dolby & 0x1000)
-		pr_dolby_dbg("crc_enable %d, crc %x\n", crc_enable, crc);
+	pr_dolby_dbg_msk(0x1000, "crc_enable %d, crc %x\n", crc_enable, crc);
 	if (crc == 0 || !crc_enable || !crc_output_buf) {
 		crc_bypass_count++;
 		crc_count++;
