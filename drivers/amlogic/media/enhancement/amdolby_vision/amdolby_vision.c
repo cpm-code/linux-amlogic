@@ -490,6 +490,8 @@ MODULE_PARM_DESC(debug_dolby_frame, "\n debug_dolby_frame\n");
 			pr_info("DOLBY: " fmt, ## args);\
 	} while (0)
 
+#define dolby_dbg_enabled(mask) unlikely(debug_dolby & (mask))
+
 #define pr_dolby_error(fmt, args...)\
 	pr_info("DOLBY ERROR: " fmt, ## args)
 
@@ -500,7 +502,7 @@ MODULE_PARM_DESC(debug_dolby_frame, "\n debug_dolby_frame\n");
 #define single_step_enable \
 	(((debug_dolby_frame >= 0xffff) || \
 	((debug_dolby_frame + 1) == frame_count)) && \
-	(debug_dolby & 0x80))
+	dolby_dbg_enabled(0x80))
 
 #define DV_CORE1_RECONFIG_CNT 2
 #define DV_CORE2_RECONFIG_CNT 120
@@ -3412,7 +3414,7 @@ void prepare_hdr10_param(struct vframe_master_display_colour_s *p_mdc,
 		}
 	}
 
-	if (debug_dolby & 1) {
+	if (dolby_dbg_enabled(1)) {
 		pr_dolby_dbg("HDR10: present %d, %d, %d, %d\n", p_mdc->present_flag, p_cll->max_content, flag, primaries_type);
 		pr_dolby_dbg("\tR = %04x, %04x\n", p_hdr10_param->r_x, p_hdr10_param->r_y);
 		pr_dolby_dbg("\tG = %04x, %04x\n", p_hdr10_param->g_x, p_hdr10_param->g_y);
@@ -3734,7 +3736,7 @@ static void send_hdmi_pkt
 		last_dst_format = dst_format;
 		vd_signal.signal_type = SIGNAL_HDR10;
 		notify_vd_signal_to_amvideo(&vd_signal);
-		if (debug_dolby & 8) {
+		if (dolby_dbg_enabled(8)) {
 			pr_dolby_dbg("Info frame for hdr10:\n");
 			for (i = 0; i < 3; i++)
 				pr_dolby_dbg("\tprimaries[%1d] = %04x, %04x\n",
@@ -4367,7 +4369,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	static int last_current_format = FORMAT_INVALID;
 	int ret = -1;
 	bool mel_flag = false;
-	bool debug_timing = debug_dolby & 0x400;
+	bool debug_timing = dolby_dbg_enabled(0x400);
 	unsigned long time_use = 0;
 	struct timeval start;
 	struct timeval end;
@@ -4527,7 +4529,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		    !req.dv_enhance_exist)
 			src_bdp = 10;
 
-		if (((debug_dolby & 1) || frame_count == 0) && toggle_mode == 1)
+		if ((dolby_dbg_enabled(1) || frame_count == 0) && toggle_mode == 1)
 			pr_info("DV:[%d,%lld,%d,%s,%d,%d]\n",
 				frame_count, vf->pts_us64, src_bdp,
 				(src_format == FORMAT_HDR10) ? "HDR10" :
@@ -4966,7 +4968,7 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 		new_dovi_setting.video_height = h;
 		dovi_setting_video_flag = video_frame;
 
-		if (debug_dolby & 1)
+		if (dolby_dbg_enabled(1))
 		{
 			pr_dolby_dbg("video %d: %dx%d %d->%d (T:%d-%d), graphics %d: %dx%d %d->%d, %s\n",
 				dovi_setting_video_flag,
