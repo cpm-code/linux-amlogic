@@ -183,7 +183,6 @@ MODULE_PARM_DESC(dolby_vision_run_mode, "\n dolby_vision_run_mode\n");
 
 /* number of fake frame (run mode = 1) */
 #define RUN_MODE_DELAY 2
-#define RUN_MODE_DELAY_GXM 3
 
 static uint dolby_vision_run_mode_delay = RUN_MODE_DELAY;
 module_param(dolby_vision_run_mode_delay, uint, 0664);
@@ -601,7 +600,7 @@ static inline bool is_meson_sc2(void)
 
 static inline bool is_meson_box(void)
 {
-	return (is_meson_g12() || is_meson_gxm() || is_meson_sc2());
+	return (is_meson_g12() || is_meson_sc2());
 }
 
 static inline bool is_meson_txlx(void)
@@ -626,7 +625,7 @@ static inline bool is_meson_tm2_stbmode(void)
 
 static inline bool is_meson_box2(void)
 {
-	return (is_meson_g12() || is_meson_tm2_stbmode() || is_meson_sc2());
+	return (is_meson_g12() || is_meson_sc2());
 }
 
 static inline int is_graphics_output_off(void)
@@ -646,21 +645,7 @@ static u32 CORETV_BASE;
 
 static void dolby_vision_addr(void)
 {
-	if (is_meson_gxm() || is_meson_g12()) {
-		CORE1_BASE = 0x3300;
-		CORE2A_BASE = 0x3400;
-		CORE3_BASE = 0x3600;
-	} else if (is_meson_txlx()) {
-		CORE2A_BASE = 0x3400;
-		CORE3_BASE = 0x3600;
-		CORETV_BASE = 0x3300;
-	} else if (is_meson_tm2()) {
-		CORE1_BASE = 0x3300;
-		CORE1_1_BASE = 0x4400;
-		CORE2A_BASE = 0x3400;
-		CORE3_BASE = 0x3600;
-		CORETV_BASE = 0x4300;
-	} else if (is_meson_sc2()) {
+	if (is_meson_g12() || is_meson_sc2()) {
 		CORE1_BASE = 0x3300;
 		CORE2A_BASE = 0x3400;
 		CORE3_BASE = 0x3600;
@@ -1031,20 +1016,7 @@ static void adjust_vpotch(void)
   const struct vinfo_s *vinfo = get_current_vinfo();
   int sync_duration_num = 60;
 
-  if (is_meson_txlx_stbmode()) {
-
-    if (vinfo && vinfo->width >= 1920 && vinfo->height >= 1080 && vinfo->field_height >= 1080)
-      dma_start_line = 0x400;
-    else
-      dma_start_line = 0x180;
-
-    /* adjust core2 setting to work around - fixing with 1080p24hz and 480p60hz */
-    if (vinfo && vinfo->width < 1280 && vinfo->height < 720 && vinfo->field_height < 720)
-      g_vpotch = 0x60;
-    else
-      g_vpotch = 0x20;
-
-  } else if (is_meson_g12()) {
+	if (is_meson_g12()) {
 
     if (vinfo) {
 
@@ -1078,23 +1050,6 @@ static void adjust_vpotch(void)
       g_vpotch = 0x20;
     }
 
-  } else if (is_meson_tm2_stbmode()) {
-
-    if (vinfo) {
-
-      if (debug_dolby & 2)
-        pr_dolby_dbg("vinfo %d %d %d\n", vinfo->width, vinfo->height, vinfo->field_height);
-
-      if ((vinfo->width < 1280) && (vinfo->height < 720) && (vinfo->field_height < 720))
-        g_vpotch = 0x60;
-      else if ((vinfo->width <= 1920) && (vinfo->height <= 1080) && (vinfo->field_height <= 1080))
-        g_vpotch = 0x50;
-      else
-        g_vpotch = 0x20;
-    } else {
-      g_vpotch = 0x20;
-    }
-
   } else if (is_meson_sc2()) {
 
     if (vinfo) {
@@ -1122,16 +1077,6 @@ static void adjust_vpotch(void)
 
 static void adjust_vpotch_tv(void)
 {
-  const struct vinfo_s *vinfo = get_current_vinfo();
-
-  if (is_meson_tm2()) {
-    if (vinfo) {
-      if (vinfo && vinfo->width >= 1920 && vinfo->height >= 1080 && vinfo->field_height >= 1080)
-        dma_start_line = 0x400;
-      else
-        dma_start_line = 0x180;
-    }
-  }
 }
 
 static void dolby_core_reset(enum core_type type)
@@ -1139,45 +1084,36 @@ static void dolby_core_reset(enum core_type type)
   switch (type) {
 
     case DOLBY_TVCORE:
-      if (is_meson_txlx())
-        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 9);
-      else if (is_meson_tm2())
-        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 1);
-
       VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
       break;
 
     case DOLBY_CORE1A:
-      if (is_meson_txlx())
-        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 10);
-      else if (is_meson_g12())
+			if (is_meson_g12())
         VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 2);
-      else if (is_meson_tm2() || is_meson_sc2())
+			else if (is_meson_sc2())
         VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 30);
 
       VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
       break;
 
     case DOLBY_CORE1B:
-      if (is_meson_txlx())
-        VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 10);
-      else if (is_meson_g12())
+			if (is_meson_g12())
         VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 3);
-      else if (is_meson_tm2() || is_meson_sc2())
+			else if (is_meson_sc2())
         VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 31);
 
       VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
       break;
 
     case DOLBY_CORE2A:
-      if (is_meson_tm2() || is_meson_sc2()) {
+			if (is_meson_sc2()) {
         VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 2);
         VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
       }
       break;
 
     case DOLBY_CORE2B:
-      if (is_meson_tm2() || is_meson_sc2()) {
+			if (is_meson_sc2()) {
         VSYNC_WR_DV_REG(VIU_SW_RESET, 1 << 3);
         VSYNC_WR_DV_REG(VIU_SW_RESET, 0);
       }
@@ -6397,15 +6333,12 @@ static void parse_param_amdolby_vision(char *buf_orig, char **parm)
 
 bool chip_support_dv(void)
 {
-	return is_meson_txlx() || is_meson_gxm() ||
-	       is_meson_g12()  || is_meson_tm2() ||
-	       is_meson_sc2();
+	return is_meson_g12() || is_meson_sc2();
 }
 
 int register_dv_functions(const struct dolby_vision_func_s *func)
 {
 	int ret = -1;
-	unsigned int reg_clk;
 	unsigned int reg_value;
 	const struct vinfo_s *vinfo = get_current_vinfo();
 	unsigned int ko_info_len = 0;
@@ -6459,16 +6392,8 @@ int register_dv_functions(const struct dolby_vision_func_s *func)
 		ret = 0;
 		/* get efuse flag*/
 
-		if (is_meson_txlx() || is_meson_tm2()) {
-			reg_clk = READ_VPP_DV_REG(DOLBY_TV_CLKGATE_CTRL);
-			WRITE_VPP_DV_REG(DOLBY_TV_CLKGATE_CTRL, 0x2800);
-			reg_value = READ_VPP_DV_REG(DOLBY_TV_REG_START + 1);
-			efuse_mode = ((reg_value & 0x400) != 0);
-			WRITE_VPP_DV_REG(DOLBY_TV_CLKGATE_CTRL, reg_clk);
-		} else {
-			reg_value = READ_VPP_DV_REG(DOLBY_CORE1_REG_START + 1);
-			efuse_mode = ((reg_value & 0x100) != 0);
-		}
+		reg_value = READ_VPP_DV_REG(DOLBY_CORE1_REG_START + 1);
+		efuse_mode = ((reg_value & 0x100) != 0);
 		pr_info("efuse_mode=%d reg_value = 0x%x\n", efuse_mode, reg_value);
 
 		support_info = !efuse_mode;             /*bit0=1 => no efuse*/
@@ -6481,11 +6406,8 @@ int register_dv_functions(const struct dolby_vision_func_s *func)
 		new_dovi_setting.src_format = FORMAT_SDR;
 
 		/*stb core doesn't need run mode*/
-		if (is_meson_g12() || is_meson_txlx_stbmode() ||
-		    is_meson_tm2_stbmode() || is_meson_sc2())
+		if (is_meson_g12() || is_meson_sc2())
 			dolby_vision_run_mode_delay = 0;
-		else if (is_meson_gxm())
-			dolby_vision_run_mode_delay = RUN_MODE_DELAY_GXM;
 
 		adjust_vpotch();
 		adjust_vpotch_tv();
@@ -7159,24 +7081,8 @@ static struct class_attribute amdolby_vision_class_attrs[] = {
 	__ATTR_NULL
 };
 
-static struct dv_device_data_s dolby_vision_gxm = {
-	.cpu_id = _CPU_MAJOR_ID_GXM,
-};
-
-static struct dv_device_data_s dolby_vision_txlx = {
-	.cpu_id = _CPU_MAJOR_ID_TXLX,
-};
-
 static struct dv_device_data_s dolby_vision_g12 = {
 	.cpu_id = _CPU_MAJOR_ID_G12,
-};
-
-static struct dv_device_data_s dolby_vision_tm2 = {
-	.cpu_id = _CPU_MAJOR_ID_TM2,
-};
-
-static struct dv_device_data_s dolby_vision_tm2_revb = {
-	.cpu_id = _CPU_MAJOR_ID_TM2_REVB,
 };
 
 static struct dv_device_data_s dolby_vision_sc2 = {
@@ -7184,14 +7090,6 @@ static struct dv_device_data_s dolby_vision_sc2 = {
 };
 
 static const struct of_device_id amlogic_dolby_vision_match[] = {
-	{
-		.compatible = "amlogic, dolby_vision_gxm",
-		.data = &dolby_vision_gxm,
-	},
-	{
-		.compatible = "amlogic, dolby_vision_txlx",
-		.data = &dolby_vision_txlx,
-	},
 	{
 		.compatible = "amlogic, dolby_vision_g12a",
 		.data = &dolby_vision_g12,
@@ -7203,14 +7101,6 @@ static const struct of_device_id amlogic_dolby_vision_match[] = {
 	{
 		.compatible = "amlogic, dolby_vision_sm1",
 		.data = &dolby_vision_g12,
-	},
-	{
-		.compatible = "amlogic, dolby_vision_tm2",
-		.data = &dolby_vision_tm2,
-	},
-	{
-		.compatible = "amlogic, dolby_vision_tm2_revb",
-		.data = &dolby_vision_tm2_revb,
 	},
 	{
 		.compatible = "amlogic, dolby_vision_sc2",
