@@ -484,13 +484,13 @@ MODULE_PARM_DESC(debug_dolby_frame, "\n debug_dolby_frame\n");
 			pr_info("DOLBY: " fmt, ## args);\
 	} while (0)
 
+#define dolby_dbg_enabled(mask) unlikely(debug_dolby & (mask))
+
 #define pr_dolby_dbg_msk(mask, fmt, args...)\
 	do {\
-		if (unlikely(debug_dolby & (mask)))\
+		if (dolby_dbg_enabled(mask))\
 			pr_info("DOLBY: " fmt, ## args);\
 	} while (0)
-
-#define dolby_dbg_enabled(mask) unlikely(debug_dolby & (mask))
 
 #define dolby_dump_enabled(mask) (dolby_dbg_enabled(mask) && dump_enable)
 
@@ -6005,7 +6005,7 @@ void tv_dolby_vision_insert_crc(bool print)
 	len++;
 	memcpy(&crc_output_buf[crc_output_buff_off], &str[0], len);
 	crc_output_buff_off += len;
-	//if (print || (debug_dolby & 2))
+	//if (print || dolby_dbg_enabled(2))
 		pr_info("%s\n", str);
 	crc_count++;
 }
