@@ -447,7 +447,7 @@ static int meson_cpufreq_init(struct cpufreq_policy *policy)
 	cur_cluster = topology_physical_package_id(policy->cpu);
 	cpu = policy->cpu;
 	cpu_dev = get_cpu_device(cpu);
-	if (IS_ERR(cpu_dev)) {
+	if (!cpu_dev) {
 		pr_err("%s: failed to get cpu%d device\n", __func__,
 				policy->cpu);
 		return -ENODEV;
@@ -460,7 +460,7 @@ static int meson_cpufreq_init(struct cpufreq_policy *policy)
 	}
 
 	cpufreq_data = kzalloc(sizeof(*cpufreq_data), GFP_KERNEL);
-	if (IS_ERR(cpufreq_data)) {
+	if (!cpufreq_data) {
 		pr_err("%s: failed to alloc cpufreq data!\n", __func__);
 		ret = -ENOMEM;
 		goto free_np;
@@ -726,7 +726,7 @@ static int meson_cpufreq_suspend(struct cpufreq_policy *policy)
 
 static int meson_cpufreq_resume(struct cpufreq_policy *policy)
 {
-	return cpufreq_generic_suspend(policy);
+	return 0;
 
 }
 
