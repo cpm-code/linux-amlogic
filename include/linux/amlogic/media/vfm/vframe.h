@@ -561,6 +561,7 @@ struct vframe_s {
 	u32 zorder;
 	u32 repeat_count[2];
 	struct file *file_vf;
+	atomic_t use_cnt;
 	bool rendered;
 
 	struct codec_mm_box_s mm_box;
