@@ -954,12 +954,18 @@ static bool vsync_pts_aligned;
 static s32 vsync_pts_align;
 
 /* frame rate calculate */
-static u32 last_frame_count;
 static u32 frame_count;
 static u32 new_frame_count;
 static u32 first_frame_toggled;
 static u32 toggle_count;
-static u32 last_frame_time;
+static u32 last_frame_rate_count;
+static u32 last_frame_rate_time;
+static u32 last_fps_info_receive_count;
+static u32 last_fps_info_display_count;
+static u32 last_fps_info_time;
+static u32 cached_fps_info_input;
+static u32 cached_fps_info_output;
+static u32 cached_fps_info_drop;
 static u32 timer_count;
 static u32 vsync_count;
 static u64 last_frame_duration;
@@ -7199,6 +7205,15 @@ static int video_receiver_event_fun(int type, void *data, void *private_data)
 		drop_frame_count = 0;
 		receive_frame_count = 0;
 		display_frame_count = 0;
+		last_frame_rate_count = 0;
+		last_frame_rate_time = 0;
+		last_fps_info_receive_count = 0;
+		last_fps_info_display_count = 0;
+		last_fps_info_time = 0;
+		cached_fps_info_input = 0;
+		cached_fps_info_output = 0;
+		cached_fps_info_drop = 0;
+		output_fps = 0;
 		nn_scenes_value[0].maxprob = 0;
 		avsync_count = 0;
 		timestamp_avsync_counter_set(avsync_count);
@@ -7234,6 +7249,15 @@ static int video_receiver_event_fun(int type, void *data, void *private_data)
 		drop_frame_count = 0;
 		receive_frame_count = 0;
 		display_frame_count = 0;
+		last_frame_rate_count = 0;
+		last_frame_rate_time = 0;
+		last_fps_info_receive_count = 0;
+		last_fps_info_display_count = 0;
+		last_fps_info_time = 0;
+		cached_fps_info_input = 0;
+		cached_fps_info_output = 0;
+		cached_fps_info_drop = 0;
+		output_fps = 0;
 		avsync_count = 0;
 		timestamp_avsync_counter_set(avsync_count);
 		mutex_lock(&omx_mutex);
@@ -10575,16 +10599,23 @@ static ssize_t frame_aspect_ratio_show(struct class *cla,
 static ssize_t frame_rate_show(struct class *cla, struct class_attribute *attr,
 			       char *buf)
 {
-	u32 cnt = frame_count - last_frame_count;
+	u32 cnt = frame_count - last_frame_rate_count;
 	u32 time = jiffies;
 	u32 tmp = time;
 	u32 rate = 0;
 	u32 vsync_rate;
 	ssize_t ret = 0;
 
-	time -= last_frame_time;
-	last_frame_time = tmp;
-	last_frame_count = frame_count;
+	if (last_frame_rate_time == 0) {
+		last_frame_rate_time = tmp;
+		last_frame_rate_count = frame_count;
+		vsync_count = 0;
+		return 0;
+	}
+
+	time -= last_frame_rate_time;
+	last_frame_rate_time = tmp;
+	last_frame_rate_count = frame_count;
 	if (time == 0)
 		return 0;
 	rate = 100 * cnt * HZ / time;
@@ -10886,24 +10917,71 @@ static ssize_t vframe_ready_cnt_show(struct class *cla,
 static ssize_t fps_info_show(struct class *cla, struct class_attribute *attr,
 			     char *buf)
 {
-	u32 cnt = frame_count - last_frame_count;
+	const u32 min_sample_jiffies = max_t(u32, 1, HZ / 10);
 	u32 time = jiffies;
-	u32 input_fps = 0;
 	u32 tmp = time;
 
-	time -= last_frame_time;
-	last_frame_time = tmp;
-	last_frame_count = frame_count;
-	if (time != 0)
-		output_fps = cnt * HZ / time;
-	if (cur_dispbuf && cur_dispbuf->duration > 0) {
-		input_fps = 96000 / cur_dispbuf->duration;
-		if (output_fps > input_fps)
-			output_fps = input_fps;
-	} else
-		input_fps = output_fps;
-	return sprintf(buf, "input_fps:0x%x output_fps:0x%x drop_fps:0x%x\n",
-		       input_fps, output_fps, input_fps - output_fps);
+	if (last_fps_info_time == 0) {
+		last_fps_info_time = tmp;
+		last_fps_info_receive_count = receive_frame_count;
+		last_fps_info_display_count = display_frame_count;
+		if (cur_dispbuf && cur_dispbuf->duration > 0)
+			cached_fps_info_input = 96000 / cur_dispbuf->duration;
+		cached_fps_info_output = 0;
+		cached_fps_info_drop = 0;
+		return snprintf(buf, PAGE_SIZE,
+			"input_fps:0x%x output_fps:0x%x drop_fps:0x%x\n",
+			cached_fps_info_input,
+			cached_fps_info_output,
+			cached_fps_info_drop);
+	}
+
+	time -= last_fps_info_time;
+	if (time < min_sample_jiffies)
+		return snprintf(buf, PAGE_SIZE,
+			"input_fps:0x%x output_fps:0x%x drop_fps:0x%x\n",
+			cached_fps_info_input,
+			cached_fps_info_output,
+			cached_fps_info_drop);
+
+	{
+		u32 rx_cnt = receive_frame_count - last_fps_info_receive_count;
+		u32 disp_cnt = display_frame_count - last_fps_info_display_count;
+		u32 input_fps = 0;
+		u32 output = 0;
+		u32 drop_fps = 0;
+
+		last_fps_info_time = tmp;
+		last_fps_info_receive_count = receive_frame_count;
+		last_fps_info_display_count = display_frame_count;
+
+		if (time != 0) {
+			input_fps = (rx_cnt * HZ + time / 2) / time;
+			output = (disp_cnt * HZ + time / 2) / time;
+		}
+
+		if (cur_dispbuf && cur_dispbuf->duration > 0) {
+			u32 duration_fps = 96000 / cur_dispbuf->duration;
+
+			if (input_fps == 0)
+				input_fps = duration_fps;
+		}
+
+		if (output > input_fps)
+			output = input_fps;
+
+		output_fps = output;
+		drop_fps = (input_fps > output) ? (input_fps - output) : 0;
+		cached_fps_info_input = input_fps;
+		cached_fps_info_output = output;
+		cached_fps_info_drop = drop_fps;
+	}
+
+	return snprintf(buf, PAGE_SIZE,
+		"input_fps:0x%x output_fps:0x%x drop_fps:0x%x\n",
+		cached_fps_info_input,
+		cached_fps_info_output,
+		cached_fps_info_drop);
 }
 
 static ssize_t video_layer1_state_show(struct class *cla,
