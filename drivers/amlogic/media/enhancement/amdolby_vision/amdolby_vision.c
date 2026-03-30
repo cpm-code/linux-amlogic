@@ -1088,6 +1088,33 @@ static unsigned int parse_param_tokens(char *buf_orig, char **parm,
 	return n;
 }
 
+static inline void dolby_core1_set_vd2_path(bool route_to_core1)
+{
+	/* Route VD2 either into core1 for EL processing or back to VPP. */
+	VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, !route_to_core1, 1, 1);
+}
+
+static void dolby_core1_set_path_ctrl(bool bypass_core1)
+{
+	if (is_meson_g12()) {
+		/* dolby_path_ctrl[0] = 0 enables core1 BL, 1 bypasses it. */
+		VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, bypass_core1, 0, 1);
+		return;
+	}
+
+	if (!bypass_core1) {
+		VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 8, 2);
+		VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 10, 2);
+		VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 17, 1);
+		VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 21, 1);
+		VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 24, 2);
+		VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 0, 1); /* core1 */
+		return;
+	}
+
+	VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 3, 0, 2); /* core1 */
+}
+
 static int dolby_core1_set
 	(u32 *p_core1_dm_regs,
 	 u32 *p_core1_comp_regs,
@@ -1153,11 +1180,7 @@ static int dolby_core1_set
 
 	if (stb_core_setting_update_flag & CP_FLAG_CHANGE_TC) set_lut = true;
 
-	if (bl_enable && el_enable && (dolby_vision_mask & 1)) {
-		VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 1, 1); /* vd2 to core1 */
-	} else {
-		VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 1, 1, 1); /* vd2 to vpp */
-	}
+	dolby_core1_set_vd2_path(bl_enable && el_enable && (dolby_vision_mask & 1));
 
 	if (bl_enable) {
 
@@ -1231,25 +1254,8 @@ static int dolby_core1_set
 		VSYNC_WR_DV_REG(VPP_VD1_CLIP_MISC0, (0x3ff << 20) | (0x3ff << 10) | 0x3ff);
 		VSYNC_WR_DV_REG(VPP_VD1_CLIP_MISC1, 0);
 
-		if (dolby_vision_core1_on && !bypass_core1) {
-
-			if (is_meson_g12()) {
-				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 0, 1);
-			} else if (is_meson_sc2()) {
-				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 8, 2);
-				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 10, 2);
-				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 17, 1);
-				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 21, 1);
-				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 24, 2);
-				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 0, 0, 1); /* core1 */
-			}
-
-		} else if (dolby_vision_core1_on && bypass_core1) {
-			if (is_meson_g12())
-				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 1, 0, 1);
-			else if (is_meson_sc2())
-				VSYNC_WR_DV_REG_BITS(DOLBY_PATH_CTRL, 3, 0, 2); /* core1 */
-		}
+		if (dolby_vision_core1_on)
+			dolby_core1_set_path_ctrl(bypass_core1);
 	}
 
 	/* enable core1 */
