@@ -67,6 +67,58 @@ static unsigned long max_freq[2] = {
 
 static DEFINE_MUTEX(cpufreq_target_lock);
 
+static void meson_cpufreq_restore_rate(u32 cur_cluster,
+		struct clk *low_freq_clk_p, struct clk *high_freq_clk_p,
+		struct clk *old_parent, unsigned long old_low_rate,
+		unsigned long old_high_rate, bool high_was_enabled)
+{
+	int ret;
+
+	if (old_parent == high_freq_clk_p) {
+		if (__clk_get_enable_count(high_freq_clk_p) == 0) {
+			ret = clk_prepare_enable(high_freq_clk_p);
+			if (ret) {
+				pr_err("%s: failed to re-enable high_freq_clk_p during rollback\n",
+					__func__);
+				return;
+			}
+		}
+
+		ret = clk_set_rate(high_freq_clk_p, old_high_rate);
+		if (ret)
+			pr_err("%s: failed to restore high_freq_clk_p rate: %d\n",
+				__func__, ret);
+
+		ret = clk_set_parent(clk[cur_cluster], high_freq_clk_p);
+		if (ret)
+			pr_err("%s: failed to restore high_freq_clk_p parent: %d\n",
+				__func__, ret);
+		return;
+	}
+
+	if (old_parent == low_freq_clk_p) {
+		ret = clk_set_rate(low_freq_clk_p, old_low_rate);
+		if (ret)
+			pr_err("%s: failed to restore low_freq_clk_p rate: %d\n",
+				__func__, ret);
+
+		ret = clk_set_parent(clk[cur_cluster], low_freq_clk_p);
+		if (ret)
+			pr_err("%s: failed to restore low_freq_clk_p parent: %d\n",
+				__func__, ret);
+
+		if (!high_was_enabled &&
+		    __clk_get_enable_count(high_freq_clk_p) >= 1)
+			clk_disable_unprepare(high_freq_clk_p);
+		return;
+	}
+
+	ret = clk_set_parent(clk[cur_cluster], old_parent);
+	if (ret)
+		pr_err("%s: failed to restore original parent: %d\n",
+			__func__, ret);
+}
+
 static unsigned int meson_cpufreq_get_rate(unsigned int cpu)
 {
 
@@ -146,8 +198,11 @@ static unsigned int meson_cpufreq_set_rate(struct cpufreq_policy *policy,
 	u32 cur_cluster, u32 rate)
 {
 	struct clk  *low_freq_clk_p, *high_freq_clk_p;
+	struct clk *old_parent;
 	struct meson_cpufreq_driver_data *cpufreq_data;
+	unsigned long old_low_rate, old_high_rate;
 	u32 new_rate;
+	bool high_was_enabled;
 	int ret, cpu = 0;
 
 	cpu = policy->cpu;
@@ -157,6 +212,10 @@ static unsigned int meson_cpufreq_set_rate(struct cpufreq_policy *policy,
 
 	mutex_lock(&cluster_lock[cur_cluster]);
 	new_rate = rate;
+	old_parent = clk_get_parent(clk[cur_cluster]);
+	old_low_rate = clk_get_rate(low_freq_clk_p);
+	old_high_rate = clk_get_rate(high_freq_clk_p);
+	high_was_enabled = __clk_get_enable_count(high_freq_clk_p) > 0;
 
 	pr_debug("%s: cpu: %d, new cluster: %d, freq: %d\n",
 			__func__, cpu, cur_cluster, new_rate);
@@ -221,6 +280,14 @@ static unsigned int meson_cpufreq_set_rate(struct cpufreq_policy *policy,
 		if (abs(clk_get_rate(clk[cur_cluster]) - new_rate * 1000)
 				> gap_rate)
 			ret = -EIO;
+	}
+
+	if (ret) {
+		pr_warn("%s: restoring previous clock state after failure\n",
+			__func__);
+		meson_cpufreq_restore_rate(cur_cluster, low_freq_clk_p,
+				high_freq_clk_p, old_parent, old_low_rate,
+				old_high_rate, high_was_enabled);
 	}
 
 	if (WARN_ON(ret))
