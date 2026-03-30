@@ -601,6 +601,12 @@ struct amlsd_host {
 	unsigned long	clksrc_rate;
 	struct aml_emmc_adjust emmc_adj;
 	struct aml_emmc_rxclk emmc_rxclk;
+	struct aml_emmc_adjust retry_emmc_adj;
+	struct aml_emmc_rxclk retry_emmc_rxclk;
+	u32 retry_clk_backup;
+	u32 retry_adjust_backup;
+	u32 retry_delay_backup;
+	char retry_restore_valid;
 	u32 error_flag;
 	/* pre cmd op */
 	unsigned int (*pre_cmd_op)(struct amlsd_host *host,

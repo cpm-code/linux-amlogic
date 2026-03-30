@@ -530,7 +530,8 @@ _cali_retry:
 		} else {
 			pr_err("%s: calibration failed, use default\n",
 					mmc_hostname(host->mmc));
-			return -1;
+			ret = -1;
+			goto restore_clk;
 		}
 	}
 
@@ -543,12 +544,14 @@ _cali_retry:
 		} else {
 			pr_err("%s: calibration failed, use default\n",
 				mmc_hostname(host->mmc));
-			return -1;
+			ret = -1;
+			goto restore_clk;
 		}
 	}
 	pr_info("calibration @%d times ok\n", cali_retry);
 
 	/* restore original clk setting */
+restore_clk:
 #ifdef SD_EMMC_CLK_CTRL
 	vclk = readl(host->base + SD_EMMC_CLOCK);
 	clkc->div = clk_div_tmp;
@@ -571,6 +574,9 @@ _cali_retry:
 			c_data.base_index_min);
 
 	/* get adjust point! */
+	if (ret)
+		return ret;
+
 	*adj_win_start = c_data.base_index_max + 2;
 
 	return 0;
@@ -719,6 +725,8 @@ int aml_sd_emmc_execute_tuning_(struct mmc_host *mmc, u32 opcode,
 {
 	struct amlsd_platform *pdata = mmc_priv(mmc);
 	struct amlsd_host *host = pdata->host;
+	u32 old_vclk;
+	u32 old_adjust;
 	u32 vclk;
 	struct sd_emmc_clock *clkc = (struct sd_emmc_clock *)&(vclk);
 	u32 adjust;
@@ -733,6 +741,8 @@ int aml_sd_emmc_execute_tuning_(struct mmc_host *mmc, u32 opcode,
 	int best_win_start = -1, best_win_size = 0;
 	u32 old_dly, d1_dly, dly;
 
+	old_vclk = readl(host->base + SD_EMMC_CLOCK);
+	old_adjust = readl(host->base + SD_EMMC_ADJUST);
 	old_dly = readl(host->base + SD_EMMC_DELAY);
 	d1_dly = (old_dly >> 4) & 0xF;
 	pr_info("Data 1 aligned delay is %d\n", d1_dly);
@@ -751,13 +761,14 @@ tunning:
 			tuning_data, &best_win_start, &best_win_size);
 	host->is_tunning = 0;
 	if (ret)
-		return -ENOMEM;
+		goto restore_tuning_state;
 	if (best_win_size <= 0) {
 		if ((tuning_num++ > MAX_TUNING_RETRY)
 			|| (clkc->div >= 10)) {
 			pr_err("%s: final result of tuning failed\n",
 				 mmc_hostname(host->mmc));
-			return -1;
+			ret = -1;
+			goto restore_tuning_state;
 		}
 		clkc->div += 1;
 		writel(vclk, host->base + SD_EMMC_CLOCK);
@@ -822,6 +833,14 @@ tunning:
 			readl(host->base + SD_EMMC_CLOCK),
 			readl(host->base + SD_EMMC_ADJUST));
 	return ret;
+
+restore_tuning_state:
+	writel(old_adjust, host->base + SD_EMMC_ADJUST);
+	writel(old_dly, host->base + SD_EMMC_DELAY);
+	writel(old_vclk, host->base + SD_EMMC_CLOCK);
+	pdata->clkc = old_vclk;
+	mmc->actual_clock = clk_rate / ((struct sd_emmc_clock *)&old_vclk)->div;
+	return ret ? ret : -ENOMEM;
 }
 
 static int aml_sd_emmc_rxclk_find(struct mmc_host *mmc,
@@ -989,6 +1008,32 @@ static int aml_sd_emmc_execute_tuning_rxclk(struct mmc_host *mmc, u32 opcode,
 	emmc_rxclk->rxclk_point = rxclk_find;
 
 	return 0;
+}
+
+static void aml_sd_emmc_backup_retry_state(struct amlsd_host *host)
+{
+	host->retry_clk_backup = readl(host->base + SD_EMMC_CLOCK);
+	host->retry_adjust_backup = readl(host->base + SD_EMMC_ADJUST);
+	host->retry_delay_backup = readl(host->base + SD_EMMC_DELAY);
+	host->retry_emmc_adj = host->emmc_adj;
+	host->retry_emmc_rxclk = host->emmc_rxclk;
+	host->retry_restore_valid = 1;
+}
+
+static void aml_sd_emmc_restore_retry_state(struct amlsd_platform *pdata)
+{
+	struct amlsd_host *host = pdata->host;
+
+	if (!host->retry_restore_valid)
+		return;
+
+	writel(host->retry_adjust_backup, host->base + SD_EMMC_ADJUST);
+	writel(host->retry_delay_backup, host->base + SD_EMMC_DELAY);
+	writel(host->retry_clk_backup, host->base + SD_EMMC_CLOCK);
+	pdata->clkc = host->retry_clk_backup;
+	host->emmc_adj = host->retry_emmc_adj;
+	host->emmc_rxclk = host->retry_emmc_rxclk;
+	host->retry_restore_valid = 0;
 }
 
 static int aml_mmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
@@ -2360,8 +2405,10 @@ static void meson_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		host->init_flag = 1;
 
 	/*clear error flag if last command retried failed */
-	if (host->error_flag & (1 << 30))
+	if (host->error_flag & (1 << 30)) {
 		host->error_flag = 0;
+		host->retry_restore_valid = 0;
+	}
 
 	/*clear pinmux & set pinmux*/
 	if (pdata->xfer_pre)
@@ -2761,6 +2808,7 @@ static irqreturn_t meson_mmc_irq_thread(int irq, void *dev_id)
 		pr_debug("%s %d cmd:%d\n",
 				__func__, __LINE__, mrq->cmd->opcode);
 		host->error_flag = 0;
+		host->retry_restore_valid = 0;
 		if (mrq->cmd->data &&  mrq->cmd->opcode) {
 			xfer_bytes = mrq->data->blksz*mrq->data->blocks;
 			/* copy buffer from dma to data->sg in read cmd*/
@@ -2815,6 +2863,7 @@ static irqreturn_t meson_mmc_irq_thread(int irq, void *dev_id)
 
 			pr_err("%s() %d: set 1st retry!\n",
 				__func__, __LINE__);
+			aml_sd_emmc_backup_retry_state(host);
 			host->error_flag |= (1<<0);
 			spin_lock_irqsave(&host->mrq_lock, flags);
 			mrq->cmd->retries = AML_ERROR_RETRY_COUNTER;
@@ -2916,6 +2965,7 @@ static irqreturn_t meson_mmc_irq_thread(int irq, void *dev_id)
 		/* last retry effort! */
 		if ((aml_card_type_mmc(pdata) || aml_card_type_non_sdio(pdata))
 			&& host->error_flag && (mrq->cmd->retries == 0)) {
+			aml_sd_emmc_restore_retry_state(pdata);
 			host->error_flag |= (1<<30);
 			pr_err("Command retried failed line:%d, cmd:%d\n",
 					__LINE__, mrq->cmd->opcode);
