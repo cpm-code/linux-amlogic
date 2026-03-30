@@ -1069,6 +1069,25 @@ int dolby_vision_update_setting(void)
 }
 EXPORT_SYMBOL(dolby_vision_update_setting);
 
+static unsigned int parse_param_tokens(char *buf_orig, char **parm,
+				      unsigned int max_param)
+{
+	char *ps = buf_orig;
+	char *token;
+	unsigned int n = 0;
+	static const char delim[] = {' ', '\n', '\0'};
+
+	while ((token = strsep(&ps, delim))) {
+		if (*token == '\0')
+			continue;
+		parm[n++] = token;
+		if (n >= max_param)
+			break;
+	}
+
+	return n;
+}
+
 static int dolby_core1_set
 	(u32 *p_core1_dm_regs,
 	 u32 *p_core1_comp_regs,
@@ -5844,23 +5863,7 @@ EXPORT_SYMBOL(get_dolby_vision_hdr_policy);
 
 static void parse_param_amdolby_vision(char *buf_orig, char **parm)
 {
-	char *ps, *token;
-	unsigned int n = 0;
-	char delim1[3] = " ";
-	char delim2[2] = "\n";
-
-	ps = buf_orig;
-	strcat(delim1, delim2);
-	while (1) {
-		token = strsep(&ps, delim1);
-		if (!token)
-			break;
-		if (*token == '\0')
-			continue;
-		parm[n++] = token;
-		if (n >= MAX_PARAM)
-			break;
-	}
+	parse_param_tokens(buf_orig, parm, MAX_PARAM);
 }
 
 int register_dv_functions(const struct dolby_vision_func_s *func)
@@ -5868,7 +5871,6 @@ int register_dv_functions(const struct dolby_vision_func_s *func)
 	int ret = -1;
 	unsigned int reg_value;
 	const struct vinfo_s *vinfo = get_current_vinfo();
-	unsigned int ko_info_len = 0;
 
 	if (dolby_vision_probe_ok == 0) {
 		pr_info("error:(%s) dv probe fail cannot register\n", __func__);
@@ -5899,14 +5901,8 @@ int register_dv_functions(const struct dolby_vision_func_s *func)
 	if ((!p_funcs_stb) && func) {
 		if (func->control_path && !p_funcs_stb) {
 			pr_info("*** register_dv_stb_functions.***\n");
-			if (!ko_info) {
-				ko_info_len = strlen(func->version_info);
-				ko_info = vmalloc(ko_info_len + 1);
-				if (ko_info) {
-					strncpy(ko_info, func->version_info, ko_info_len);
-					ko_info[ko_info_len] = '\0';
-				}
-			}
+			if (!ko_info && func->version_info)
+				ko_info = kstrdup(func->version_info, GFP_KERNEL);
 			p_funcs_stb = func;
 			dolby_vision_hdr10_policy |= SDR_BY_DV_F_SINK;
 			dolby_vision_hdr10_policy |= HDR_BY_DV_F_SINK;
@@ -6399,19 +6395,7 @@ static ssize_t amdolby_vision_dv_mode_store
 
 static void parse_param(char *buf_orig, char **parm)
 {
-	char *ps, *token;
-	unsigned int n = 0;
-	char delim1[3] = " ";
-	char delim2[2] = "\n";
-
-	ps = buf_orig;
-	strcat(delim1, delim2);
-	while (1) {
-		token = strsep(&ps, delim1);
-		if (!token) break;
-		if (*token == '\0') continue;
-		parm[n++] = token;
-	}
+	parse_param_tokens(buf_orig, parm, ~0U);
 }
 
 static ssize_t amdolby_vision_reg_store
