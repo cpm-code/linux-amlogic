@@ -319,6 +319,10 @@ static unsigned int dolby_vision_xbmc_osd = 0;
 module_param(dolby_vision_xbmc_osd, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_xbmc_osd, "\n dolby_vision_xbmc_osd\n");
 
+static bool dolby_vision_hdr10_graphics;
+module_param(dolby_vision_hdr10_graphics, bool, 0664);
+MODULE_PARM_DESC(dolby_vision_hdr10_graphics, "\n dolby_vision_hdr10_graphics\n");
+
 static unsigned int dolby_vision_chroma = 0;
 module_param(dolby_vision_chroma, uint, 0664);
 MODULE_PARM_DESC(dolby_vision_chroma, "\n dolby_vision_chroma\n");
@@ -4927,8 +4931,8 @@ int dolby_vision_parse_metadata(struct vframe_s *vf,
 	else
 		new_dovi_setting.dovi2hdr10_nomapping = 0;
 
-	/* always use rgb setting */
-	if ((dst_format == FORMAT_DOVI) || (dst_format == FORMAT_HDR10)) {
+	/* Use HDR graphics only for true HDR10-authored overlays/subtitles. */
+	if (dolby_vision_hdr10_graphics) {
 		new_dovi_setting.g_bitdepth = 10;
 		new_dovi_setting.g_format = G_HDR_RGB;
 	} else {
