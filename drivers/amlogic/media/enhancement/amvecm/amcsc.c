@@ -8368,6 +8368,7 @@ int amvecm_matrix_process(
 					   &current_hdr_cap[vd_path],
 					   &current_sink_available[vd_path]);
 	if (sink_changed) {
+		flags |= CSC_FLAG_FORCE_SIGNAL;
 		cap_changed = sink_changed & 0x02;
 		pr_csc(4, "sink %s, cap%s 0x%x, vd%d %s %p %p\n",
 		       current_sink_available[vd_path] ? "on" : "off",
@@ -8378,8 +8379,10 @@ int amvecm_matrix_process(
 		       vf, vf_rpt);
 	}
 
-	if (is_video_turn_on(video_on, vd_path) == 1)
+	if (is_video_turn_on(video_on, vd_path) == 1) {
+		flags |= CSC_FLAG_FORCE_SIGNAL;
 		cap_changed = true;
+	}
 
 	if ((vf != NULL) && (flags & CSC_FLAG_CHECK_OUTPUT)) {
 		ret = vpp_matrix_update(vf, vinfo, flags, vd_path);
