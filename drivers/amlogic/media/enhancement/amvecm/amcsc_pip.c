@@ -30,6 +30,32 @@
 static enum output_format_e target_format[VD_PATH_MAX];
 static enum hdr_type_e cur_source_format[VD_PATH_MAX];
 static enum output_format_e output_format;
+static struct master_display_info_s cached_hdmi_hdr_pkt;
+static bool cached_hdmi_hdr_pkt_valid;
+static enum output_format_e cached_hdmi_hdr_output = UNKNOWN_FMT;
+
+static bool send_hdmi_hdr_pkt_if_needed(
+	struct vout_device_s *vdev,
+	struct master_display_info_s *send_info,
+	bool force)
+{
+	if (!vdev || !vdev->fresh_tx_hdr_pkt)
+		return false;
+
+	if (!force && cached_hdmi_hdr_pkt_valid &&
+	    cached_hdmi_hdr_output == output_format &&
+	    memcmp(&cached_hdmi_hdr_pkt, send_info,
+		   sizeof(cached_hdmi_hdr_pkt)) == 0)
+		return false;
+
+	vdev->fresh_tx_hdr_pkt(send_info);
+	memcpy(&cached_hdmi_hdr_pkt, send_info,
+	       sizeof(cached_hdmi_hdr_pkt));
+	cached_hdmi_hdr_pkt_valid = true;
+	cached_hdmi_hdr_output = output_format;
+
+	return true;
+}
 
 #define INORM	50000
 static u32 bt2020_primaries[3][2] = {
@@ -1472,8 +1498,8 @@ void hdmi_packet_process(
 				(void *)hdmitx_hdr10plus_param,
 				(void *)&send_info);
 		} else {
-			if (vdev->fresh_tx_hdr_pkt)
-				vdev->fresh_tx_hdr_pkt(&send_info);
+			send_hdmi_hdr_pkt_if_needed(vdev, &send_info,
+				signal_change_flag & SIG_FORCE_CHG);
 			if (vdev->fresh_tx_hdr10plus_pkt)
 				vdev->fresh_tx_hdr10plus_pkt(
 					1, hdmitx_hdr10plus_param);
@@ -1492,8 +1518,8 @@ void hdmi_packet_process(
 				(void *)hdmitx_edms_param,
 				(void *)&send_info);
 		} else {
-			if (vdev->fresh_tx_hdr_pkt)
-				vdev->fresh_tx_hdr_pkt(&send_info);
+			send_hdmi_hdr_pkt_if_needed(vdev, &send_info,
+				signal_change_flag & SIG_FORCE_CHG);
 			if (vinfo->hdr_info.cuva_info.monitor_mode_sup == 1) {
 				if (vdev->fresh_tx_cuva_hdr_vsif)
 					vdev->fresh_tx_cuva_hdr_vsif(
@@ -1509,7 +1535,8 @@ void hdmi_packet_process(
 	}
 	/* none hdr+ */
 	if (vdev->fresh_tx_hdr_pkt) {
-		vdev->fresh_tx_hdr_pkt(&send_info);
+		send_hdmi_hdr_pkt_if_needed(vdev, &send_info,
+			signal_change_flag & SIG_FORCE_CHG);
 		notify_vd_signal_to_amvideo(&vd_signal);
 	}
 }
