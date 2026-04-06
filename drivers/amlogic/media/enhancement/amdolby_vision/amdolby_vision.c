@@ -103,16 +103,16 @@ module_param(primary_debug, uint, 0664);
 MODULE_PARM_DESC(primary_debug, "\n primary_debug\n");
 
 /* STB: if sink support DV, always output DV*/
-/*		else always output SDR/HDR */
-/* #define DOLBY_VISION_FOLLOW_SINK		0 */
+/*      else always output SDR/HDR */
+/* #define DOLBY_VISION_FOLLOW_SINK 0 */
 
 /* STB: output DV only if source is DV*/
-/*		and sink support DV*/
-/*		else always output SDR/HDR */
-/* #define DOLBY_VISION_FOLLOW_SOURCE		1 */
+/*      and sink support DV*/
+/*      else always output SDR/HDR */
+/* #define DOLBY_VISION_FOLLOW_SOURCE 1 */
 
 /* STB: always follow dolby_vision_mode */
-/* #define DOLBY_VISION_FORCE_OUTPUT_MODE	2 */
+/* #define DOLBY_VISION_FORCE_OUTPUT_MODE 2 */
 
 static unsigned int dolby_vision_policy = DOLBY_VISION_FOLLOW_SOURCE;
 module_param(dolby_vision_policy, uint, 0664);
@@ -3700,6 +3700,81 @@ static void set_hdr10_data_for_dv_ll(void)
 
 /* #define HDMI_SEND_ALL_PKT */
 static u32 last_dst_format = FORMAT_SDR;
+
+struct dv_hdmi_hdr_cache {
+	struct master_display_info_s data;
+	bool valid;
+};
+
+struct dv_hdmi_vsif_cache {
+	struct dv_vsif_para data;
+	enum eotf_type type;
+	enum mode_type tunnel_mode;
+	bool signal_sdr;
+	bool valid;
+};
+
+static struct dv_hdmi_hdr_cache dv_hdr_cache;
+static struct dv_hdmi_vsif_cache dv_vsif_cache;
+
+static void invalidate_hdmi_pkt_cache(void)
+{
+	dv_hdr_cache.valid = false;
+	dv_vsif_cache.valid = false;
+}
+
+static bool send_hdmi_hdr_pkt_if_needed(
+	const struct vinfo_s *vinfo,
+	struct master_display_info_s *data)
+{
+	struct dv_hdmi_hdr_cache next = { .valid = true, };
+
+	if (!vinfo || !vinfo->vout_device ||
+	    !vinfo->vout_device->fresh_tx_hdr_pkt)
+		return false;
+
+	memcpy(&next.data, data, sizeof(next.data));
+	if (!(dolby_vision_flags & FLAG_FORCE_HDMI_PKT) &&
+	    dv_hdr_cache.valid &&
+	    memcmp(&dv_hdr_cache, &next, sizeof(next)) == 0)
+		return false;
+
+	vinfo->vout_device->fresh_tx_hdr_pkt(data);
+	dv_hdr_cache = next;
+	return true;
+}
+
+static bool send_hdmi_vsif_pkt_if_needed(
+	const struct vinfo_s *vinfo,
+	enum eotf_type type,
+	enum mode_type tunnel_mode,
+	struct dv_vsif_para *data,
+	bool signal_sdr)
+{
+	struct dv_hdmi_vsif_cache next = {
+		.type = type,
+		.tunnel_mode = tunnel_mode,
+		.signal_sdr = signal_sdr,
+		.valid = true,
+	};
+
+	if (!vinfo || !vinfo->vout_device ||
+	    !vinfo->vout_device->fresh_tx_vsif_pkt)
+		return false;
+
+	if (data)
+		memcpy(&next.data, data, sizeof(next.data));
+
+	if (!(dolby_vision_flags & FLAG_FORCE_HDMI_PKT) &&
+	    dv_vsif_cache.valid &&
+	    memcmp(&dv_vsif_cache, &next, sizeof(next)) == 0)
+		return false;
+
+	vinfo->vout_device->fresh_tx_vsif_pkt(type, tunnel_mode, data, signal_sdr);
+	dv_vsif_cache = next;
+	return true;
+}
+
 static void send_hdmi_pkt
 	(enum signal_format_enum src_format,
 	 enum signal_format_enum dst_format,
@@ -3756,11 +3831,9 @@ static void send_hdmi_pkt
 
 		hdr10_data.max_frame_average = (p_hdr->max_frame_avg_light_level_msb << 8) | p_hdr->max_frame_avg_light_level_lsb;
 
-		if (vinfo && vinfo->vout_device && vinfo->vout_device->fresh_tx_hdr_pkt)
-			vinfo->vout_device->fresh_tx_hdr_pkt(&hdr10_data);
+		send_hdmi_hdr_pkt_if_needed(vinfo, &hdr10_data);
 #ifdef HDMI_SEND_ALL_PKT
-		if (vinfo && vinfo->vout_device && vinfo->vout_device->fresh_tx_vsif_pkt)
-			vinfo->vout_device->fresh_tx_vsif_pkt(0, 0, NULL, true);
+		send_hdmi_vsif_pkt_if_needed(vinfo, 0, 0, NULL, true);
 #endif
 		if (last_dst_format != FORMAT_HDR10 || (dolby_vision_flags & FLAG_FORCE_HDMI_PKT))
 			pr_dolby_dbg("send hdmi pkt: HDR10\n");
@@ -3794,9 +3867,7 @@ static void send_hdmi_pkt
 
 		set_hdr10_data_for_dv_ll();
 
-		if (vinfo && vinfo->vout_device &&
-		    vinfo->vout_device->fresh_tx_hdr_pkt)
-			vinfo->vout_device->fresh_tx_hdr_pkt(&hdr10_data);
+		send_hdmi_hdr_pkt_if_needed(vinfo, &hdr10_data);
 
 		last_dst_format = dst_format;
 		vd_signal.signal_type = SIGNAL_HDR10;
@@ -3829,27 +3900,21 @@ static void send_hdmi_pkt
 		hdr10_data.luminance[1] = 0;
 		hdr10_data.max_content = 0;
 		hdr10_data.max_frame_average = 0;
-		if (vinfo && vinfo->vout_device &&
-		    vinfo->vout_device->fresh_tx_hdr_pkt)
-			vinfo->vout_device->fresh_tx_hdr_pkt(&hdr10_data);
+			send_hdmi_hdr_pkt_if_needed(vinfo, &hdr10_data);
 #endif
-		if (vinfo && vinfo->vout_device && vinfo->vout_device->fresh_tx_vsif_pkt)
-		{
-			if (dovi_setting.dovi_ll_enable) {
-				vinfo->vout_device->fresh_tx_vsif_pkt(
-				                    EOTF_T_LL_MODE,
-				                    dovi_setting.diagnostic_enable
-				                      ? RGB_10_12BIT
-				                      : YUV422_BIT12,
-				                    &vsif, false);
-			} else {
-				vinfo->vout_device->fresh_tx_vsif_pkt(
-				                    EOTF_T_DOLBYVISION,
-				                    (dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
-				                      ? RGB_8BIT
-				                      : YUV422_BIT12,
-				                    &vsif, false);
-			}
+		if (dovi_setting.dovi_ll_enable) {
+			send_hdmi_vsif_pkt_if_needed(
+				vinfo, EOTF_T_LL_MODE,
+				dovi_setting.diagnostic_enable ?
+				RGB_10_12BIT : YUV422_BIT12,
+				&vsif, false);
+		} else {
+			send_hdmi_vsif_pkt_if_needed(
+				vinfo, EOTF_T_DOLBYVISION,
+				(dolby_vision_mode ==
+				 DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL) ?
+				RGB_8BIT : YUV422_BIT12,
+				&vsif, false);
 		}
 
 		if (last_dst_format != FORMAT_DOVI || (dolby_vision_flags & FLAG_FORCE_HDMI_PKT))
@@ -3882,12 +3947,8 @@ static void send_hdmi_pkt
 				hdr10_data.luminance[1] = 0;
 				hdr10_data.max_content = 0;
 				hdr10_data.max_frame_average = 0;
-				if (vinfo && vinfo->vout_device &&
-				    vinfo->vout_device->fresh_tx_hdr_pkt) {
-					vinfo->vout_device->fresh_tx_hdr_pkt
-					(&hdr10_data);
+				if (send_hdmi_hdr_pkt_if_needed(vinfo, &hdr10_data))
 					last_dst_format = dst_format;
-				}
 			}
 
 		} else if (last_dst_format == FORMAT_DOVI) {
@@ -3900,21 +3961,22 @@ static void send_hdmi_pkt
 
 					// HLG/HDR10+/cuva case: first switch to SDR immediately.
 					pr_dolby_dbg("send pkt: HDR10+/HLG: signal SDR first\n");
-					vinfo->vout_device->fresh_tx_vsif_pkt(0, 0, NULL, true);
+					send_hdmi_vsif_pkt_if_needed(vinfo, 0, 0, NULL, true);
 					last_dst_format = dst_format;
 					sdr_transition_delay = 0;
 
 				} else if (sdr_transition_delay >= MAX_TRANSITION_DELAY) {
 
 					pr_dolby_dbg("send pkt: VSIF disabled, signal SDR\n");
-					vinfo->vout_device->fresh_tx_vsif_pkt(0, 0, NULL, true);
+					send_hdmi_vsif_pkt_if_needed(vinfo, 0, 0, NULL, true);
 					last_dst_format = dst_format;
 					sdr_transition_delay = 0;
 
 				} else {
 					if (sdr_transition_delay == 0) {
 						pr_dolby_dbg("send pkt: disable Dovi/H14b VSIF\n");
-						vinfo->vout_device->fresh_tx_vsif_pkt(0, 0, NULL, false);
+						send_hdmi_vsif_pkt_if_needed(
+							vinfo, 0, 0, NULL, false);
 					}
 					sdr_transition_delay++;
 				}
@@ -3955,25 +4017,24 @@ static void send_hdmi_pkt_ahead
 		vsif.vers.ver2.auxiliary_runversion = 0;
 		vsif.vers.ver2.auxiliary_debug0 = 0;
 
-		if (vinfo && vinfo->vout_device &&
-			vinfo->vout_device->fresh_tx_vsif_pkt)
-		{
-			if (dovi_ll_enable)
-				vinfo->vout_device->fresh_tx_vsif_pkt(
-				                    EOTF_T_DV_AHEAD,
-				                    diagnostic_enable
-				                      ? RGB_10_12BIT
-				                      : YUV422_BIT12,
-				                    &vsif, false);
-			else
-				vinfo->vout_device->fresh_tx_vsif_pkt(
-				                    EOTF_T_DV_AHEAD,
-				                    (dolby_vision_target_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL)
-				                      ? RGB_8BIT
-				                      : YUV422_BIT12,
-				                    &vsif, false);
+		if (dovi_ll_enable) {
+			if (send_hdmi_vsif_pkt_if_needed(
+				vinfo, EOTF_T_DV_AHEAD,
+				diagnostic_enable ?
+				RGB_10_12BIT : YUV422_BIT12,
+				&vsif, false))
+				pr_dolby_dbg("send_hdmi_pkt ahead: %s\n",
+					dovi_ll_enable ? "DV-LL" : "DV-Std");
+		} else {
+			if (send_hdmi_vsif_pkt_if_needed(
+				vinfo, EOTF_T_DV_AHEAD,
+				(dolby_vision_target_mode ==
+				 DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL) ?
+				RGB_8BIT : YUV422_BIT12,
+				&vsif, false))
+				pr_dolby_dbg("send_hdmi_pkt ahead: %s\n",
+					dovi_ll_enable ? "DV-LL" : "DV-Std");
 		}
-		pr_dolby_dbg("send_hdmi_pkt ahead: %s\n", dovi_ll_enable ? "DV-LL" : "DV-Std");
 	}
 }
 
@@ -5471,6 +5532,8 @@ int dolby_vision_process(struct vframe_s *vf,
 	if (!is_dolby_vision_on()) dolby_vision_flags &= ~FLAG_FORCE_HDMI_PKT;
 
 	sink_changed = (is_sink_cap_changed(vinfo, &current_hdr_cap, &current_sink_available) & 2) ? 1 : 0;
+	if (sink_changed)
+		invalidate_hdmi_pkt_cache();
 
 	if (sink_changed || policy_changed || format_changed ||
 	    (video_status == 1 && !(dolby_vision_flags & FLAG_CERTIFICAION)) ||
