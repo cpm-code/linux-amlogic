@@ -44,6 +44,24 @@ struct fb_vsync_early_request {
 
 #define FBIO_WAITFORVSYNC_EARLY_64 _IOWR('F', 0x24, struct fb_vsync_early_request)
 
+/* AML extension: wait until entering the (next VSYNC - offset_us) window.
+ * If the caller is already inside the window for the upcoming VSYNC, return
+ * immediately instead of skipping to the following refresh.
+ * All timestamps are CLOCK_MONOTONIC in ns.
+ */
+#define FB_VSYNC_WINDOW_STATUS_WAITED             (1U << 0)
+#define FB_VSYNC_WINDOW_STATUS_ALREADY_IN_WINDOW  (1U << 1)
+
+struct fb_vsync_window_request {
+	__s32 offset_us;
+	__u32 status;
+	__s64 wake_ts;
+	__s64 next_vsync_ts;
+	__s64 period_ns;
+};
+
+#define FBIO_WAITFORVSYNC_WINDOW_64 _IOWR('F', 0x26, struct fb_vsync_window_request)
+
 /* AML extension: query vsync timing without waiting.
  * All timestamps are CLOCK_MONOTONIC in ns.
  */
