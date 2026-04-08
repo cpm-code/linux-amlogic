@@ -769,6 +769,7 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 	struct fb_cursor cursor;
 	struct do_hwc_cmd_s do_hwc_cmd;
 	struct fb_vsync_early_request early_req;
+	struct fb_vsync_window_request window_req;
 	struct fb_vsync_timing_request timing_req;
 
 	switch (cmd) {
@@ -891,6 +892,79 @@ static int osd_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 			}
 		}
 		ret = copy_to_user(argp, &early_req, sizeof(early_req));
+		break;
+	case FBIO_WAITFORVSYNC_WINDOW_64:
+		if (copy_from_user(&window_req, argp, sizeof(window_req))) {
+			ret = -EFAULT;
+			break;
+		}
+		{
+			s64 period_ns = osd_get_vsync_period_ns();
+			s64 last_ts;
+			ktime_t now = ktime_get();
+			s64 next_ts;
+			s64 target_ns;
+			s64 offset_ns;
+
+			window_req.status = 0;
+			window_req.wake_ts = 0;
+			window_req.next_vsync_ts = 0;
+			window_req.period_ns = 0;
+
+			if (period_ns <= 0)
+				period_ns = 16666666; /* fallback: 60Hz */
+
+			if (window_req.offset_us < 0)
+				window_req.offset_us = 0;
+			offset_ns = (s64)window_req.offset_us * 1000;
+			if (offset_ns >= period_ns)
+				offset_ns = period_ns - 1;
+
+			if (info->node < osd_meson_dev.viu1_osd_count)
+				last_ts = osd_get_vsync_timestamp(VIU1);
+			else
+				last_ts = osd_get_vsync_timestamp(VIU2);
+
+			if (last_ts <= 0 || last_ts > now.tv64) {
+				ret = -EAGAIN;
+				break;
+			}
+
+			next_ts = last_ts + period_ns;
+			if (next_ts <= now.tv64) {
+				s64 delta = now.tv64 - next_ts;
+				s64 steps = div_s64(delta, period_ns) + 1;
+
+				next_ts += steps * period_ns;
+			}
+
+			target_ns = next_ts - offset_ns;
+			window_req.next_vsync_ts = next_ts;
+			window_req.period_ns = period_ns;
+
+			if (target_ns > now.tv64) {
+				s64 sleep_ns = target_ns - now.tv64;
+				ktime_t kt = ktime_set(0, sleep_ns);
+
+				__set_current_state(TASK_INTERRUPTIBLE);
+				schedule_hrtimeout(&kt, HRTIMER_MODE_REL);
+				__set_current_state(TASK_RUNNING);
+				if (signal_pending(current)) {
+					ret = -ERESTARTSYS;
+					break;
+				}
+
+				window_req.status = FB_VSYNC_WINDOW_STATUS_WAITED;
+			} else {
+				window_req.status = FB_VSYNC_WINDOW_STATUS_ALREADY_IN_WINDOW;
+			}
+
+			window_req.wake_ts = ktime_get().tv64;
+		}
+		if (copy_to_user(argp, &window_req, sizeof(window_req)))
+			ret = -EFAULT;
+		else
+			ret = 0;
 		break;
 	case FBIO_GET_VSYNC_TIMING_64:
 		memset(&timing_req, 0, sizeof(timing_req));
