@@ -4422,8 +4422,6 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
 	if (oldspeed == USB_SPEED_LOW)
 		delay = HUB_LONG_RESET_TIME;
 
-	mutex_lock(hcd->address0_mutex);
-
 	/* Reset the device; full speed may morph to high speed */
 	/* FIXME a USB 2.0 device may morph into SuperSpeed on reset. */
 	retval = hub_port_reset(hub, port1, udev, delay, false);
@@ -4715,7 +4713,6 @@ fail:
 		hub_port_disable(hub, port1, 0);
 		update_devnum(udev, devnum);	/* for disconnect processing */
 	}
-	mutex_unlock(hcd->address0_mutex);
 	return retval;
 }
 
@@ -4860,6 +4857,8 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		unit_load = 100;
 
 	status = 0;
+
+	mutex_lock(hcd->address0_mutex);
 	for (i = 0; i < SET_CONFIG_TRIES; i++) {
 
 		/* reallocate for each attempt, since references
@@ -4895,6 +4894,8 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		usb_unlock_port(port_dev);
 		if (status < 0)
 			goto loop;
+
+		mutex_unlock(hcd->address0_mutex);
 
 		if (udev->quirks & USB_QUIRK_DELAY_INIT)
 			msleep(2000);
@@ -4984,6 +4985,7 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 
 loop_disable:
 		hub_port_disable(hub, port1, 1);
+		mutex_lock(hcd->address0_mutex);
 loop:
 #ifdef CONFIG_AMLOGIC_USB
 	if (SET_CONFIG_TRIES == (i + 1)) {
@@ -5026,6 +5028,7 @@ loop:
 	}
 
 done:
+	mutex_unlock(hcd->address0_mutex);
 	hub_port_disable(hub, port1, 1);
 #ifdef CONFIG_AMLOGIC_USB2PHY
 	if (!status && !hub_is_superspeed(hub->hdev))
@@ -5559,6 +5562,8 @@ static int usb_reset_and_verify_device(struct usb_device *udev)
 	bos = udev->bos;
 	udev->bos = NULL;
 
+	mutex_lock(hcd->address0_mutex);
+
 	for (i = 0; i < SET_CONFIG_TRIES; ++i) {
 
 		/* ep0 maxpacket size may change; let the HCD know about it.
@@ -5568,6 +5573,7 @@ static int usb_reset_and_verify_device(struct usb_device *udev)
 		if (ret >= 0 || ret == -ENOTCONN || ret == -ENODEV)
 			break;
 	}
+	mutex_unlock(hcd->address0_mutex);
 
 	if (ret < 0)
 		goto re_enumerate;
