@@ -6002,7 +6002,7 @@ static void hdmitx_get_edid(struct hdmitx_dev *hdev)
 	unsigned long flags = 0;
 
 	mutex_lock(&getedid_mutex);
-	/* TODO hdmitx_edid_ram_buffer_clear(hdev); */
+	hdmitx_edid_ram_buffer_clear(hdev);
 	hdev->hwop.cntlddc(hdev, DDC_RESET_EDID, 0);
 	hdev->hwop.cntlddc(hdev, DDC_PIN_MUX_OP, PIN_MUX);
 	/* start reading edid frist time */
