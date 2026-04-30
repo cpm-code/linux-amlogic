@@ -1741,13 +1741,29 @@ static u32 vpp_matrix_backup;
 static u32 vpp_dummy1_backup;
 static u32 vpp_data_conv_para0_backup;
 static u32 vpp_data_conv_para1_backup;
+
+// Match either the current active mode or the pending target mode.
+static bool is_dolby_vision_ipt_tunnel_mode(void)
+{
+	return dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
+		dolby_vision_target_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL;
+}
+
+// bit0 routes pre-blend around dither/PPS, bit12 enables the dither block.
+static void set_vpp_dither_bypass(bool bypass)
+{
+	VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, bypass, 0, 1);
+	VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, !bypass, 12, 1);
+}
+
 void enable_dolby_vision(int enable)
 {
 	bool core1 = (dolby_vision_mask & 1) && dovi_setting_video_flag;
 	bool core2 = (dolby_vision_mask & 2);
 	bool core3 = (dolby_vision_mask & 4);
+	bool is_ipt_tunnel_mode = is_dolby_vision_ipt_tunnel_mode();
 
-	bool dvll = ((dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT_TUNNEL ||
+	bool dvll = ((is_ipt_tunnel_mode ||
 				  dolby_vision_mode == DOLBY_VISION_OUTPUT_MODE_IPT) &&
 				  dovi_setting.diagnostic_enable == 0 &&
 				  dovi_setting.dovi_ll_enable);
@@ -1804,8 +1820,17 @@ void enable_dolby_vision(int enable)
 				VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000); // 12->10 before vadj2 10->12 after gainoff
 			} else {
 				if (dolby_vision_flags & FLAG_BYPASS_VPP) video_effect_bypass(1);
-				VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x20002000); // 12->10 before vadj1 10->12 before post blend
-				VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000); // 12->10 before vadj2 10->12 after gainoff
+				// pre-blend  VPP path: cm/lut/vadj1/matrix1
+				// post-blend VPP path: vadj2/matrix2/gainoff/eotf/matrix4/oetf/matrix3
+				if (is_ipt_tunnel_mode) {
+					set_vpp_dither_bypass(true);
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x08000800); // U12 -> S12 -> pre-blend  -> S12 -> U12
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x08000800); // U12 -> S12 -> post-blend -> S12 -> U12
+				} else {
+					set_vpp_dither_bypass(false);
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x20002000); // U12 -> U10 -> pre-blend  -> U10 -> U12
+					VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA1, 0x20002000); // U12 -> U10 -> post-blend -> U10 -> U12
+				}
 			}
 
 			VSYNC_WR_DV_REG(VPP_MATRIX_CTRL, 0);
@@ -5295,24 +5320,6 @@ static void update_dolby_vision_status(enum signal_format_enum src_format)
 	}
 }
 
-static u8 last_pps_state;
-static void bypass_pps_path(u8 pps_state)
-{
-	if (is_meson_txlx_package_962E()) {
-		if (pps_state == 2) {
-			VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 1, 0, 1);
-			VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x08000800);
-		} else if (pps_state == 1) {
-			VSYNC_WR_DV_REG_BITS(VPP_DOLBY_CTRL, 0, 0, 1);
-			VSYNC_WR_DV_REG(VPP_DAT_CONV_PARA0, 0x20002000);
-		}
-	}
-	if (pps_state && last_pps_state != pps_state) {
-		pr_dolby_dbg("pps_state %d => %d\n", last_pps_state, pps_state);
-		last_pps_state = pps_state;
-	}
-}
-
 /* toggle mode: 0: not toggle; 1: toggle frame; 2: use keep frame */
 /* pps_state 0: no change, 1: pps enable, 2: pps disable */
 int dolby_vision_process(struct vframe_s *vf,
@@ -5659,7 +5666,6 @@ int dolby_vision_process(struct vframe_s *vf,
 			}
 
 			enable_dolby_vision(1);
-			bypass_pps_path(pps_state);
 			core1_disp_hsize = dovi_setting.video_width;
 			core1_disp_vsize = dovi_setting.video_height;
 

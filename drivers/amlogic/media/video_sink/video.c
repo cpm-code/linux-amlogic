@@ -3284,18 +3284,6 @@ static void dolby_vision_proc(
 		u32 frame_size = 0, h_size, v_size;
 		u8 pps_state = 0; /* pps no change */
 
-/* TODO: check if need */
-#ifdef OLD_DV_FLOW
-		/* force toggle when keeping frame after playing */
-		if (is_local_vf(layer->dispbuf) &&
-		    !layer->new_frame &&
-		    is_dolby_vision_video_on() &&
-		    get_video_enabled()) {
-			if (!dolby_vision_parse_metadata(
-				layer->dispbuf, 2, false, false))
-				dolby_vision_set_toggle_flag(1);
-		}
-#endif
 		if (layer->new_frame)
 			toggle_mode = 1; /* new frame */
 		else if (!layer->dispbuf ||

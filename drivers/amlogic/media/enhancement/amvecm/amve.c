@@ -2273,7 +2273,9 @@ unsigned int skip_pq_ctrl_load(struct am_reg_s *p)
 
 	if (dv_pq_bypass == 2) {
 		memcpy(&cfg, &dv_cfg_bypass, sizeof(struct pq_ctrl_s));
-		cfg.vadj1_en = pq_cfg.vadj1_en;
+		cfg.vadj1_en = 0;
+		cfg.wb_en = 0;
+		cfg.gamma_en = 0;
 	} else if (dv_pq_bypass == 1) {
 		memcpy(&cfg, &dv_cfg_bypass, sizeof(struct pq_ctrl_s));
 	} else {
@@ -2366,7 +2368,9 @@ int dv_pq_ctl(enum dv_pq_ctl_e ctl)
 	switch (ctl) {
 	case DV_PQ_BYPASS:
 		memcpy(&cfg, &dv_cfg_bypass, sizeof(struct pq_ctrl_s));
-		cfg.vadj1_en = pq_cfg.vadj1_en;
+		cfg.vadj1_en = 0;
+		cfg.wb_en = 0;
+		cfg.gamma_en = 0;
 		vpp_pq_ctrl_config(cfg);
 		dv_pq_bypass = 2;
 		pr_amve_dbg(
