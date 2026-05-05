@@ -602,6 +602,137 @@ bool is_local_vf(struct vframe_s *vf)
 	return false;
 }
 
+static enum vframe_signal_fmt_e video_layer_get_src_fmt(
+	struct video_layer_s *layer,
+	struct vframe_s *vf)
+{
+	enum vframe_signal_fmt_e fmt;
+
+	if (vf) {
+		fmt = get_vframe_src_fmt(vf);
+		if (fmt != VFRAME_SIGNAL_FMT_INVALID)
+			return fmt;
+	}
+
+	if (layer && layer->layer_id == 0) {
+		fmt = atomic_read(&cur_primary_src_fmt);
+		if (fmt != VFRAME_SIGNAL_FMT_INVALID)
+			return fmt;
+	}
+
+#ifdef CONFIG_AMLOGIC_MEDIA_ENHANCEMENT_DOLBYVISION
+	if (layer && layer->layer_id == 0 &&
+	    is_dolby_vision_enable() &&
+	    is_dolby_vision_on())
+		return VFRAME_SIGNAL_FMT_DOVI;
+#endif
+
+	return VFRAME_SIGNAL_FMT_INVALID;
+}
+
+static bool video_layer_fmt_is_hdr_or_dv(
+	enum vframe_signal_fmt_e fmt)
+{
+	switch (fmt) {
+	case VFRAME_SIGNAL_FMT_HDR10:
+	case VFRAME_SIGNAL_FMT_HDR10PLUS:
+	case VFRAME_SIGNAL_FMT_HDR10PRIME:
+	case VFRAME_SIGNAL_FMT_DOVI:
+	case VFRAME_SIGNAL_FMT_DOVI_LL:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static void video_layer_get_input_size(
+	struct vframe_s *vf,
+	u32 *width,
+	u32 *height)
+{
+	if (width)
+		*width = 0;
+	if (height)
+		*height = 0;
+	if (!vf)
+		return;
+
+	if (width)
+		*width = (vf->type & VIDTYPE_COMPRESS) ?
+			vf->compWidth : vf->width;
+	if (height)
+		*height = (vf->type & VIDTYPE_COMPRESS) ?
+			vf->compHeight : vf->height;
+}
+
+bool video_layer_is_native_pps_config(
+	struct video_layer_s *layer,
+	struct vpp_frame_par_s *frame_par)
+{
+	struct vppfilter_mode_s *vpp_filter;
+	s32 src_w, src_h, dst_w, dst_h;
+
+	if (!layer || !frame_par)
+		return false;
+
+	vpp_filter = &frame_par->vpp_filter;
+	src_w = frame_par->video_input_w <<
+		frame_par->supsc0_hori_ratio;
+	src_h = frame_par->video_input_h <<
+		frame_par->supsc0_vert_ratio;
+	dst_w = frame_par->VPP_hsc_endp - frame_par->VPP_hsc_startp + 1;
+	dst_h = frame_par->VPP_vsc_endp - frame_par->VPP_vsc_startp + 1;
+
+	return (vpp_filter->vpp_hsc_start_phase_step == 0x1000000) &&
+		(vpp_filter->vpp_vsc_start_phase_step == 0x1000000) &&
+		(vpp_filter->vpp_hsc_start_phase_step ==
+		 vpp_filter->vpp_hf_start_phase_step) &&
+		(src_w == dst_w) &&
+		(src_h == dst_h) &&
+		!vpp_filter->vpp_pre_vsc_en &&
+		!vpp_filter->vpp_pre_hsc_en;
+}
+
+bool video_layer_should_auto_bypass_pps(
+	struct video_layer_s *layer,
+	struct vframe_s *vf,
+	struct vpp_frame_par_s *frame_par)
+{
+	enum vframe_signal_fmt_e fmt;
+	u32 input_w, input_h;
+
+	if (!layer || !vf || !frame_par)
+		return false;
+
+	if (!cpu_after_eq(MESON_CPU_MAJOR_ID_G12B))
+		return false;
+
+	if (layer->layer_id != 0 ||
+	    is_local_vf(vf) ||
+	    vf->source_type != VFRAME_SOURCE_TYPE_OTHERS)
+		return false;
+
+	if (!video_layer_is_native_pps_config(layer, frame_par) ||
+	    frame_par->supsc0_enable ||
+	    frame_par->supsc1_enable)
+		return false;
+
+	video_layer_get_input_size(vf, &input_w, &input_h);
+	if (input_w < 3840 || input_h < 2160)
+		return false;
+
+	fmt = video_layer_get_src_fmt(layer, vf);
+	return video_layer_fmt_is_hdr_or_dv(fmt);
+}
+
+bool video_layer_should_auto_bypass_cm(
+	struct video_layer_s *layer,
+	struct vframe_s *vf,
+	struct vpp_frame_par_s *frame_par)
+{
+	return video_layer_should_auto_bypass_pps(layer, vf, frame_par);
+}
+
 static u32 is_crop_left_odd(struct vpp_frame_par_s *frame_par)
 {
 	int crop_left_odd;
@@ -4330,16 +4461,14 @@ s32 config_vd_pps(
 	struct scaler_setting_s *setting,
 	const struct vinfo_s *info)
 {
-	struct vppfilter_mode_s *vpp_filter;
 	struct vpp_frame_par_s *cur_frame_par;
-	s32 src_w, src_h, dst_w, dst_h;
+	struct vframe_s *dispbuf;
 
 	if (!layer || !layer->cur_frame_par || !setting || !info)
 		return -1;
 
 	setting->support = glayer_info[layer->layer_id].pps_support;
 	cur_frame_par = layer->cur_frame_par;
-	vpp_filter = &cur_frame_par->vpp_filter;
 	setting->frame_par = cur_frame_par;
 	setting->id = layer->layer_id;
 	setting->misc_reg_offt = layer->misc_reg_offt;
@@ -4352,21 +4481,13 @@ s32 config_vd_pps(
 	else
 		setting->last_line_fix = false;
 
-	src_w = cur_frame_par->video_input_w <<
-		cur_frame_par->supsc0_hori_ratio;
-	src_h = cur_frame_par->video_input_h <<
-		cur_frame_par->supsc0_vert_ratio;
-	dst_w = cur_frame_par->VPP_hsc_endp - cur_frame_par->VPP_hsc_startp + 1;
-	dst_h = cur_frame_par->VPP_vsc_endp - cur_frame_par->VPP_vsc_startp + 1;
-	if ((vpp_filter->vpp_hsc_start_phase_step == 0x1000000) &&
-	    (vpp_filter->vpp_vsc_start_phase_step == 0x1000000) &&
-	    (vpp_filter->vpp_hsc_start_phase_step ==
-	     vpp_filter->vpp_hf_start_phase_step) &&
-	    (src_w == dst_w) &&
-	    (src_h == dst_h) &&
-	    !vpp_filter->vpp_pre_vsc_en &&
-	    !vpp_filter->vpp_pre_hsc_en &&
-	    layer->bypass_pps)
+	/* Use the externally switched frame when Dolby Vision set-top-box mode exposes it. */
+	dispbuf = (layer->switch_vf && layer->vf_ext) ?
+		layer->vf_ext : layer->dispbuf;
+	if ((video_layer_is_native_pps_config(layer, cur_frame_par) &&
+	     layer->bypass_pps) ||
+	    video_layer_should_auto_bypass_pps(
+		    layer, dispbuf, cur_frame_par))
 		setting->sc_top_enable = false;
 
 	setting->vinfo_width = info->width;
@@ -4826,6 +4947,7 @@ void vpp_blend_update(
 	unsigned long flags;
 	struct vpp_frame_par_s *vd1_frame_par =
 		vd_layer[0].cur_frame_par;
+	struct vframe_s *vd1_dispbuf;
 	bool force_flush = false;
 
 	check_video_mute();
@@ -4834,7 +4956,11 @@ void vpp_blend_update(
 		mode |= COMPOSE_MODE_3D;
 	else if (is_dolby_vision_on() && last_el_status)
 		mode |= COMPOSE_MODE_DV;
-	if (bypass_cm)
+	vd1_dispbuf = (vd_layer[0].switch_vf && vd_layer[0].vf_ext) ?
+		vd_layer[0].vf_ext : vd_layer[0].dispbuf;
+	if (bypass_cm ||
+	    video_layer_should_auto_bypass_cm(
+		    &vd_layer[0], vd1_dispbuf, vd1_frame_par))
 		mode |= COMPOSE_MODE_BYPASS_CM;
 
 	/* check the vpp post size first */

@@ -3299,19 +3299,13 @@ static void dolby_vision_proc(
 
 		if (cur_frame_par) {
 			if (layer->new_vpp_setting) {
-				struct vppfilter_mode_s *vpp_filter =
-					&cur_frame_par->vpp_filter;
-				if ((vpp_filter->vpp_hsc_start_phase_step
-					== 0x1000000) &&
-					(vpp_filter->vpp_vsc_start_phase_step
-					== 0x1000000) &&
-					(vpp_filter->vpp_hsc_start_phase_step ==
-					vpp_filter->vpp_hf_start_phase_step) &&
-					!vpp_filter->vpp_pre_vsc_en &&
-					!vpp_filter->vpp_pre_hsc_en &&
-					!cur_frame_par->supsc0_enable &&
-					!cur_frame_par->supsc1_enable &&
-					layer->bypass_pps)
+				if (((video_layer_is_native_pps_config(
+					      layer, cur_frame_par) &&
+				      !cur_frame_par->supsc0_enable &&
+				      !cur_frame_par->supsc1_enable &&
+				      layer->bypass_pps)) ||
+				    video_layer_should_auto_bypass_pps(
+					    layer, disp_vf, cur_frame_par))
 					pps_state = 2; /* pps disable */
 				else
 					pps_state = 1; /* pps enable */
@@ -6206,33 +6200,43 @@ SET_FILTER:
 		vd_layer[0].keep_frame_id = 0xff;
 
 #if defined(CONFIG_AMLOGIC_MEDIA_ENHANCEMENT_VECM)
-	if (new_frame)
-		refresh_on_vs(new_frame, vd_layer[0].dispbuf);
+	{
+		int amvecm_flags = new_frame ? CSC_FLAG_TOGGLE_FRAME : 0;
+		struct vframe_s *amvecm_vf = new_frame ?
+			new_frame : vd_layer[0].dispbuf;
 
-	amvecm_on_vs(
-		!is_local_vf(vd_layer[0].dispbuf)
-		? vd_layer[0].dispbuf : NULL,
-		new_frame,
-		new_frame ? CSC_FLAG_TOGGLE_FRAME : 0,
-		cur_frame_par ?
-		cur_frame_par->supsc1_hori_ratio :
-		0,
-		cur_frame_par ?
-		cur_frame_par->supsc1_vert_ratio :
-		0,
-		cur_frame_par ?
-		cur_frame_par->spsc1_w_in :
-		0,
-		cur_frame_par ?
-		cur_frame_par->spsc1_h_in :
-		0,
-		cur_frame_par ?
-		cur_frame_par->cm_input_w :
-		0,
-		cur_frame_par ?
-		cur_frame_par->cm_input_h :
-		0,
-		VD1_PATH);
+		if (video_layer_should_auto_bypass_cm(
+			    &vd_layer[0], amvecm_vf, cur_frame_par))
+			amvecm_flags |= CSC_FLAG_BYPASS_PQ;
+
+		if (new_frame)
+			refresh_on_vs(new_frame, vd_layer[0].dispbuf);
+
+		amvecm_on_vs(
+			!is_local_vf(vd_layer[0].dispbuf)
+			? vd_layer[0].dispbuf : NULL,
+			new_frame,
+			amvecm_flags,
+			cur_frame_par ?
+			cur_frame_par->supsc1_hori_ratio :
+			0,
+			cur_frame_par ?
+			cur_frame_par->supsc1_vert_ratio :
+			0,
+			cur_frame_par ?
+			cur_frame_par->spsc1_w_in :
+			0,
+			cur_frame_par ?
+			cur_frame_par->spsc1_h_in :
+			0,
+			cur_frame_par ?
+			cur_frame_par->cm_input_w :
+			0,
+			cur_frame_par ?
+			cur_frame_par->cm_input_h :
+			0,
+			VD1_PATH);
+	}
 #endif
 
 	/* work around which dec/vdin don't call update src_fmt function */
