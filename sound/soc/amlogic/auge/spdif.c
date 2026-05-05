@@ -109,6 +109,17 @@ struct aml_spdif {
 	enum sharebuffer_srcs samesource_sel;
 };
 
+static bool aml_spdif_is_hbr_codec(enum aud_codec_types codec_type)
+{
+	switch (codec_type) {
+	case AUD_CODEC_TYPE_TRUEHD:
+	case AUD_CODEC_TYPE_DTS_HD_MA:
+		return true;
+	default:
+		return false;
+	}
+}
+
 #define SPDIF_BUFFER_BYTES (512 * 1024)
 static const struct snd_pcm_hardware aml_spdif_hardware = {
 	.info =
@@ -1046,6 +1057,7 @@ static int aml_spdif_close(struct snd_pcm_substream *substream)
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		p_spdif->on = false;
+		aml_frddr_set_hbr_qos(p_spdif->fddr, false);
 		aml_audio_unregister_frddr(p_spdif->dev, substream);
 	} else {
 		aml_audio_unregister_toddr(p_spdif->dev, substream);
@@ -1319,6 +1331,8 @@ static int aml_dai_spdif_prepare(
 		fifo_id = aml_frddr_get_fifo_id(fr);
 		aml_frddr_set_format(fr, runtime->channels, runtime->rate, bit_depth - 1, spdifout_get_frddr_type(bit_depth));
 		aml_frddr_select_dst(fr, dst);
+		aml_frddr_set_hbr_qos(fr,
+			aml_spdif_is_hbr_codec(p_spdif->codec_type));
 
 		/* check channel status info, and set them */
 		iec_get_channel_status_info(&chsts, p_spdif->codec_type, runtime->rate);
@@ -1546,6 +1560,7 @@ static int aml_dai_spdif_hw_free(struct snd_pcm_substream *substream,
 	struct soft_locker *locker = aml_get_card_locker(card);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		aml_frddr_set_hbr_qos(p_spdif->fddr, false);
 		if (p_spdif->samesource_sel != SHAREBUFFER_NONE)
 			spdif_sharebuffer_free(p_spdif, substream);
 

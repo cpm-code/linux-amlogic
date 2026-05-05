@@ -42,9 +42,101 @@
 
 static DEFINE_MUTEX(ddr_mutex);
 
+#define AUDIO_ARB_FIFO_MASK		GENMASK(7, 0)
+#define AUDIO_ARB_ENABLE_BIT		BIT(31)
+/*
+ * Raise all ARB_CTRL1 thresholds while HBR passthrough is active so the
+ * G12A/G12B 3-FIFO audio DDR path keeps requesting memory aggressively.
+ */
+#define AUDIO_ARB_HBR_QOS_VALUE		0xffff
+
 #define DDRMAX 4
 static struct frddr frddrs[DDRMAX];
 static struct toddr toddrs[DDRMAX];
+/* Static zero-init; runtime updates stay serialized by ddr_mutex. */
+/* Bit position N maps directly to FRDDR fifo_id N. */
+static unsigned int audio_arb_hbr_mask;
+static unsigned int audio_arb_ctrl1_default;
+static bool audio_arb_ctrl1_default_valid;
+
+static unsigned int aml_audio_ddr_arb_mask_locked(void)
+{
+	unsigned int mask = 0;
+	int i;
+
+	for (i = 0; i < DDRMAX; i++) {
+		if (toddrs[i].in_use)
+			mask |= BIT(i);
+		if (frddrs[i].in_use)
+			mask |= BIT(i + 4);
+	}
+
+	return mask;
+}
+
+static void aml_audio_update_arb_ctrl_locked(struct aml_audio_controller *actrl)
+{
+	unsigned int mask;
+	unsigned int value;
+
+	if (!actrl)
+		return;
+
+	mask = aml_audio_ddr_arb_mask_locked();
+	value = mask;
+	if (mask)
+		value |= AUDIO_ARB_ENABLE_BIT;
+
+	aml_audiobus_update_bits(actrl, EE_AUDIO_ARB_CTRL,
+		AUDIO_ARB_ENABLE_BIT | AUDIO_ARB_FIFO_MASK, value);
+}
+
+static bool aml_frddr_support_hbr_qos(struct frddr *fr)
+{
+	if (!fr || !fr->chipinfo)
+		return false;
+
+	/*
+	 * G12A/G12B use the 3-FIFO DDR manager layout with same-source support.
+	 * Scope the ARB_CTRL1 HBR tuning to that configuration.
+	 */
+	return fr->chipinfo->same_src_fn && fr->chipinfo->fifo_num == 3;
+}
+
+static void aml_audio_update_hbr_qos_locked(struct aml_audio_controller *actrl)
+{
+	if (!actrl)
+		return;
+
+	if (!audio_arb_ctrl1_default_valid) {
+		audio_arb_ctrl1_default = aml_audiobus_read(actrl,
+			EE_AUDIO_ARB_CTRL1);
+		audio_arb_ctrl1_default_valid = true;
+	}
+
+	if (audio_arb_hbr_mask) {
+		aml_audiobus_write(actrl, EE_AUDIO_ARB_CTRL1,
+			AUDIO_ARB_HBR_QOS_VALUE);
+	} else if (audio_arb_ctrl1_default_valid) {
+		aml_audiobus_write(actrl, EE_AUDIO_ARB_CTRL1,
+			audio_arb_ctrl1_default);
+	}
+}
+
+static void aml_audio_clear_hbr_qos_locked(struct frddr *fr)
+{
+	if (!fr)
+		return;
+
+	lockdep_assert_held(&ddr_mutex);
+
+	if (!aml_frddr_support_hbr_qos(fr))
+		return;
+
+	/* Caller already holds ddr_mutex, so avoid re-taking it here. */
+	audio_arb_hbr_mask &= ~BIT(fr->fifo_id);
+	aml_audio_update_hbr_qos_locked(fr->actrl);
+}
 
 struct src_enum_table {
 	enum toddr_src src;
@@ -100,8 +192,9 @@ static struct toddr *register_toddr_l(struct device *dev,
 	irq_handler_t handler, void *data)
 {
 	struct toddr *to;
-	unsigned int mask_bit;
 	int i, ret;
+
+	lockdep_assert_held(&ddr_mutex);
 
 	/* lookup unused toddr */
 	for (i = 0; i < DDRMAX; i++) {
@@ -121,14 +214,9 @@ static struct toddr *register_toddr_l(struct device *dev,
 		dev_err(dev, "failed to claim irq %u\n", to->irq);
 		return NULL;
 	}
-	/* enable audio ddr arb */
-	mask_bit = i;
-	/*aml_audiobus_update_bits(actrl, EE_AUDIO_ARB_CTRL,*/
-	/*		(1 << 31)|(1 << mask_bit),*/
-	/*		(1 << 31)|(1 << mask_bit));*/
-
 	to->dev = dev;
 	to->in_use = true;
+	aml_audio_update_arb_ctrl_locked(actrl);
 	pr_info("toddrs[%d] registered by device %s\n", i, dev_name(dev));
 	return to;
 }
@@ -136,10 +224,9 @@ static struct toddr *register_toddr_l(struct device *dev,
 static int unregister_toddr_l(struct device *dev, void *data)
 {
 	struct toddr *to;
-	struct aml_audio_controller *actrl;
-	unsigned int mask_bit;
-	unsigned int value;
 	int i;
+
+	lockdep_assert_held(&ddr_mutex);
 
 	if (dev == NULL)
 		return -EINVAL;
@@ -154,21 +241,10 @@ static int unregister_toddr_l(struct device *dev, void *data)
 
 	to = &toddrs[i];
 
-	/* disable audio ddr arb */
-	mask_bit = i;
-	actrl = to->actrl;
-	/*aml_audiobus_update_bits(actrl, EE_AUDIO_ARB_CTRL,*/
-	/*		1 << mask_bit, 0 << mask_bit);*/
-
-	/* no ddr active, disable arb switch */
-	value = aml_audiobus_read(actrl, EE_AUDIO_ARB_CTRL) & 0x77;
-	/*if (value == 0)*/
-	/*	aml_audiobus_update_bits(actrl, EE_AUDIO_ARB_CTRL,*/
-	/*			1 << 31, 0 << 31);*/
-
 	free_irq(to->irq, data);
 	to->dev = NULL;
 	to->in_use = false;
+	aml_audio_update_arb_ctrl_locked(to->actrl);
 	pr_info("toddrs[%d] released by device %s\n", i, dev_name(dev));
 
 	return 0;
@@ -1106,8 +1182,9 @@ static struct frddr *register_frddr_l(struct device *dev,
 	irq_handler_t handler, void *data, bool rvd_dst)
 {
 	struct frddr *from;
-	unsigned int mask_bit;
 	int i, ret;
+
+	lockdep_assert_held(&ddr_mutex);
 
 	for (i = 0; i < DDRMAX; i++) {
 		/* lookup reserved frddr */
@@ -1127,12 +1204,6 @@ static struct frddr *register_frddr_l(struct device *dev,
 
 	from = &frddrs[i];
 
-	/* enable audio ddr arb */
-	mask_bit = i + 4;
-	/*aml_audiobus_update_bits(actrl, EE_AUDIO_ARB_CTRL,*/
-	/*		(1 << 31)|(1 << mask_bit),*/
-	/*		(1 << 31)|(1 << mask_bit));*/
-
 	/* irqs request */
 	ret = request_threaded_irq(from->irq, aml_ddr_isr, handler,
 		IRQF_SHARED, dev_name(dev), data);
@@ -1142,6 +1213,7 @@ static struct frddr *register_frddr_l(struct device *dev,
 	}
 	from->dev = dev;
 	from->in_use = true;
+	aml_audio_update_arb_ctrl_locked(actrl);
 	pr_info("frddrs[%d] registered by device %s\n", i, dev_name(dev));
 	return from;
 }
@@ -1149,10 +1221,9 @@ static struct frddr *register_frddr_l(struct device *dev,
 static int unregister_frddr_l(struct device *dev, void *data)
 {
 	struct frddr *from;
-	struct aml_audio_controller *actrl;
-	unsigned int mask_bit;
-	unsigned int value;
 	int i;
+
+	lockdep_assert_held(&ddr_mutex);
 
 	if (dev == NULL)
 		return -EINVAL;
@@ -1167,21 +1238,11 @@ static int unregister_frddr_l(struct device *dev, void *data)
 
 	from = &frddrs[i];
 
-	/* disable audio ddr arb */
-	mask_bit = i + 4;
-	actrl = from->actrl;
-	/*aml_audiobus_update_bits(actrl, EE_AUDIO_ARB_CTRL,*/
-	/*		1 << mask_bit, 0 << mask_bit);*/
-
-	/* no ddr active, disable arb switch */
-	value = aml_audiobus_read(actrl, EE_AUDIO_ARB_CTRL) & 0x77;
-	/*if (value == 0)*/
-	/*	aml_audiobus_update_bits(actrl, EE_AUDIO_ARB_CTRL,*/
-	/*			1 << 31, 0 << 31);*/
-
 	free_irq(from->irq, data);
+	aml_audio_clear_hbr_qos_locked(from);
 	from->dev = NULL;
 	from->in_use = false;
+	aml_audio_update_arb_ctrl_locked(from->actrl);
 	pr_info("frddrs[%d] released by device %s\n", i, dev_name(dev));
 	return 0;
 }
@@ -1637,6 +1698,21 @@ void aml_frddr_set_format(struct frddr *fr,
 	fr->rate     = rate;
 	fr->msb      = msb;
 	fr->type     = frddr_type;
+}
+
+void aml_frddr_set_hbr_qos(struct frddr *fr, bool enable)
+{
+	if (!aml_frddr_support_hbr_qos(fr))
+		return;
+
+	mutex_lock(&ddr_mutex);
+	if (enable)
+		audio_arb_hbr_mask |= BIT(fr->fifo_id);
+	else
+		audio_arb_hbr_mask &= ~BIT(fr->fifo_id);
+
+	aml_audio_update_hbr_qos_locked(fr->actrl);
+	mutex_unlock(&ddr_mutex);
 }
 
 static void aml_aed_enable(struct frddr_attach *p_attach_aed, bool enable)
@@ -2182,6 +2258,11 @@ static int aml_ddr_mngr_platform_probe(struct platform_device *pdev)
 			"check to update ddr_mngr chipinfo\n");
 		return -EINVAL;
 	}
+
+	mutex_lock(&ddr_mutex);
+	audio_arb_ctrl1_default = aml_audiobus_read(actrl, EE_AUDIO_ARB_CTRL1);
+	audio_arb_ctrl1_default_valid = true;
+	mutex_unlock(&ddr_mutex);
 
 	if (p_ddr_chipinfo->fifo_num == 2)
 		ddr_num = p_ddr_chipinfo->fifo_num;

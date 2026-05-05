@@ -342,6 +342,7 @@ void aml_frddr_set_format(struct frddr *fr,
 	unsigned int rate,
 	unsigned int msb,
 	unsigned int frddr_type);
+void aml_frddr_set_hbr_qos(struct frddr *fr, bool enable);
 
 void aml_frddr_reset(struct frddr *fr, int offset);
 
