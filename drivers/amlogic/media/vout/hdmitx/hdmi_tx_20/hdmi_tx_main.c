@@ -96,6 +96,263 @@ static bool is_cur_tmds_div40(struct hdmitx_dev *hdev);
 static void hdmitx_resend_div40(struct hdmitx_dev *hdev);
 static unsigned int hdmitx_get_frame_duration(void);
 
+static bool hdmitx_is_high_bandwidth_4k_mode(enum hdmi_vic vic)
+{
+	switch (vic & 0xff) {
+	case HDMI_3840x2160p50_16x9:
+	case HDMI_3840x2160p60_16x9:
+	case HDMI_4096x2160p50_256x135:
+	case HDMI_4096x2160p60_256x135:
+	case HDMI_3840x2160p50_64x27:
+	case HDMI_3840x2160p60_64x27:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool hdmitx_fmt_attr_has_color(const char *attr)
+{
+	return strstr(attr, "rgb") || strstr(attr, "420") ||
+		strstr(attr, "422") || strstr(attr, "444");
+}
+
+static bool hdmitx_fmt_attr_has_depth(const char *attr)
+{
+	return strstr(attr, "bit");
+}
+
+static bool hdmitx_fmt_attr_is_manual(const char *attr)
+{
+	return hdmitx_fmt_attr_has_color(attr) ||
+		hdmitx_fmt_attr_has_depth(attr);
+}
+
+static bool hdmitx_hdr_video_active(struct hdmitx_dev *hdev)
+{
+	enum hdmi_tf_type hdr_type = hdmitx_get_cur_hdr_st();
+
+	switch (hdev->hdmi_current_eotf_type) {
+	case EOTF_T_DOLBYVISION:
+	case EOTF_T_LL_MODE:
+	case EOTF_T_DV_AHEAD:
+		return true;
+	default:
+		break;
+	}
+
+	if (hdmitx_hdr10p_en())
+		return true;
+
+	return (hdr_type != HDMI_NONE) && (hdr_type != HDMI_HDR_SDR);
+}
+
+static bool hdmitx_is_low_rate_uhd_mode(const char *mode)
+{
+	return !strncmp(mode, "2160p24hz", strlen("2160p24hz")) ||
+		!strncmp(mode, "2160p25hz", strlen("2160p25hz")) ||
+		!strncmp(mode, "2160p30hz", strlen("2160p30hz")) ||
+		!strncmp(mode, "smpte24hz", strlen("smpte24hz")) ||
+		!strncmp(mode, "smpte25hz", strlen("smpte25hz")) ||
+		!strncmp(mode, "smpte30hz", strlen("smpte30hz"));
+}
+
+static bool hdmitx_use_low_rate_candidates(struct hdmitx_dev *hdev,
+					   const char *mode)
+{
+	return hdmitx_hdr_video_active(hdev) ||
+		hdmitx_is_low_rate_uhd_mode(mode);
+}
+
+struct hdmitx_attr_candidate {
+	const char *attr;
+	bool use_y420;
+};
+
+static void hdmitx_append_y420_suffix(char *mode, size_t mode_size)
+{
+	size_t len = strlen(mode);
+
+	if (strstr(mode, "420"))
+		return;
+	if (len + 3 >= mode_size)
+		return;
+	strncat(mode, "420", mode_size - len - 1);
+}
+
+static bool hdmitx_pick_mode_attr(struct hdmitx_dev *hdev,
+				  const char *base_mode, const char *attr,
+				  bool use_y420, char *mode_out,
+				  size_t mode_out_size,
+				  enum hdmi_color_space *cs,
+				  enum hdmi_color_depth *cd)
+{
+	struct hdmi_format_para *para;
+
+	memset(mode_out, 0, mode_out_size);
+	strncpy(mode_out, base_mode, mode_out_size - 1);
+	mode_out[mode_out_size - 1] = '\0';
+	if (use_y420)
+		hdmitx_append_y420_suffix(mode_out, mode_out_size);
+
+	para = hdmi_tst_fmt_name(mode_out, attr);
+	if (!para || !hdmitx_edid_check_valid_mode(hdev, para))
+		return false;
+
+	*cs = para->cs;
+	*cd = para->cd;
+
+	return true;
+}
+
+static bool hdmitx_try_candidates(struct hdmitx_dev *hdev,
+				  const char *base_mode,
+				  const struct hdmitx_attr_candidate *candidates,
+				  unsigned int candidate_count,
+				  char *attr_out, size_t attr_out_size,
+				  char *mode_out, size_t mode_out_size,
+				  enum hdmi_color_space *cs,
+				  enum hdmi_color_depth *cd)
+{
+	unsigned int i;
+
+	for (i = 0; i < candidate_count; i++) {
+		enum hdmi_color_space cand_cs;
+		enum hdmi_color_depth cand_cd;
+		char candidate_mode[32];
+
+		if (!hdmitx_pick_mode_attr(hdev, base_mode,
+					   candidates[i].attr,
+					   candidates[i].use_y420,
+					   candidate_mode,
+					   sizeof(candidate_mode),
+					   &cand_cs, &cand_cd))
+			continue;
+
+		strncpy(mode_out, candidate_mode, mode_out_size - 1);
+		mode_out[mode_out_size - 1] = '\0';
+		strncpy(attr_out, candidates[i].attr, attr_out_size - 1);
+		attr_out[attr_out_size - 1] = '\0';
+		*cs = cand_cs;
+		*cd = cand_cd;
+		return true;
+	}
+
+	return false;
+}
+
+static bool hdmitx_pick_auto_mode(struct hdmitx_dev *hdev,
+				  const char *base_mode, enum hdmi_vic vic,
+				  char *attr_out, size_t attr_out_size,
+				  char *mode_out, size_t mode_out_size,
+				  enum hdmi_color_space *cs,
+				  enum hdmi_color_depth *cd)
+{
+	static const struct hdmitx_attr_candidate sdr_candidates[] = {
+		{ "444,12bit", false },
+		{ "444,10bit", false },
+		{ "444,8bit", false },
+		{ "422,12bit", false },
+		{ "422,10bit", false },
+		{ "422,8bit", false },
+		{ "rgb,12bit", false },
+		{ "rgb,10bit", false },
+		{ "rgb,8bit", false },
+		{ "420,12bit", true },
+		{ "420,10bit", true },
+		{ "420,8bit", true },
+	};
+	static const struct hdmitx_attr_candidate low_rate_hdr_candidates[] = {
+		{ "444,12bit", false },
+		{ "422,12bit", false },
+		{ "444,10bit", false },
+		{ "422,10bit", false },
+		{ "rgb,12bit", false },
+		{ "rgb,10bit", false },
+		{ "444,8bit", false },
+		{ "422,8bit", false },
+		{ "rgb,8bit", false },
+		{ "420,12bit", true },
+		{ "420,10bit", true },
+		{ "420,8bit", true },
+	};
+	static const struct hdmitx_attr_candidate high_rate_hdr_candidates[] = {
+		{ "422,12bit", false },
+		{ "420,12bit", true },
+		{ "420,10bit", true },
+		{ "444,8bit", false },
+		{ "rgb,8bit", false },
+		{ "422,10bit", false },
+		{ "422,8bit", false },
+		{ "420,8bit", true },
+	};
+	const struct hdmitx_attr_candidate *candidates = sdr_candidates;
+	unsigned int candidate_count = ARRAY_SIZE(sdr_candidates);
+
+	memset(attr_out, 0, attr_out_size);
+	strncpy(attr_out, hdev->fmt_attr, attr_out_size - 1);
+	attr_out[attr_out_size - 1] = '\0';
+	memset(mode_out, 0, mode_out_size);
+	strncpy(mode_out, base_mode, mode_out_size - 1);
+	mode_out[mode_out_size - 1] = '\0';
+
+	if (hdmitx_fmt_attr_is_manual(hdev->fmt_attr)) {
+		if (strstr(hdev->fmt_attr, "420"))
+			hdmitx_append_y420_suffix(mode_out, mode_out_size);
+		return true;
+	}
+
+	if (hdev->flag_3dfp)
+		return true;
+
+	if (hdmitx_is_high_bandwidth_4k_mode(vic)) {
+		if (hdmitx_hdr_video_active(hdev)) {
+			candidates = high_rate_hdr_candidates;
+			candidate_count = ARRAY_SIZE(high_rate_hdr_candidates);
+		}
+	} else if (hdmitx_use_low_rate_candidates(hdev, base_mode)) {
+		candidates = low_rate_hdr_candidates;
+		candidate_count = ARRAY_SIZE(low_rate_hdr_candidates);
+	}
+
+	if (hdmitx_try_candidates(hdev, base_mode, candidates, candidate_count,
+				  attr_out, attr_out_size,
+				  mode_out, mode_out_size,
+				  cs, cd))
+		return true;
+
+	if (!hdmitx_pick_mode_attr(hdev, base_mode, hdev->fmt_attr, false,
+				   mode_out, mode_out_size, cs, cd)) {
+		if (hdmitx_pick_mode_attr(hdev, base_mode, "420,8bit", true,
+					  mode_out, mode_out_size,
+					  cs, cd)) {
+			strncpy(attr_out, "420,8bit", attr_out_size - 1);
+			attr_out[attr_out_size - 1] = '\0';
+			return true;
+		}
+		return false;
+	}
+
+	return true;
+}
+
+static struct hdmi_format_para *hdmitx_apply_auto_mode_selection(
+	struct hdmitx_dev *hdev, const char *base_mode, enum hdmi_vic vic,
+	char *attr_out, size_t attr_out_size,
+	char *mode_out, size_t mode_out_size)
+{
+	enum hdmi_color_space cs = COLORSPACE_YUV444;
+	enum hdmi_color_depth cd = COLORDEPTH_24B;
+
+	if (!hdmitx_pick_auto_mode(hdev, base_mode, vic,
+				   attr_out, attr_out_size,
+				   mode_out, mode_out_size,
+				   &cs, &cd))
+		return NULL;
+
+	return hdmi_get_fmt_name(mode_out, attr_out);
+}
+
 static DEFINE_MUTEX(setclk_mutex);
 static DEFINE_MUTEX(getedid_mutex);
 
@@ -609,12 +866,18 @@ static int set_disp_mode_auto(void)
 	struct vinfo_s *info = NULL;
 	struct hdmitx_dev *hdev = &hdmitx_device;
 	struct hdmi_format_para *para = NULL;
+	char auto_attr[32];
+	unsigned char base_mode[32];
 	unsigned char mode[32];
 	enum hdmi_vic vic = HDMI_Unknown;
-	int colour_depths[] = { 8, 10, 12, 16 };
-	char* colour_sampling[] = {"RGB","YUV422","YUV444","YUV420"};
+	int color_depths[] = { 8, 10, 12, 16 };
+	static const char * const color_sampling[] = {
+		"RGB", "YUV422", "YUV444", "YUV420"
+	};
 
+	memset(base_mode, 0, sizeof(base_mode));
 	memset(mode, 0, sizeof(mode));
+	memset(auto_attr, 0, sizeof(auto_attr));
 	hdev->ready = 0;
 
 	/* get current vinfo */
@@ -647,42 +910,36 @@ static int set_disp_mode_auto(void)
 			cancel_delayed_work(&hdev->work_cedst);
 		return -1;
 	}
-	strncpy(mode, info->name, sizeof(mode));
-	mode[31] = '\0';
-	if (strstr(mode, "fp")) {
+	strncpy(base_mode, info->name, sizeof(base_mode));
+	base_mode[sizeof(base_mode) - 1] = '\0';
+	if (strstr(base_mode, "fp")) {
 		int i = 0;
 
-		for (; mode[i]; i++) {
-			if ((mode[i] == 'f') && (mode[i + 1] == 'p')) {
+		for (; base_mode[i]; i++) {
+			if ((base_mode[i] == 'f') && (base_mode[i + 1] == 'p')) {
 				/* skip "f", 1080fp60hz -> 1080p60hz */
 				do {
-					mode[i] = mode[i + 1];
+					base_mode[i] = base_mode[i + 1];
 					i++;
-				} while (mode[i]);
+				} while (base_mode[i]);
 				break;
 			}
 		}
 	}
-
-	/* In the file hdmi_common/hdmi_parameters.c,
-	 * the data array all_fmt_paras[] treat 2160p60hz and 2160p60hz420
-	 * as two different modes, such Scrambler
-	 * So if node "attr" contains 420, need append 420 to mode.
-	 */
-	if (strstr(hdev->fmt_attr, "420")) {
-		if (!strstr(mode, "420"))
-			strncat(mode, "420", 3);
-	}
-
-	para = hdmi_get_fmt_name(mode, hdev->fmt_attr);
+	vic = hdmitx_edid_get_VIC(hdev, base_mode, 1);
+	para = hdmitx_apply_auto_mode_selection(hdev, base_mode, vic,
+						auto_attr, sizeof(auto_attr),
+						mode, sizeof(mode));
+	if (!para)
+		return -1;
 	hdev->para = para;
 	vic = hdmitx_edid_get_VIC(hdev, mode, 1);
 
 	pr_info("set_disp_mode_auto - eotf type [%d] tunnel mode [%d] vic [%d] cd [%d] cs [%s]\n",
 		hdev->hdmi_current_eotf_type, hdev->hdmi_current_tunnel_mode, vic,
-		colour_depths[para->cd - COLORDEPTH_24B], colour_sampling[para->cs]);
+		color_depths[para->cd - COLORDEPTH_24B], color_sampling[para->cs]);
 
-	// force colour subsampling when DV mode
+	// force color subsampling when DV mode
 	switch (hdev->hdmi_current_eotf_type) {
 		case EOTF_T_DOLBYVISION:
 		case EOTF_T_LL_MODE:
@@ -704,16 +961,16 @@ static int set_disp_mode_auto(void)
 						break;
 				}
 				if (cs != para->cs)
-					pr_info("hdmitx: display colour subsampling is forced to %s by Dolby Vision tunneling\n",
-						colour_sampling[para->cs]);
+					pr_info("hdmitx: display color subsampling is forced to %s by Dolby Vision tunneling\n",
+						color_sampling[para->cs]);
 			}
 			break;
 		default:
 			break;
 	}
 
-	// parse and set maximum colourdepth given by edid
-	// check for colour subsampling limit
+	// parse and set maximum colordepth given by edid
+	// check for color subsampling limit
 	switch (hdev->hdmi_current_eotf_type) {
 		case EOTF_T_DOLBYVISION:
 		case EOTF_T_LL_MODE:
@@ -748,14 +1005,14 @@ static int set_disp_mode_auto(void)
 				}
 
 				if (cd != para->cd)
-					pr_info("hdmitx: display colourdepth is forced to %d bits because of Dolby Vision sink capability\n",
-						colour_depths[para->cd - COLORDEPTH_24B]);
+					pr_info("hdmitx: display colordepth is forced to %d bits because of Dolby Vision sink capability\n",
+						color_depths[para->cd - COLORDEPTH_24B]);
 			}
 			break;
 		default:
 			if (strstr(hdev->fmt_attr,"bit") != NULL) {
-				pr_info("hdmitx: display colourdepth is forced by attr to %d bits (VIC: %d)\n",
-					colour_depths[para->cd - COLORDEPTH_24B], vic);
+				pr_info("hdmitx: display colordepth is forced by attr to %d bits (VIC: %d)\n",
+					color_depths[para->cd - COLORDEPTH_24B], vic);
 			} else {
 				if (hdev->rxcap.ColorDeepSupport & 0x78 && hdev->para->cs != COLORSPACE_YUV420) {
 					enum hdmi_color_depth cd;
@@ -774,36 +1031,26 @@ static int set_disp_mode_auto(void)
 						para->cd = COLORDEPTH_24B;
 				}
 
-				switch (vic & 0xff) {
-					case HDMI_3840x2160p50_16x9:
-					case HDMI_3840x2160p60_16x9:
-					case HDMI_4096x2160p50_256x135:
-					case HDMI_4096x2160p60_256x135:
-					case HDMI_3840x2160p50_64x27:
-					case HDMI_3840x2160p60_64x27:
-						if (para->cs == COLORSPACE_RGB444 || para->cs == COLORSPACE_YUV444)
-						{
-							para->cd = COLORDEPTH_24B;
-							pr_info("hdmitx: display colourdepth is forced to %d bits because of current colour sampling\n",
-								colour_depths[para->cd - COLORDEPTH_24B]);
-						}
-						break;
-					default:
-						break;
-				break;
-			}
+				if (hdmitx_is_high_bandwidth_4k_mode(vic) &&
+				    (para->cs == COLORSPACE_RGB444 ||
+				     para->cs == COLORSPACE_YUV444)) {
+					para->cd = COLORDEPTH_24B;
+					pr_info(
+						"hdmitx: display colordepth is forced to %d bits because of current color sampling\n",
+						color_depths[para->cd - COLORDEPTH_24B]);
+				}
 			if (hdev->flag_3dfp) {
 				para->cd = COLORDEPTH_24B;
-				pr_info("hdmitx: display colourdepth is forced to %d bits because of 3dfp mode (VIC: %d)\n",
-					colour_depths[para->cd - COLORDEPTH_24B], vic);
+				pr_info("hdmitx: display colordepth is forced to %d bits because of 3dfp mode (VIC: %d)\n",
+					color_depths[para->cd - COLORDEPTH_24B], vic);
 			} else
-				pr_info("hdmitx: display colourdepth is auto set to %d bits (VIC: %d)\n",
-					colour_depths[para->cd - COLORDEPTH_24B], vic);
+				pr_info("hdmitx: display colordepth is auto set to %d bits (VIC: %d)\n",
+					color_depths[para->cd - COLORDEPTH_24B], vic);
 		}
 	}
 
 	pr_info("set_disp_mode_auto - cd [%d] cs [%s]\n",
-		colour_depths[para->cd - COLORDEPTH_24B], colour_sampling[para->cs]);
+		color_depths[para->cd - COLORDEPTH_24B], color_sampling[para->cs]);
 
 	if (strncmp(info->name, "2160p30hz", strlen("2160p30hz")) == 0) {
 		vic = HDMI_4k2k_30;
@@ -883,11 +1130,35 @@ static ssize_t show_attr(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	int pos = 0;
-	if (!memcmp(hdmitx_device.fmt_attr, "default,", 7)) {
-		memset(hdmitx_device.fmt_attr, 0,
-			sizeof(hdmitx_device.fmt_attr));
-		hdmitx_fmt_attr(&hdmitx_device);
+	if (!hdmitx_fmt_attr_is_manual(hdmitx_device.fmt_attr) &&
+	    hdmitx_device.para) {
+		char auto_attr[32];
+		char auto_mode[32];
+		enum hdmi_color_space cs = hdmitx_device.para->cs;
+		enum hdmi_color_depth cd = hdmitx_device.para->cd;
+		const char *str_cs;
+		const char *str_cd;
+
+		if (!hdmitx_pick_auto_mode(&hdmitx_device,
+					   hdmitx_device.para->name,
+					   hdmitx_device.para->vic,
+					   auto_attr, sizeof(auto_attr),
+					   auto_mode, sizeof(auto_mode),
+					   &cs, &cd))
+			goto out;
+		if (auto_attr[0]) {
+			pos += snprintf(buf + pos, PAGE_SIZE, "%s", auto_attr);
+			return pos;
+		}
+		str_cs = hdmi_get_str_cs(hdmitx_device.para);
+		str_cd = hdmi_get_str_cd(hdmitx_device.para);
+		if (str_cs && str_cd) {
+			pos += snprintf(buf + pos, PAGE_SIZE, "%s,%s",
+					str_cs, str_cd);
+			return pos;
+		}
 	}
+out:
 	pos += snprintf(buf + pos, PAGE_SIZE, "%s", hdmitx_device.fmt_attr);
 	return pos;
 }
@@ -3173,7 +3444,10 @@ static int local_support_3dfp(enum hdmi_vic vic)
 	default:
 		return 0;
 	}
+
+	return 0;
 }
+
 static ssize_t show_disp_cap_3d(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -5647,37 +5921,21 @@ static enum vmode_e hdmitx_validate_vmode(char *mode, unsigned int frac)
 	struct vinfo_s *info = NULL;
 	static struct vinfo_s info_3dfp = {};
 	struct hdmitx_dev *hdev = &hdmitx_device;
+	const char *valid_mode = mode;
 	enum hdmi_vic vic = hdmitx_edid_vic_tab_map_vic(mode);
+	enum hdmi_color_space cs = COLORSPACE_YUV444;
+	enum hdmi_color_depth cd = COLORDEPTH_24B;
+	char auto_attr[32];
+	char auto_mode[32];
 
-	// force 4k50/60Hz to 420 unless manually set
-	if (strstr(hdev->fmt_attr, "rgb") == NULL &&
-	    strstr(hdev->fmt_attr, "420") == NULL &&
-	    strstr(hdev->fmt_attr, "422") == NULL &&
-	    strstr(hdev->fmt_attr, "444") == NULL) {
-		switch (hdev->hdmi_current_eotf_type) {
-			case EOTF_T_DOLBYVISION:
-			case EOTF_T_LL_MODE:
-			case EOTF_T_DV_AHEAD:
-				break;
-			default:
-				switch (vic) {
-					case HDMI_3840x2160p50_16x9:
-					case HDMI_3840x2160p60_16x9:
-					case HDMI_4096x2160p50_256x135:
-					case HDMI_4096x2160p60_256x135:
-					case HDMI_3840x2160p50_64x27:
-					case HDMI_3840x2160p60_64x27:
-						if (!strstr(mode, "420"))
-							strncat(mode, "420", 3);
-						break;
-					default:
-						break;
-				}
-				break;
-		}
-	}
+	if (hdmitx_pick_auto_mode(hdev, mode, vic,
+				  auto_attr, sizeof(auto_attr),
+				  auto_mode, sizeof(auto_mode),
+				  &cs, &cd) &&
+	    strstr(auto_mode, "420") && !strstr(mode, "420"))
+		valid_mode = auto_mode;
 
-	info = hdmi_get_valid_vinfo(mode);
+	info = hdmi_get_valid_vinfo((char *)valid_mode);
 
 	if (info) {
 		/* //remove frac support for vout api
@@ -6306,6 +6564,10 @@ static bool is_cur_tmds_div40(struct hdmitx_dev *hdev)
 	struct hdmi_format_para *para1 = NULL;
 	struct hdmi_format_para *para2 = NULL;
 	unsigned int act_clk = 0;
+	enum hdmi_color_space cs = COLORSPACE_YUV444;
+	enum hdmi_color_depth cd = COLORDEPTH_24B;
+	char auto_attr[32];
+	char auto_mode[32];
 
 	if (!hdev)
 		return 0;
@@ -6318,7 +6580,12 @@ static bool is_cur_tmds_div40(struct hdmitx_dev *hdev)
 		return 0;
 	}
 	pr_info("hdmitx: mode name %s\n", para1->name);
-	para2 = hdmi_tst_fmt_name(para1->name, hdev->fmt_attr);
+	if (!hdmitx_pick_auto_mode(hdev, para1->name, para1->vic,
+				   auto_attr, sizeof(auto_attr),
+				   auto_mode, sizeof(auto_mode),
+				   &cs, &cd))
+		return 0;
+	para2 = hdmi_tst_fmt_name(auto_mode, auto_attr);
 	if (!para2) {
 		pr_info("%s[%d]\n", __func__, __LINE__);
 		return 0;
