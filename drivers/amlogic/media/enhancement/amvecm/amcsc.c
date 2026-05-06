@@ -6935,6 +6935,12 @@ int get_hdr_module_status(enum vd_path_e vd_path)
 EXPORT_SYMBOL(get_hdr_module_status);
 
 static bool video_layer_wait_on[VD_PATH_MAX];
+static struct hdr10plus_para last_hdmitx_hdr10plus_params[VD_PATH_MAX];
+static bool last_hdmitx_hdr10plus_valid[VD_PATH_MAX];
+static struct cuva_hdr_vsif_para last_hdmitx_vsif_params[VD_PATH_MAX];
+static struct cuva_hdr_vs_emds_para last_hdmitx_emds_params[VD_PATH_MAX];
+static bool last_hdmitx_cuva_valid[VD_PATH_MAX];
+
 bool is_video_layer_on(enum vd_path_e vd_path)
 {
 	bool video_on =
@@ -6951,7 +6957,8 @@ bool is_video_layer_on(enum vd_path_e vd_path)
 static bool hdr10_plus_metadata_update(
 	struct vframe_s *vf,
 	enum vpp_matrix_csc_e csc_type,
-	struct hdr10plus_para *p)
+	struct hdr10plus_para *p,
+	enum vd_path_e vd_path)
 {
 	struct cuva_hdr_vsif_para vsif_para;
 	struct cuva_hdr_vs_emds_para emds_para;
@@ -6999,7 +7006,14 @@ static bool hdr10_plus_metadata_update(
 			((p->graphics_overlay_flag & 0x1) << 7) |
 				((p->no_delay_flag & 0x1) << 6));
 	}
-	//TODO: return false if meta not changed
+
+	if (last_hdmitx_hdr10plus_valid[vd_path] &&
+	    (memcmp(&last_hdmitx_hdr10plus_params[vd_path], p, sizeof(*p)) == 0))
+		return false;
+
+	memcpy(&last_hdmitx_hdr10plus_params[vd_path], p, sizeof(*p));
+	last_hdmitx_hdr10plus_valid[vd_path] = true;
+
 	return true;
 }
 
@@ -7007,7 +7021,8 @@ static bool cuva_metadata_update(
 	struct vframe_s *vf,
 	enum vpp_matrix_csc_e csc_type,
 	struct cuva_hdr_vsif_para *vsif_paras,
-	struct cuva_hdr_vs_emds_para *emds_paras)
+	struct cuva_hdr_vs_emds_para *emds_paras,
+	enum vd_path_e vd_path)
 {
 	//struct cuva_hdr_vsif_para vsif_para;
 	//struct cuva_hdr_vs_emds_para emds_para;
@@ -7022,7 +7037,15 @@ static bool cuva_metadata_update(
 	cuva_hdr_vsif_pkt_update(vsif_paras);
 	cuva_hdr_emds_pkt_update(emds_paras);
 
-	//TODO: return false if meta not changed
+	if (last_hdmitx_cuva_valid[vd_path] &&
+	    (memcmp(&last_hdmitx_vsif_params[vd_path], vsif_paras, sizeof(*vsif_paras)) == 0) &&
+	    (memcmp(&last_hdmitx_emds_params[vd_path], emds_paras, sizeof(*emds_paras)) == 0))
+		return false;
+
+	memcpy(&last_hdmitx_vsif_params[vd_path], vsif_paras, sizeof(*vsif_paras));
+	memcpy(&last_hdmitx_emds_params[vd_path], emds_paras, sizeof(*emds_paras));
+	last_hdmitx_cuva_valid[vd_path] = true;
+
 	return true;
 }
 
@@ -7142,6 +7165,7 @@ void update_hdr10_plus_pkt(bool enable,
 		hdr10_plus_pkt_update = HDRPLUS_PKT_UPDATE;
 		pr_csc(2, "update_hdr10_plus_pkt on\n");
 	} else {
+		memset(last_hdmitx_hdr10plus_valid, 0, sizeof(last_hdmitx_hdr10plus_valid));
 		if (!vdev)
 			return;
 		follow_sink = (get_dolby_vision_policy() ==
@@ -7196,6 +7220,7 @@ void update_cuva_pkt(bool enable,
 		cuva_pkt_update = CUVA_PKT_UPDATE;
 		pr_csc(2, "update_cuva_pkt on\n");
 	} else {
+		memset(last_hdmitx_cuva_valid, 0, sizeof(last_hdmitx_cuva_valid));
 		if (!vdev)
 			return;
 #ifdef CONFIG_AMLOGIC_MEDIA_ENHANCEMENT_DOLBYVISION
@@ -8119,11 +8144,13 @@ static int vpp_matrix_update(
 	if (vf && (flags & (CSC_FLAG_TOGGLE_FRAME | CSC_FLAG_FORCE_SIGNAL))) {
 		hdr10p_meta_updated =
 		hdr10_plus_metadata_update(vf, csc_type,
-					   &hdmitx_hdr10plus_params[vd_path]);
+					   &hdmitx_hdr10plus_params[vd_path],
+					   vd_path);
 		cuva_meta_updated =
 			cuva_metadata_update(vf, csc_type,
 			&hdmitx_vsif_params[vd_path],
-			&hdmitx_edms_params[vd_path]);
+			&hdmitx_edms_params[vd_path],
+			vd_path);
 
 		if ((csc_type == VPP_MATRIX_BT2020YUV_BT2020RGB_DYNAMIC) ||
 		    (csc_type == VPP_MATRIX_BT2020YUV_BT2020RGB) ||
